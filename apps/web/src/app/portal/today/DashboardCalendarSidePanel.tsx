@@ -60,7 +60,7 @@ export function DashboardCalendarSidePanel({
         className={clsx(
           "fixed z-drawer-panel flex flex-col overflow-hidden backdrop-blur-3xl transition-all duration-\\[800ms\\] ease-\\[cubic-bezier(0.16,1,0.3,1)\\]",
           "max-lg:inset-y-0 max-lg:right-0 max-lg:left-auto max-lg:w-full max-lg:max-w-[min(100vw,420px)] max-lg:rounded-none max-lg:border-l max-lg:border-[color:var(--wp-sc-panel-border)] max-lg:bg-[color:var(--wp-sc-panel-bg)] max-lg:shadow-[var(--wp-sc-panel-shadow)] max-lg:pt-[env(safe-area-inset-top,0px)]",
-          "lg:right-5 lg:top-5 lg:bottom-5 lg:left-auto lg:h-auto lg:w-[420px] lg:max-w-[420px] lg:rounded-[24px] lg:border lg:border-[color:var(--wp-sc-panel-border)] lg:bg-[color:var(--wp-sc-panel-bg)] lg:shadow-[0_20px_60px_rgba(0,0,0,0.06)] dark:lg:shadow-[0_20px_60px_rgba(0,0,0,0.45)]",
+          "lg:right-5 lg:top-5 lg:bottom-5 lg:left-auto lg:h-auto lg:w-[420px] lg:max-w-[420px] lg:rounded-[var(--wp-radius-card)] lg:border lg:border-[color:var(--wp-sc-panel-border)] lg:bg-[color:var(--wp-sc-panel-bg)] lg:shadow-[0_20px_60px_rgba(0,0,0,0.06)] dark:lg:shadow-[0_20px_60px_rgba(0,0,0,0.45)]",
           drawerOpen
             ? "translate-x-0 opacity-100"
             : "pointer-events-none opacity-0 max-lg:translate-x-full lg:translate-x-[120%]",

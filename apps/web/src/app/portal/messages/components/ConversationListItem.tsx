@@ -27,7 +27,7 @@ export function ConversationListItem({
           ? "bg-violet-50 ring-1 ring-violet-100 dark:bg-violet-950/30 dark:ring-violet-900/40"
           : item.unread
             ? "bg-indigo-50/60 hover:bg-indigo-50 dark:bg-indigo-950/20 dark:hover:bg-indigo-950/30"
-            : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
+            : "hover:bg-[color:var(--wp-main-scroll-bg)] dark:hover:bg-slate-800/50",
       )}
     >
       <div className="flex items-start gap-3">

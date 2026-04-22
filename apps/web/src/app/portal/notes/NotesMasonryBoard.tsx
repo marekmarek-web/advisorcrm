@@ -78,7 +78,7 @@ function getProductDesign(type: string): DomainDesign {
     case "dps":
       return { icon: <PiggyBank size={14} />, color: "text-amber-700 bg-amber-100 border-amber-200", glow: "shadow-amber-500/30" };
     case "uvery":
-      return { icon: <Landmark size={14} />, color: "text-slate-700 bg-slate-100 border-slate-200", glow: "shadow-slate-500/25" };
+      return { icon: <Landmark size={14} />, color: "text-[color:var(--wp-text)] bg-[color:var(--wp-surface-muted)] border-[color:var(--wp-surface-card-border)]", glow: "shadow-slate-500/25" };
     default:
       return { icon: <AlignLeft size={14} />, color: "text-purple-600 bg-purple-100 border-purple-200", glow: "shadow-purple-500/30" };
   }

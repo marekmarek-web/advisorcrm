@@ -10,7 +10,7 @@ export async function ClientMobileApp() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-[40vh] flex items-center justify-center text-slate-500 text-sm p-6">
+        <div className="min-h-[40vh] flex items-center justify-center text-[color:var(--wp-text-secondary)] text-sm p-6">
           Načítám…
         </div>
       }

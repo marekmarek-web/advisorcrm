@@ -174,7 +174,7 @@ function CreateTaskModal({
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
 
-      <div className="relative z-10 w-full max-w-md bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-2xl p-6">
+      <div className="relative z-10 w-full max-w-md bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-2xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-black text-[color:var(--wp-text)]">Nový úkol</h3>
           <button
@@ -344,7 +344,7 @@ export function AiClientSummaryBlock({
   const nextStep = parsedSections?.["Doporučený další krok"]?.[0] ?? null;
 
   return (
-    <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+    <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
       <div
         className={`px-5 py-4 sm:px-6 sm:py-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
           expanded ? "border-b border-[color:var(--wp-surface-card-border)]/60" : ""

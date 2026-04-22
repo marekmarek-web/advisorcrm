@@ -706,7 +706,7 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
         </div>
 
         <main
-          className={`min-h-0 min-w-0 flex flex-col overflow-hidden rounded-[28px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm ${
+          className={`min-h-0 min-w-0 flex flex-col overflow-hidden rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm ${
             showChat ? "flex flex-1" : "hidden xl:flex"
           }`}
         >
@@ -774,7 +774,7 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
           {selectedContactId && contextPanelProps ? (
             <ConversationContextPanel {...contextPanelProps} />
           ) : (
-            <aside className="flex h-full min-h-[240px] items-center justify-center rounded-[28px] border border-dashed border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80 px-6 text-center text-sm text-[color:var(--wp-text-secondary)] shadow-sm">
+            <aside className="flex h-full min-h-[240px] items-center justify-center rounded-[var(--wp-radius-card)] border border-dashed border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80 px-6 text-center text-sm text-[color:var(--wp-text-secondary)] shadow-sm">
               Vyberte konverzaci pro zobrazení rychlého kontextu, úkolů a kontaktu.
             </aside>
           )}

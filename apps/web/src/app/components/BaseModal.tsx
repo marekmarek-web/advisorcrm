@@ -12,13 +12,18 @@ export interface BaseModalProps {
   children: React.ReactNode;
   /** Optional class for the inner panel (neuromorphic card). */
   panelClassName?: string;
-  /** Max width of panel. Default max-w-lg. */
+  /** Max width of panel. Default max-w-lg. Ignorováno při `fullScreen`. */
   maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl";
   /**
    * On viewports below md (768px): "modal" = same centered box; "sheet" = bottom sheet; "fullScreen" = full-screen panel.
    * Default "fullScreen" for better mobile UX.
    */
   mobileVariant?: BaseModalMobileVariant;
+  /**
+   * Když `true`, modal je fullscreen napříč všemi breakpointy (edge-to-edge panel).
+   * Nahrazuje ad-hoc `fixed inset-0 z-[100]` overlaye (např. tasks fullscreen editor).
+   */
+  fullScreen?: boolean;
 }
 
 const maxWidthClass = {
@@ -49,6 +54,7 @@ export function BaseModal({
   panelClassName = "",
   maxWidth = "lg",
   mobileVariant = "fullScreen",
+  fullScreen = false,
 }: BaseModalProps) {
   const ref = useRef<HTMLDivElement>(null);
   const previousActive = useRef<HTMLElement | null>(null);
@@ -125,30 +131,47 @@ export function BaseModal({
   if (!open) return null;
 
   const useMobileLayout = isMobile && mobileVariant !== "modal";
-  const isFullScreen = useMobileLayout && mobileVariant === "fullScreen";
+  const isMobileFullScreen = useMobileLayout && mobileVariant === "fullScreen";
   const isSheet = useMobileLayout && mobileVariant === "sheet";
+  const edgeToEdge = fullScreen || isMobileFullScreen;
 
   const backdropClass =
     "fixed inset-0 z-modal flex items-center justify-center bg-[color:var(--wp-overlay-scrim)] p-4";
-  const mobileBackdropClass = isFullScreen
-    ? "fixed inset-0 z-modal flex flex-col bg-[color:var(--wp-surface-card)] p-0"
+  const fullScreenBackdropClass =
+    "fixed inset-0 z-modal flex flex-col bg-[color:var(--wp-surface-card)] p-0";
+  const mobileBackdropClass = isMobileFullScreen
+    ? fullScreenBackdropClass
     : isSheet
       ? "fixed inset-0 z-modal flex items-end justify-center bg-[color:var(--wp-overlay-scrim)] p-0"
+      : backdropClass;
+
+  const backdropFinal = fullScreen
+    ? fullScreenBackdropClass
+    : useMobileLayout
+      ? mobileBackdropClass
       : backdropClass;
 
   const panelBase =
     "wp-modal-panel flex w-full flex-col overflow-hidden border border-[color:var(--wp-modal-border)] bg-[color:var(--wp-modal-surface)] shadow-xl dark:shadow-black/40";
   const panelDesktop = `rounded-xl max-h-[90vh] ${maxWidthClass[maxWidth]}`;
+  const panelFullScreen = "rounded-none min-h-full max-h-full";
   const panelMobile =
-    isFullScreen
-      ? "rounded-none min-h-full max-h-full"
+    isMobileFullScreen
+      ? panelFullScreen
       : isSheet
         ? "rounded-t-2xl max-h-[90vh] border-b-0"
         : panelDesktop;
 
+  const panelFinal = fullScreen
+    ? panelFullScreen
+    : useMobileLayout
+      ? panelMobile
+      : panelDesktop;
+  void edgeToEdge;
+
   return (
     <div
-      className={useMobileLayout ? mobileBackdropClass : backdropClass}
+      className={backdropFinal}
       onMouseDown={handleBackdropMouseDown}
       onMouseUp={handleBackdropMouseUp}
       role="dialog"
@@ -165,7 +188,7 @@ export function BaseModal({
       )}
       <div
         ref={ref}
-        className={`${panelBase} ${useMobileLayout ? panelMobile : panelDesktop} ${panelClassName}`}
+        className={`${panelBase} ${panelFinal} ${panelClassName}`}
         onClick={(e) => e.stopPropagation()}
       >
         {title && (

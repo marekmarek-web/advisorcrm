@@ -40,10 +40,10 @@ export default async function ClientAdvisorProposalsListPage() {
     <div className="space-y-8 client-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-display font-black text-slate-900 tracking-tight">
+          <h2 className="text-3xl font-display font-black text-[color:var(--wp-text)] tracking-tight">
             Návrhy od poradce
           </h2>
-          <p className="text-sm font-medium text-slate-500 mt-1">
+          <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] mt-1">
             Nezávazná porovnání, která pro vás poradce připravil. Není to automatické doporučení —
             finální rozhodnutí je vždy na vás.
           </p>
@@ -51,12 +51,12 @@ export default async function ClientAdvisorProposalsListPage() {
       </div>
 
       {!hasAny ? (
-        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center space-y-3">
-          <div className="mx-auto w-12 h-12 rounded-2xl bg-slate-100 grid place-items-center text-slate-400">
+        <div className="bg-white rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm p-10 text-center space-y-3">
+          <div className="mx-auto w-12 h-12 rounded-2xl bg-[color:var(--wp-surface-muted)] grid place-items-center text-[color:var(--wp-text-tertiary)]">
             <Sparkles size={22} />
           </div>
-          <p className="text-slate-700 font-semibold">Zatím žádné návrhy</p>
-          <p className="text-slate-500 text-sm max-w-md mx-auto">
+          <p className="text-[color:var(--wp-text)] font-semibold">Zatím žádné návrhy</p>
+          <p className="text-[color:var(--wp-text-secondary)] text-sm max-w-md mx-auto">
             Jakmile pro vás poradce připraví porovnání (např. výhodnější pojištění vozu nebo
             refinancování hypotéky), uvidíte ho tady.
           </p>
@@ -113,19 +113,19 @@ type ColorKey = "emerald" | "indigo" | "slate" | "amber";
 const BORDER: Record<ColorKey, string> = {
   emerald: "border-emerald-200",
   indigo: "border-indigo-200",
-  slate: "border-slate-200",
+  slate: "border-[color:var(--wp-surface-card-border)]",
   amber: "border-amber-200",
 };
 const ICON_BG: Record<ColorKey, string> = {
   emerald: "bg-emerald-100 text-emerald-600",
   indigo: "bg-indigo-100 text-indigo-600",
-  slate: "bg-slate-100 text-slate-600",
+  slate: "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]",
   amber: "bg-amber-100 text-amber-600",
 };
 const BADGE: Record<ColorKey, string> = {
   emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
   indigo: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  slate: "bg-slate-50 text-slate-700 border-slate-200",
+  slate: "bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text)] border-[color:var(--wp-surface-card-border)]",
   amber: "bg-amber-50 text-amber-700 border-amber-200",
 };
 
@@ -149,8 +149,8 @@ function ProposalSection({
           {icon}
         </div>
         <div>
-          <h3 className="text-lg font-black text-slate-900">{title}</h3>
-          <p className="text-xs text-slate-500">{subtitle}</p>
+          <h3 className="text-lg font-black text-[color:var(--wp-text)]">{title}</h3>
+          <p className="text-xs text-[color:var(--wp-text-secondary)]">{subtitle}</p>
         </div>
         <span
           className={`ml-auto px-2.5 py-0.5 rounded-full text-xs font-black border ${BADGE[color]}`}
@@ -168,14 +168,14 @@ function ProposalSection({
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-0.5">
+                <span className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] block mb-0.5">
                   {ADVISOR_PROPOSAL_SEGMENT_LABELS[p.segment] ?? p.segment}
                 </span>
-                <h4 className="font-bold text-slate-900 line-clamp-1">{p.title}</h4>
+                <h4 className="font-bold text-[color:var(--wp-text)] line-clamp-1">{p.title}</h4>
                 {p.summary && (
-                  <p className="text-sm text-slate-500 mt-1 line-clamp-2">{p.summary}</p>
+                  <p className="text-sm text-[color:var(--wp-text-secondary)] mt-1 line-clamp-2">{p.summary}</p>
                 )}
-                <div className="flex flex-wrap gap-3 mt-2 text-xs text-slate-500">
+                <div className="flex flex-wrap gap-3 mt-2 text-xs text-[color:var(--wp-text-secondary)]">
                   {p.savingsAnnual !== null && p.savingsAnnual > 0 && (
                     <span className="inline-flex items-center gap-1 font-bold text-emerald-700">
                       Úspora {formatMoneyCs(p.savingsAnnual, p.currency)} / rok
@@ -199,7 +199,7 @@ function ProposalSection({
                 >
                   {ADVISOR_PROPOSAL_STATUS_LABELS[p.status] ?? p.status}
                 </span>
-                <ChevronRight size={16} className="text-slate-400" />
+                <ChevronRight size={16} className="text-[color:var(--wp-text-tertiary)]" />
               </div>
             </div>
           </Link>
@@ -207,7 +207,7 @@ function ProposalSection({
       </div>
 
       {color === "emerald" && (
-        <p className="text-[11px] text-slate-400 leading-relaxed">
+        <p className="text-[11px] text-[color:var(--wp-text-tertiary)] leading-relaxed">
           <ArrowRight size={10} aria-hidden className="inline mr-1" />
           Porovnání připravil váš poradce. Aidvisora nevytváří automatická doporučení pro klienty.
         </p>

@@ -957,7 +957,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
         {activeTab === "osobni" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 animate-in fade-in duration-300">
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+              <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
                 <div className="px-6 sm:px-8 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
                   <h2 className="text-lg font-black text-[color:var(--wp-text)]">Základní informace a fakturace</h2>
                   <p className="text-sm text-[color:var(--wp-text-secondary)] font-medium mt-1">Tyto údaje slouží pro interní účely a vystavování faktur.</p>
@@ -1174,7 +1174,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
             </div>
 
             <div className="lg:col-span-1 space-y-6">
-              <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+              <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
                 <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
                   <h2 className="text-lg font-black text-[color:var(--wp-text)] flex items-center gap-2">
                     <Key size={18} className="text-indigo-500" /> Zabezpečení
@@ -1217,12 +1217,12 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
         {activeTab === "profil" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 animate-in fade-in duration-300">
             <div className="lg:col-span-12">
-              <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm p-6 sm:p-8">
+              <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm p-6 sm:p-8">
                 <div className="grid grid-cols-1 lg:grid-cols-[180px_1fr] gap-6 md:gap-8 items-start">
                   <div className="flex flex-col items-center lg:items-start gap-2">
                     <div className="relative group">
                       <label className="block cursor-pointer">
-                        <div className="relative w-32 h-32 rounded-[28px] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-4xl shadow-xl border-4 border-white overflow-hidden">
+                        <div className="relative w-32 h-32 rounded-[var(--wp-radius-card)] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-4xl shadow-xl border-4 border-white overflow-hidden">
                           {advisorAvatarUrl ? (
                             <Image
                               src={advisorAvatarUrl}
@@ -1235,7 +1235,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                             initials
                           )}
                         </div>
-                        <div className="absolute inset-0 bg-[color:var(--wp-overlay-scrim)] rounded-[28px] border-4 border-transparent flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        <div className="absolute inset-0 bg-[color:var(--wp-overlay-scrim)] rounded-[var(--wp-radius-card)] border-4 border-transparent flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                           <Camera size={28} className="text-white mb-1" />
                           <span className="text-[10px] font-black uppercase text-white">Nahrát fotku</span>
                         </div>
@@ -1287,7 +1287,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                 initial.roleName === "Admin" ? "grid-cols-1 lg:grid-cols-2 xl:grid-cols-3" : "grid-cols-1 lg:grid-cols-2"
               }`}
             >
-              <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+              <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
                 <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
                   <h3 className="font-black text-[color:var(--wp-text)]">PDF report z finanční analýzy</h3>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mt-1">Pro záhlaví a zápatí</p>
@@ -1350,7 +1350,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
               </div>
 
               {initial.roleName === "Admin" ? (
-                <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+                <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
                   <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
                     <h3 className="font-black text-[color:var(--wp-text)]">Narozeninové e-maily (workspace)</h3>
                     <p className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mt-1">
@@ -1389,7 +1389,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                 </div>
               ) : null}
 
-              <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+              <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
                 <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
                   <h3 className="font-black text-[color:var(--wp-text)]">Vaše narozeninové přání</h3>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mt-1">
@@ -1454,7 +1454,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
         {activeTab === "fakturace" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 animate-in fade-in duration-300">
             <div className="lg:col-span-1 space-y-6">
-              <div className="bg-gradient-to-br from-aidv-create to-slate-800 rounded-[24px] p-8 text-white shadow-xl">
+              <div className="bg-gradient-to-br from-aidv-create to-slate-800 rounded-[var(--wp-radius-card)] p-8 text-white shadow-xl">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[color:var(--wp-text-tertiary)] mb-2">Aktuální tarif</h3>
                 <div className="flex flex-col gap-1 mb-6">
                   <span className="text-3xl sm:text-4xl font-black tracking-tight leading-tight break-words">
@@ -1508,7 +1508,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
               </div>
             </div>
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden p-6 sm:p-8">
+              <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden p-6 sm:p-8">
                 <div className="flex items-center gap-3 mb-2">
                   <CreditCard size={22} className="text-[color:var(--wp-text-tertiary)] shrink-0" />
                   <h2 className="text-lg font-black text-[color:var(--wp-text)]">Předplatné a platby</h2>
@@ -1527,7 +1527,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                   </p>
                 )}
               </div>
-              <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden h-full">
+              <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden h-full">
                 <div className="px-6 sm:px-8 py-6 border-b border-[color:var(--wp-surface-card-border)]/50">
                   <h2 className="text-lg font-black text-[color:var(--wp-text)]">Historie faktur</h2>
                 </div>
@@ -1583,7 +1583,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
         {/* Tab: Notifikace */}
         {activeTab === "notifikace" && (
           <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden p-6 sm:p-8">
+            <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden p-6 sm:p-8">
               <div className="flex items-center gap-3 mb-4">
                 <Bell size={20} className="text-[color:var(--wp-text-tertiary)]" />
                 <h2 className="text-lg font-black text-[color:var(--wp-text)]">Klientské požadavky a e-maily</h2>
@@ -1606,7 +1606,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                 </Link>
               </div>
             </div>
-            <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+            <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
               <div className="px-6 sm:px-8 py-6 border-b border-[color:var(--wp-surface-card-border)]/50 flex items-center gap-3">
                 <Mail size={20} className="text-indigo-500" />
                 <h2 className="text-lg font-black text-[color:var(--wp-text)]">E-mailová upozornění</h2>
@@ -1638,7 +1638,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
               </div>
             </div>
             <PublicBookingSetupBlock initial={initial.publicBooking} canonicalBaseUrl={initial.canonicalBaseUrl} />
-            <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+            <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
               <div className="px-6 sm:px-8 py-6 border-b border-[color:var(--wp-surface-card-border)]/50 flex items-center gap-3">
                 <Bell size={20} className="text-amber-500" />
                 <h2 className="text-lg font-black text-[color:var(--wp-text)]">Prohlížeč (Push notifikace)</h2>
@@ -1739,7 +1739,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                     <div
                       key={integration.id}
                       id={`integration-card-${integration.id}`}
-                      className={`bg-[color:var(--wp-surface-card)] rounded-[24px] border transition-all duration-300 flex flex-col group ${isConnected ? "border-indigo-200 shadow-md" : "border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-md hover:border-[color:var(--wp-surface-card-border)]"}`}
+                      className={`bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border transition-all duration-300 flex flex-col group ${isConnected ? "border-indigo-200 shadow-md" : "border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-md hover:border-[color:var(--wp-surface-card-border)]"}`}
                     >
                       <div className="p-6 flex items-start justify-between">
                         <div className="flex items-center gap-4">

@@ -249,7 +249,7 @@ export function EventFormDateTimeSection({
   const showTimed = hideAllDay || !allDay;
 
   return (
-    <div className="bg-[color:var(--wp-surface-muted)] p-5 rounded-[24px] border border-[color:var(--wp-surface-card-border)] space-y-4">
+    <div className="bg-[color:var(--wp-surface-muted)] p-5 rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] space-y-4">
       <div className="flex items-center gap-2">
         <Clock size={16} className="text-[color:var(--wp-text-tertiary)]" />
         <span className="text-xs font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">

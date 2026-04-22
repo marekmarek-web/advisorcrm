@@ -32,7 +32,7 @@ function DashboardKpiStripSkeleton() {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-36 animate-pulse rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/80"
+            className="h-36 animate-pulse rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/80"
           />
         ))}
       </div>

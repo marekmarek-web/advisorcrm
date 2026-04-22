@@ -79,7 +79,7 @@ export function ClientProposalActions({
               type="button"
               onClick={submitDecline}
               disabled={pending}
-              className="min-h-[44px] inline-flex items-center gap-2 px-5 py-3 bg-white hover:bg-slate-50 disabled:opacity-60 text-slate-700 rounded-xl text-sm font-bold border border-slate-200"
+              className="min-h-[44px] inline-flex items-center gap-2 px-5 py-3 bg-white hover:bg-[color:var(--wp-main-scroll-bg)] disabled:opacity-60 text-[color:var(--wp-text)] rounded-xl text-sm font-bold border border-[color:var(--wp-surface-card-border)]"
             >
               <X size={14} />
               Teď mě to nezajímá
@@ -88,7 +88,7 @@ export function ClientProposalActions({
         </div>
       ) : (
         <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
-          <p className="text-sm font-bold text-slate-900">
+          <p className="text-sm font-bold text-[color:var(--wp-text)]">
             Doplňte případně poznámku pro poradce (nepovinné)
           </p>
           <textarea
@@ -96,7 +96,7 @@ export function ClientProposalActions({
             onChange={(e) => setNote(e.target.value)}
             placeholder="Např. preferovaný termín volání, doplňující dotaz…"
             rows={3}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
+            className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
           />
           <div className="flex flex-wrap gap-2">
             <button
@@ -115,12 +115,12 @@ export function ClientProposalActions({
                 setNote("");
               }}
               disabled={pending}
-              className="min-h-[44px] inline-flex items-center gap-2 px-4 py-3 bg-white text-slate-700 rounded-xl text-sm font-bold border border-slate-200"
+              className="min-h-[44px] inline-flex items-center gap-2 px-4 py-3 bg-white text-[color:var(--wp-text)] rounded-xl text-sm font-bold border border-[color:var(--wp-surface-card-border)]"
             >
               Zrušit
             </button>
           </div>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
+          <p className="text-[11px] text-[color:var(--wp-text-secondary)] leading-relaxed">
             Vytvoří se standardní požadavek v sekci „Požadavky" a poradce obdrží notifikaci.
           </p>
         </div>

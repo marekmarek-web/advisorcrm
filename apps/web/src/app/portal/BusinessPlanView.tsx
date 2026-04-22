@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { PortalPageShell } from "@/app/components/layout/PortalPageShell";
 import {
   Target,
   Plus,
@@ -403,7 +404,7 @@ export function BusinessPlanView() {
           <SkeletonBlock className="h-48 rounded-[32px]" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <SkeletonBlock key={i} className="h-36 rounded-[24px]" />
+              <SkeletonBlock key={i} className="h-36 rounded-[var(--wp-radius-card)]" />
             ))}
           </div>
         </div>
@@ -412,7 +413,7 @@ export function BusinessPlanView() {
   }
 
   return (
-    <div className="w-full h-full min-h-screen bg-transparent font-sans text-[color:var(--wp-text)] flex flex-col relative pb-24 md:pb-28">
+    <PortalPageShell maxWidth="wide" outerClassName="pb-24 md:pb-28 font-sans">
       <style>{`
         .font-display { font-family: var(--font-primary, inherit), sans-serif; }
         @keyframes fillProgress { from { width: 0; } }
@@ -422,7 +423,7 @@ export function BusinessPlanView() {
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #e2e8f0; border-radius: 2px; }
       `}</style>
 
-      <main className="flex-1 w-full max-w-[1400px] mx-auto p-4 sm:p-6 md:p-8 flex flex-col relative z-10">
+      <div className="flex flex-col relative z-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
           <div>
             <h1 className="text-2xl md:text-3xl font-display font-black text-[color:var(--wp-text)] tracking-tight flex items-center gap-3">
@@ -518,7 +519,7 @@ export function BusinessPlanView() {
             {teamLoading ? (
               <div className="grid grid-cols-1 gap-4">
                 {[1, 2, 3].map((i) => (
-                  <SkeletonBlock key={i} className="h-24 rounded-[24px]" />
+                  <SkeletonBlock key={i} className="h-24 rounded-[var(--wp-radius-card)]" />
                 ))}
               </div>
             ) : (
@@ -526,7 +527,7 @@ export function BusinessPlanView() {
                 {teamSummary.map((m) => (
                   <div
                     key={m.userId}
-                    className="bg-[color:var(--wp-surface-card)] rounded-[24px] p-6 border border-[color:var(--wp-surface-card-border)] shadow-sm flex flex-col sm:flex-row sm:items-center gap-4 flex-wrap"
+                    className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] p-6 border border-[color:var(--wp-surface-card-border)] shadow-sm flex flex-col sm:flex-row sm:items-center gap-4 flex-wrap"
                   >
                     <div className="font-display font-bold text-[color:var(--wp-text)] min-w-[140px]">
                       {m.displayName || m.userId.slice(0, 8)}
@@ -638,7 +639,7 @@ export function BusinessPlanView() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] p-6 border border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+              <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] p-6 border border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
                 <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-50 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
                 <div className="flex justify-between items-start mb-6 relative z-10">
                   <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center border border-emerald-100">
@@ -664,7 +665,7 @@ export function BusinessPlanView() {
                 </div>
               </div>
 
-              <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] p-6 border border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+              <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] p-6 border border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
                 <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-50 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
                 <div className="flex justify-between items-start mb-6 relative z-10">
                   <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center border border-indigo-100">
@@ -686,7 +687,7 @@ export function BusinessPlanView() {
                 </div>
               </div>
 
-              <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] p-6 border border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+              <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] p-6 border border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
                 <div className="absolute -right-6 -top-6 w-24 h-24 bg-amber-50 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
                 <div className="flex justify-between items-start mb-6 relative z-10">
                   <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center border border-amber-100">
@@ -801,7 +802,7 @@ export function BusinessPlanView() {
             <Sparkles size={16} className="text-amber-400" /> Vygenerovat interní AI přehled
           </button>
         </div>
-      </main>
+      </div>
 
       {isManualModalOpen && plan?.planId ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[color:var(--wp-overlay-scrim)] backdrop-blur-sm p-4">
@@ -1069,6 +1070,6 @@ export function BusinessPlanView() {
           </div>
         </div>
       )}
-    </div>
+    </PortalPageShell>
   );
 }

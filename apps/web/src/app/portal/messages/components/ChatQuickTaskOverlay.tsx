@@ -137,7 +137,7 @@ export function ChatQuickTaskOverlay({
       }}
     >
       <div
-        className="flex max-h-[min(90vh,720px)] w-full max-w-[500px] flex-col overflow-hidden rounded-[28px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-xl"
+        className="flex max-h-[min(90vh,720px)] w-full max-w-[500px] flex-col overflow-hidden rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-xl"
         onMouseDown={(ev) => ev.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/80 px-6 py-4">

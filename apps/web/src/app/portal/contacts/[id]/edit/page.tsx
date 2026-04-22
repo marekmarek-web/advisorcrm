@@ -251,9 +251,9 @@ export default function EditContactPage() {
       <div className="min-h-0 flex flex-col p-6 sm:p-8">
         <div className="max-w-2xl mx-auto w-full space-y-6 animate-pulse">
           <div className="h-10 bg-[color:var(--wp-surface-muted)] rounded-xl w-2/3" />
-          <div className="h-48 bg-[color:var(--wp-surface-muted)] rounded-[24px]" />
-          <div className="h-56 bg-[color:var(--wp-surface-muted)] rounded-[24px]" />
-          <div className="h-64 bg-[color:var(--wp-surface-muted)] rounded-[24px]" />
+          <div className="h-48 bg-[color:var(--wp-surface-muted)] rounded-[var(--wp-radius-card)]" />
+          <div className="h-56 bg-[color:var(--wp-surface-muted)] rounded-[var(--wp-radius-card)]" />
+          <div className="h-64 bg-[color:var(--wp-surface-muted)] rounded-[var(--wp-radius-card)]" />
         </div>
       </div>
     );
@@ -312,7 +312,7 @@ export default function EditContactPage() {
           )}
 
           {/* Karta: Základní údaje */}
-          <section className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 md:p-8 shadow-sm">
+          <section className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 md:p-8 shadow-sm">
             <h2 className="text-lg font-black text-[color:var(--wp-text)] mb-6">Základní údaje</h2>
             <div className="space-y-5">
               <div>
@@ -450,7 +450,7 @@ export default function EditContactPage() {
           </section>
 
           {/* Karta: Kontaktní údaje */}
-          <section className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 md:p-8 shadow-sm">
+          <section className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 md:p-8 shadow-sm">
             <h2 className="text-lg font-black text-[color:var(--wp-text)] mb-6">Kontaktní údaje</h2>
             <div className="space-y-5">
               <div>
@@ -502,7 +502,7 @@ export default function EditContactPage() {
           </section>
 
           {/* Karta: Segmentace a vazby */}
-          <section className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 md:p-8 shadow-sm">
+          <section className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 md:p-8 shadow-sm">
             <h2 className="text-lg font-black text-[color:var(--wp-text)] mb-6">Segmentace a vazby</h2>
             <div className="space-y-5">
               <div>
@@ -595,7 +595,7 @@ export default function EditContactPage() {
 
           {/* Archivace a trvalé smazání */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <section className="rounded-[24px] border border-amber-200 bg-amber-50/50 p-6 md:p-8">
+            <section className="rounded-[var(--wp-radius-card)] border border-amber-200 bg-amber-50/50 p-6 md:p-8">
               <h2 className="text-lg font-black text-amber-800 mb-2">Archivace kontaktu</h2>
               <p className="text-sm text-[color:var(--wp-text-secondary)] mb-5">
                 Archivovaný kontakt zmizí ze seznamu, ale data (smlouvy, obchody, dokumenty, analýzy) zůstanou zachována a kontakt lze kdykoli obnovit.
@@ -610,7 +610,7 @@ export default function EditContactPage() {
               </button>
             </section>
             {canPermanentlyDelete && (
-              <section className="rounded-[24px] border border-red-200 bg-red-50/50 p-6 md:p-8">
+              <section className="rounded-[var(--wp-radius-card)] border border-red-200 bg-red-50/50 p-6 md:p-8">
                 <h2 className="text-lg font-black text-red-800 mb-2">Trvale smazat kontakt</h2>
                 <p className="text-sm text-[color:var(--wp-text-secondary)] mb-5">
                   Kontakt včetně navázaných záznamů (smlouvy, dokumenty, úkoly, analýzy a další) bude nenávratně odstraněn. Tuto akci nelze vrátit zpět.

@@ -256,7 +256,7 @@ export function TeamOverviewScreen({ deviceClass = "phone" }: { deviceClass?: De
   if (pending && !kpis) {
     return (
       <div className="min-h-[50vh] space-y-3 px-4 pt-4 pb-6">
-        <div className="h-[168px] rounded-[24px] bg-[color:var(--wp-surface-card-border)]/70 animate-pulse" />
+        <div className="h-[168px] rounded-[var(--wp-radius-card)] bg-[color:var(--wp-surface-card-border)]/70 animate-pulse" />
         <div className="grid grid-cols-3 gap-2">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-[92px] rounded-2xl bg-[color:var(--wp-surface-card-border)]/70 animate-pulse" />

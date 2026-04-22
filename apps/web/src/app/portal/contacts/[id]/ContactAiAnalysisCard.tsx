@@ -9,7 +9,7 @@ import { Zap, ArrowUpRight } from "lucide-react";
  */
 export function ContactAiAnalysisCard() {
   return (
-    <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-indigo-900 to-[#0f172a] p-6 text-white shadow-xl shadow-indigo-900/10">
+    <div className="relative overflow-hidden rounded-[var(--wp-radius-card)] bg-gradient-to-br from-indigo-900 to-[#0f172a] p-6 text-white shadow-xl shadow-indigo-900/10">
       <Zap className="absolute -top-4 -right-4 w-24 h-24 text-white/5" aria-hidden />
       <div className="flex items-center gap-2 mb-4 relative z-10">
         <div className="w-8 h-8 rounded-lg bg-[color:var(--wp-surface-card)]/10 flex items-center justify-center">

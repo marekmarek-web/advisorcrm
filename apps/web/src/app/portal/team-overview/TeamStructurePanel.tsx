@@ -71,8 +71,8 @@ function TreeBranch({
             <div className="relative">
               {depth > 0 ? (
                 <>
-                  <span className="pointer-events-none absolute -left-8 top-5 h-px w-8 bg-slate-200/90" />
-                  <span className="pointer-events-none absolute -left-8 -top-4 h-9 w-px bg-slate-200/90" />
+                  <span className="pointer-events-none absolute -left-8 top-5 h-px w-8 bg-[color:var(--wp-surface-muted)]/90" />
+                  <span className="pointer-events-none absolute -left-8 -top-4 h-9 w-px bg-[color:var(--wp-surface-muted)]/90" />
                 </>
               ) : null}
               <div
@@ -82,7 +82,7 @@ function TreeBranch({
                   depth > 0 && "bg-white",
                   isSelf && depth > 0 && "border-indigo-200/80 bg-indigo-50/60",
                   isSelected && !isSelf && depth > 0 && "border-violet-300/80 bg-violet-50/80",
-                  !isSelf && !isSelected && depth > 0 && "border-slate-200/80 hover:border-slate-300 hover:-translate-y-px"
+                  !isSelf && !isSelected && depth > 0 && "border-[color:var(--wp-surface-card-border)]/80 hover:border-[color:var(--wp-surface-card-border)] hover:-translate-y-px"
                 )}
               >
                 {isSelf && depth > 0 && (
@@ -99,16 +99,16 @@ function TreeBranch({
                         ? "text-violet-900"
                         : isSelf
                           ? "text-indigo-900"
-                          : "text-slate-900 hover:text-[#16192b]"
+                          : "text-[color:var(--wp-text)] hover:text-[#16192b]"
                   )}
                 >
                   {label}
                 </button>
-                <span className={clsx("text-[11px] font-medium", depth === 0 ? "text-slate-400" : "text-slate-400")}>
+                <span className={clsx("text-[11px] font-medium", depth === 0 ? "text-[color:var(--wp-text-tertiary)]" : "text-[color:var(--wp-text-tertiary)]")}>
                   {node.roleName}
                 </span>
                 {m != null && (
-                  <span className={clsx("text-[11px] font-semibold tabular-nums", depth === 0 ? "text-slate-300" : "text-slate-500")}>
+                  <span className={clsx("text-[11px] font-semibold tabular-nums", depth === 0 ? "text-[color:var(--wp-text-tertiary)]" : "text-[color:var(--wp-text-secondary)]")}>
                     {formatTeamOverviewProduction(m.productionThisPeriod)}
                   </span>
                 )}
@@ -117,7 +117,7 @@ function TreeBranch({
                     "rounded-[10px] border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em]",
                     depth === 0
                       ? "border-white/10 bg-white/10 text-white"
-                      : "border-slate-200 bg-slate-50 text-slate-600"
+                      : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-secondary)]"
                   )}>
                     {classification.labelCs}
                   </span>
@@ -131,8 +131,8 @@ function TreeBranch({
                   <span className={clsx(
                     "rounded-[10px] border px-2.5 py-1 text-[10px] font-extrabold",
                     depth === 0
-                      ? "border-white/10 bg-white/10 text-slate-300"
-                      : "border-slate-200 bg-white text-slate-400"
+                      ? "border-white/10 bg-white/10 text-[color:var(--wp-text-tertiary)]"
+                      : "border-[color:var(--wp-surface-card-border)] bg-white text-[color:var(--wp-text-tertiary)]"
                   )}>
                     +{below}
                   </span>
@@ -140,7 +140,7 @@ function TreeBranch({
                 <span
                   className={clsx(
                     "ml-auto inline-flex items-center text-[10px] font-extrabold uppercase tracking-[0.14em] opacity-0 transition group-hover:opacity-100",
-                    depth === 0 ? "text-slate-400" : "text-slate-400"
+                    depth === 0 ? "text-[color:var(--wp-text-tertiary)]" : "text-[color:var(--wp-text-tertiary)]"
                   )}
                   aria-hidden
                 >
@@ -192,12 +192,12 @@ export function TeamStructurePanel({
 
   if (roots.length === 0) {
     return (
-      <section className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
-        <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50/50 px-7 py-4">
+      <section className="overflow-hidden rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)]/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
+        <div className="flex items-center gap-2 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]/50 px-7 py-4">
           <Network className="h-4 w-4 shrink-0 text-indigo-500" aria-hidden />
-          <h2 className="text-[17px] font-black tracking-tight text-slate-950">Struktura týmu</h2>
+          <h2 className="text-[17px] font-black tracking-tight text-[color:var(--wp-text)]">Struktura týmu</h2>
         </div>
-        <p className="px-7 py-5 text-sm text-slate-500">
+        <p className="px-7 py-5 text-sm text-[color:var(--wp-text-secondary)]">
           V tomto rozsahu zatím nejsou data o struktuře. Zkontrolujte nastavení nadřízených v týmu.
         </p>
       </section>
@@ -205,11 +205,11 @@ export function TeamStructurePanel({
   }
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
-      <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50/40 px-7 py-4">
+    <section className="overflow-hidden rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)]/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
+      <div className="flex items-center gap-2 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]/40 px-7 py-4">
         <Network className="h-4 w-4 shrink-0 text-indigo-500" aria-hidden />
-        <h2 className="text-[17px] font-black tracking-tight text-slate-950">Struktura týmu</h2>
-        <span className="ml-auto text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">
+        <h2 className="text-[17px] font-black tracking-tight text-[color:var(--wp-text)]">Struktura týmu</h2>
+        <span className="ml-auto text-[10px] font-extrabold uppercase tracking-[0.16em] text-[color:var(--wp-text-tertiary)]">
           {scope === "me" ? "Osobní rozsah" : `${roots.length} ${roots.length === 1 ? "kořen" : "kořenů"}`}
         </span>
       </div>
@@ -236,7 +236,7 @@ export function TeamStructurePanel({
           </div>
         </div>
         {compactTree ? (
-          <p className="relative z-10 mx-auto mt-6 max-w-[1080px] border-t border-slate-100 pt-5 text-center text-[12px] leading-relaxed text-slate-500">
+          <p className="relative z-10 mx-auto mt-6 max-w-[1080px] border-t border-[color:var(--wp-surface-card-border)] pt-5 text-center text-[12px] leading-relaxed text-[color:var(--wp-text-secondary)]">
             Struktura v tomto rozsahu je kompaktní — výběr člena v pravém panelu zůstává stejný ve všech záložkách.
           </p>
         ) : null}

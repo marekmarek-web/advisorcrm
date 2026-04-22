@@ -305,7 +305,7 @@ function MaterialRequestsTabInner({
         )}
       </div>
 
-      <div className="flex-1 min-w-0 rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 md:p-6">
+      <div className="flex-1 min-w-0 rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 md:p-6">
         {!selectedId ? (
           <p className="text-sm text-[color:var(--wp-text-secondary)]">
             Vyberte požadavek v seznamu vlevo nebo vytvořte nový.
@@ -342,7 +342,7 @@ function MaterialRequestsTabInner({
                 <button
                   type="button"
                   onClick={() => void setStatus("closed")}
-                  className="min-h-[40px] rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-800"
+                  className="min-h-[40px] rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] px-3 text-xs font-bold text-[color:var(--wp-text)]"
                 >
                   Uzavřít
                 </button>

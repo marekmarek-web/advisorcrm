@@ -290,7 +290,7 @@ export function TeamCalendarButtons({
       <button
         type="button"
         onClick={onOpenEvent}
-        className="inline-flex h-10 items-center gap-2 rounded-[14px] border border-slate-200 bg-white px-4 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700 shadow-sm transition hover:bg-slate-50"
+        className="inline-flex h-10 items-center gap-2 rounded-[14px] border border-[color:var(--wp-surface-card-border)] bg-white px-4 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[color:var(--wp-text)] shadow-sm transition hover:bg-[color:var(--wp-main-scroll-bg)]"
       >
         <CalendarPlus className="h-3.5 w-3.5" aria-hidden />
         Týmová událost
@@ -298,7 +298,7 @@ export function TeamCalendarButtons({
       <button
         type="button"
         onClick={onOpenTask}
-        className="inline-flex h-10 items-center gap-2 rounded-[14px] border border-slate-200 bg-white px-4 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700 shadow-sm transition hover:bg-slate-50"
+        className="inline-flex h-10 items-center gap-2 rounded-[14px] border border-[color:var(--wp-surface-card-border)] bg-white px-4 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[color:var(--wp-text)] shadow-sm transition hover:bg-[color:var(--wp-main-scroll-bg)]"
       >
         <CheckSquare className="h-3.5 w-3.5" aria-hidden />
         Týmový úkol

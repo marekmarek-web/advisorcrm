@@ -1102,7 +1102,7 @@ export default function ScanPage() {
             ) : null}
             {uploadState === "done" ? (
               <>
-                <p className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                <p className="mb-2 rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] px-3 py-2 text-xs text-[color:var(--wp-text)]">
                   Na pozadí běží příprava textu (OCR a data pro AI), pokud je zpracování v projektu zapnuté. Stav uvidíte u
                   dokumentu v sekci dokumentů.
                 </p>

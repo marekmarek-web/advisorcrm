@@ -22,22 +22,22 @@ export function TeamOverviewAdaptationSection({
 }) {
   return (
     <section
-      className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)]"
+      className="overflow-hidden rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)]/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)]"
       aria-labelledby="team-adaptation-heading"
     >
-      <div className="border-b border-slate-100 px-7 py-5">
-        <h2 id="team-adaptation-heading" className="text-[22px] font-black tracking-tight text-slate-950">
+      <div className="border-b border-[color:var(--wp-surface-card-border)] px-7 py-5">
+        <h2 id="team-adaptation-heading" className="text-[22px] font-black tracking-tight text-[color:var(--wp-text)]">
           Adaptace nováčků
         </h2>
-        <p className="mt-1 text-[13px] text-slate-500">
+        <p className="mt-1 text-[13px] text-[color:var(--wp-text-secondary)]">
           Nováčci v adaptačním okně, checklist a signály z CRM pro check-in.
         </p>
       </div>
 
       {newcomers.length === 0 ? (
         <div className="px-7 py-10 text-center">
-          <p className="rounded-[20px] border border-slate-200/80 bg-slate-50/80 px-6 py-8 text-sm text-slate-500">
-            <span className="block text-[14px] font-bold text-slate-800">Aktuálně bez aktivní adaptace</span>
+          <p className="rounded-[20px] border border-[color:var(--wp-surface-card-border)]/80 bg-[color:var(--wp-main-scroll-bg)]/80 px-6 py-8 text-sm text-[color:var(--wp-text-secondary)]">
+            <span className="block text-[14px] font-bold text-[color:var(--wp-text)]">Aktuálně bez aktivní adaptace</span>
             <span className="mt-1.5 block text-xs leading-relaxed">
               Jakmile do týmu nastoupí nový člen v adaptačním okně, objeví se zde jeho checklist.
             </span>
@@ -52,7 +52,7 @@ export function TeamOverviewAdaptationSection({
             return (
               <div
                 key={n.userId}
-                className="overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm transition hover:border-slate-300"
+                className="overflow-hidden rounded-[20px] border border-[color:var(--wp-surface-card-border)]/80 bg-white shadow-sm transition hover:border-[color:var(--wp-surface-card-border)]"
               >
                 <button
                   type="button"
@@ -61,8 +61,8 @@ export function TeamOverviewAdaptationSection({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[16px] font-extrabold text-slate-950">{name}</p>
-                      <p className="mt-0.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">
+                      <p className="text-[16px] font-extrabold text-[color:var(--wp-text)]">{name}</p>
+                      <p className="mt-0.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[color:var(--wp-text-tertiary)]">
                         Fáze: {n.adaptationStatus}
                       </p>
                     </div>
@@ -76,7 +76,7 @@ export function TeamOverviewAdaptationSection({
                       >
                         {n.adaptationStatus}
                       </span>
-                      <span className="rounded-[10px] border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-extrabold text-slate-600">
+                      <span className="rounded-[10px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] px-2.5 py-1 text-[10px] font-extrabold text-[color:var(--wp-text-secondary)]">
                         {n.adaptationScore} %
                       </span>
                     </div>
@@ -84,11 +84,11 @@ export function TeamOverviewAdaptationSection({
 
                   {/* Progress bar */}
                   <div className="mt-4">
-                    <div className="mb-2 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
+                    <div className="mb-2 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-[0.14em] text-[color:var(--wp-text-tertiary)]">
                       <span>Adaptační osa</span>
                       <span className="text-[#16192b]">{n.adaptationScore}% hotovo</span>
                     </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--wp-surface-muted)]">
                       <div
                         className={`h-full rounded-full transition-all ${risky ? "bg-rose-500" : "bg-emerald-500"}`}
                         style={{ width: `${n.adaptationScore}%` }}
@@ -106,14 +106,14 @@ export function TeamOverviewAdaptationSection({
                               ? "border-emerald-500 bg-emerald-500 text-white"
                               : index === 0
                                 ? "border-[#16192b] bg-white text-[#16192b]"
-                                : "border-slate-200 bg-white text-slate-300"
+                                : "border-[color:var(--wp-surface-card-border)] bg-white text-[color:var(--wp-text-tertiary)]"
                           }`}
                         >
                           {s.completed ? <Check className="h-2.5 w-2.5" /> : <X className="h-2.5 w-2.5" />}
                         </span>
                         <span
                           className={`text-[11px] font-bold ${
-                            s.completed ? "text-slate-400 line-through" : index === 0 ? "text-slate-900" : "text-slate-400"
+                            s.completed ? "text-[color:var(--wp-text-tertiary)] line-through" : index === 0 ? "text-[color:var(--wp-text)]" : "text-[color:var(--wp-text-tertiary)]"
                           }`}
                         >
                           {s.label}
@@ -130,7 +130,7 @@ export function TeamOverviewAdaptationSection({
                 </button>
 
                 {variant === "standalone" && onCheckIn ? (
-                  <div className="flex items-center justify-end border-t border-slate-100 px-5 py-3">
+                  <div className="flex items-center justify-end border-t border-[color:var(--wp-surface-card-border)] px-5 py-3">
                     <button
                       type="button"
                       onClick={(e) => {

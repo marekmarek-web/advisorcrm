@@ -155,14 +155,14 @@ export function QrPaymentModal({ open, onClose, payment }: QrPaymentModalProps) 
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-t-[28px] sm:rounded-[30px] border border-slate-100 border-b-0 sm:border-b bg-white shadow-2xl overflow-hidden client-scale-in max-h-[min(92dvh,640px)] sm:max-h-none flex flex-col pb-[max(0.75rem,var(--safe-area-bottom))] sm:pb-0"
+        className="w-full max-w-md rounded-t-[28px] sm:rounded-[30px] border border-[color:var(--wp-surface-card-border)] border-b-0 sm:border-b bg-white shadow-2xl overflow-hidden client-scale-in max-h-[min(92dvh,640px)] sm:max-h-none flex flex-col pb-[max(0.75rem,var(--safe-area-bottom))] sm:pb-0"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
-          <h3 className="text-xl font-black text-slate-900">QR Platba</h3>
+        <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]/60 flex items-center justify-between">
+          <h3 className="text-xl font-black text-[color:var(--wp-text)]">QR Platba</h3>
           <button
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] rounded-full border border-slate-200 bg-white text-slate-500 hover:text-slate-800 grid place-items-center touch-manipulation"
+            className="min-h-[44px] min-w-[44px] rounded-full border border-[color:var(--wp-surface-card-border)] bg-white text-[color:var(--wp-text-secondary)] hover:text-[color:var(--wp-text)] grid place-items-center touch-manipulation"
             aria-label="Zavřít QR modal"
           >
             <X size={16} />
@@ -171,13 +171,13 @@ export function QrPaymentModal({ open, onClose, payment }: QrPaymentModalProps) 
 
         <div className="p-5 sm:p-6 space-y-4 sm:space-y-5 text-center overflow-y-auto">
           <div>
-            <p className="text-sm font-bold text-slate-900">{payment.partnerName}</p>
+            <p className="text-sm font-bold text-[color:var(--wp-text)]">{payment.partnerName}</p>
             {payment.productName && (
-              <p className="text-xs text-slate-500 font-medium mt-1">{payment.productName}</p>
+              <p className="text-xs text-[color:var(--wp-text-secondary)] font-medium mt-1">{payment.productName}</p>
             )}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] p-3">
             {qrDataUrl ? (
               <img
                 src={qrDataUrl}
@@ -185,32 +185,32 @@ export function QrPaymentModal({ open, onClose, payment }: QrPaymentModalProps) 
                 className="mx-auto w-[240px] h-[240px] rounded-xl bg-white"
               />
             ) : (
-              <div className="mx-auto w-[240px] h-[240px] rounded-xl bg-white border border-slate-200 flex items-center justify-center text-sm text-slate-500">
+              <div className="mx-auto w-[240px] h-[240px] rounded-xl bg-white border border-[color:var(--wp-surface-card-border)] flex items-center justify-center text-sm text-[color:var(--wp-text-secondary)]">
                 QR kód nelze vygenerovat
               </div>
             )}
           </div>
 
-          <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-left space-y-1">
-            <p className="text-xs text-slate-500 font-bold">
-              Účet: <span className="text-slate-800 font-black">{payment.accountNumber}</span>
+          <div className="rounded-xl bg-[color:var(--wp-main-scroll-bg)] border border-[color:var(--wp-surface-card-border)] p-4 text-left space-y-1">
+            <p className="text-xs text-[color:var(--wp-text-secondary)] font-bold">
+              Účet: <span className="text-[color:var(--wp-text)] font-black">{payment.accountNumber}</span>
             </p>
-            <p className="text-xs text-slate-500 font-bold">
-              Částka: <span className="text-slate-800 font-black">{payment.amountLabel}</span>
+            <p className="text-xs text-[color:var(--wp-text-secondary)] font-bold">
+              Částka: <span className="text-[color:var(--wp-text)] font-black">{payment.amountLabel}</span>
             </p>
             {payment.variableSymbol && (
-              <p className="text-xs text-slate-500 font-bold">
-                VS: <span className="text-slate-800 font-black">{payment.variableSymbol}</span>
+              <p className="text-xs text-[color:var(--wp-text-secondary)] font-bold">
+                VS: <span className="text-[color:var(--wp-text)] font-black">{payment.variableSymbol}</span>
               </p>
             )}
             {payment.specificSymbol && (
-              <p className="text-xs text-slate-500 font-bold">
-                SS: <span className="text-slate-800 font-black">{payment.specificSymbol}</span>
+              <p className="text-xs text-[color:var(--wp-text-secondary)] font-bold">
+                SS: <span className="text-[color:var(--wp-text)] font-black">{payment.specificSymbol}</span>
               </p>
             )}
             {payment.constantSymbol && (
-              <p className="text-xs text-slate-500 font-bold">
-                KS: <span className="text-slate-800 font-black">{payment.constantSymbol}</span>
+              <p className="text-xs text-[color:var(--wp-text-secondary)] font-bold">
+                KS: <span className="text-[color:var(--wp-text)] font-black">{payment.constantSymbol}</span>
               </p>
             )}
           </div>

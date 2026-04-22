@@ -30,7 +30,7 @@ export function ClientPortalShell({
   shellLoadFailed = false,
 }: ClientPortalShellProps) {
   return (
-    <div className="client-portal-root flex min-h-screen bg-slate-50 text-slate-800">
+    <div className="client-portal-root flex min-h-screen bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text)]">
       <ClientSidebar
         unreadNotificationsCount={unreadNotificationsCount}
         unreadMessagesCount={unreadMessagesCount}

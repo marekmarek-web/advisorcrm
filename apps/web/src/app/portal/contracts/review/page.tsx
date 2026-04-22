@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { PortalPageShell } from "@/app/components/layout/PortalPageShell";
 import { useRouter } from "next/navigation";
 import {
   FileText,
@@ -263,8 +264,8 @@ export default function ContractReviewListPage() {
   };
 
   return (
-       <div className="flex min-h-0 flex-col bg-[color:var(--wp-main-scroll-bg)]">
-      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 p-6 md:p-8">
+    <PortalPageShell maxWidth="standard" flushTop innerClassName="flex flex-col gap-6 py-6 md:py-8">
+      <div className="flex flex-col gap-6">
         {/* Header - reference style */}
         <div className="flex shrink-0 flex-col justify-between gap-6 md:flex-row md:items-end">
           <div className="flex items-start gap-4">
@@ -340,7 +341,7 @@ export default function ContractReviewListPage() {
         )}
 
         {/* Filters - reference panel */}
-        <div className="flex shrink-0 flex-col items-stretch justify-between gap-4 rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-3 shadow-sm md:flex-row md:items-center md:p-4">
+        <div className="flex shrink-0 flex-col items-stretch justify-between gap-4 rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-3 shadow-sm md:flex-row md:items-center md:p-4">
           <div className="relative flex-1 w-full max-w-md">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--wp-text-tertiary)]" />
             <input
@@ -559,6 +560,6 @@ export default function ContractReviewListPage() {
           </div>
         </div>
       </div>
-    </div>
+    </PortalPageShell>
   );
 }

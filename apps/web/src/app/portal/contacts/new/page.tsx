@@ -69,7 +69,7 @@ export default function NewContactPage() {
       <h1 className="text-2xl md:text-3xl font-black text-[color:var(--wp-text)]">Nový kontakt</h1>
       <form
         onSubmit={onSubmit}
-        className="max-w-md space-y-4 rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 shadow-[var(--wp-shadow-card)]"
+        className="max-w-md space-y-4 rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 shadow-[var(--wp-shadow-card)]"
       >
         <div>
           <label className={labelCls}>Jméno *</label>

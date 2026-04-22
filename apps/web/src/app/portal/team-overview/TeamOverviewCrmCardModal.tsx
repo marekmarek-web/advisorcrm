@@ -89,32 +89,32 @@ export function TeamOverviewCrmCardModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-6 top-6 rounded-full bg-slate-100 p-2 hover:bg-slate-200"
+          className="absolute right-6 top-6 rounded-full bg-[color:var(--wp-surface-muted)] p-2 hover:bg-[color:var(--wp-surface-muted)]"
           aria-label="Zavřít"
         >
           <X className="h-5 w-5" />
         </button>
 
-        <div className="flex flex-col gap-6 border-b border-slate-100 p-10 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-6 border-b border-[color:var(--wp-surface-card-border)] p-10 sm:flex-row sm:items-center">
           {(() => {
             const avatarDisplay = toAvatarDisplayUrl(avatarUrl);
             return avatarDisplay ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarDisplay} alt="" className="h-24 w-24 rounded-[20px] border border-slate-200 shadow-sm" />
+            <img src={avatarDisplay} alt="" className="h-24 w-24 rounded-[20px] border border-[color:var(--wp-surface-card-border)] shadow-sm" />
           ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-[20px] bg-slate-100 text-2xl font-black text-slate-500">
+            <div className="flex h-24 w-24 items-center justify-center rounded-[20px] bg-[color:var(--wp-surface-muted)] text-2xl font-black text-[color:var(--wp-text-secondary)]">
               {memberName.slice(0, 1)}
             </div>
           );
           })()}
           <div>
-            <h2 className="text-3xl font-black tracking-tight text-slate-900">{memberName}</h2>
+            <h2 className="text-3xl font-black tracking-tight text-[color:var(--wp-text)]">{memberName}</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-              <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-600">
+              <span className="rounded-lg bg-[color:var(--wp-surface-muted)] px-3 py-1 text-xs font-bold uppercase tracking-wide text-[color:var(--wp-text-secondary)]">
                 {careerEvaluation.systemRoleName}
               </span>
-              <span className="text-slate-400">·</span>
-              <span className="font-semibold text-slate-700">
+              <span className="text-[color:var(--wp-text-tertiary)]">·</span>
+              <span className="font-semibold text-[color:var(--wp-text)]">
                 {formatCareerTrackLabel(careerEvaluation.careerTrackId)} /{" "}
                 {careerEvaluation.careerPositionLabel ?? "—"}
               </span>
@@ -122,22 +122,22 @@ export function TeamOverviewCrmCardModal({
           </div>
         </div>
 
-        <div className="space-y-8 bg-slate-50/50 p-10">
+        <div className="space-y-8 bg-[color:var(--wp-main-scroll-bg)]/50 p-10">
           <div>
-            <h3 className="mb-4 text-lg font-extrabold text-slate-900">CRM data a produkce (aktuální měsíc)</h3>
+            <h3 className="mb-4 text-lg font-extrabold text-[color:var(--wp-text)]">CRM data a produkce (aktuální měsíc)</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="rounded-[20px] border border-slate-200 bg-white p-6 shadow-sm">
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Celková produkce</p>
+              <div className="rounded-[20px] border border-[color:var(--wp-surface-card-border)] bg-white p-6 shadow-sm">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">Celková produkce</p>
                 <p className="mt-1 text-3xl font-black text-[#16192b]">
                   {metrics ? formatTeamOverviewProduction(metrics.productionThisPeriod) : "—"}
                 </p>
               </div>
-              <div className="rounded-[20px] border border-slate-200 bg-white p-6 shadow-sm">
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Počet schůzek</p>
+              <div className="rounded-[20px] border border-[color:var(--wp-surface-card-border)] bg-white p-6 shadow-sm">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">Počet schůzek</p>
                 <p className="mt-1 text-3xl font-black text-[#16192b]">{metrics?.meetingsThisPeriod ?? "—"}</p>
               </div>
-              <div className="rounded-[20px] border border-slate-200 bg-white p-6 shadow-sm">
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Hodnocení</p>
+              <div className="rounded-[20px] border border-[color:var(--wp-surface-card-border)] bg-white p-6 shadow-sm">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">Hodnocení</p>
                 <p className="mt-2 text-xl font-bold text-emerald-600">
                   {careerProgressShortLabel(careerEvaluation.progressEvaluation)}
                 </p>
@@ -146,15 +146,15 @@ export function TeamOverviewCrmCardModal({
           </div>
 
           <div>
-            <h3 className="mb-4 text-lg font-extrabold text-slate-900">Složení produkce (produktový mix)</h3>
+            <h3 className="mb-4 text-lg font-extrabold text-[color:var(--wp-text)]">Složení produkce (produktový mix)</h3>
             {loading ? (
-              <p className="text-sm text-slate-500">Načítám…</p>
+              <p className="text-sm text-[color:var(--wp-text-secondary)]">Načítám…</p>
             ) : err ? (
               <p className="text-sm text-amber-700">{err}</p>
             ) : mix && mix.total <= 0 ? (
-              <p className="text-sm text-slate-600">V tomto období nejsou evidované smlouvy — nelze zobrazit mix.</p>
+              <p className="text-sm text-[color:var(--wp-text-secondary)]">V tomto období nejsou evidované smlouvy — nelze zobrazit mix.</p>
             ) : pct && mix ? (
-              <div className="rounded-[24px] border border-slate-200 bg-white p-8 shadow-sm">
+              <div className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-white p-8 shadow-sm">
                 <div className="mb-6 flex h-8 w-full overflow-hidden rounded-xl shadow-inner">
                   {pct.investice > 0 && (
                     <div
@@ -201,7 +201,7 @@ export function TeamOverviewCrmCardModal({
                   <Legend color="bg-rose-400" label="Životní poj." />
                   <Legend color="bg-blue-500" label="Hypotéky / úvěry" />
                 </div>
-                <p className="mt-4 text-[11px] text-slate-500">
+                <p className="mt-4 text-[11px] text-[color:var(--wp-text-secondary)]">
                   Pool programu: {formatCareerProgramLabel(careerEvaluation.careerProgramId)} · součet z obratu smluv v
                   CRM.
                 </p>
@@ -218,7 +218,7 @@ function Legend({ color, label }: { color: string; label: string }) {
   return (
     <div className="flex items-center gap-2">
       <div className={`h-3 w-3 rounded-full ${color}`} />
-      <span className="font-bold text-slate-800">{label}</span>
+      <span className="font-bold text-[color:var(--wp-text)]">{label}</span>
     </div>
   );
 }

@@ -19,7 +19,7 @@ function poolLine(programId: CareerProgramId): string {
 }
 
 const PANEL_CLASS =
-  "h-full min-h-0 overflow-hidden rounded-[28px] border border-slate-800 bg-[#16192b] text-white shadow-[0_20px_48px_rgba(0,0,0,0.18)]";
+  "h-full min-h-0 overflow-hidden rounded-[var(--wp-radius-card)] border border-slate-800 bg-[#16192b] text-white shadow-[0_20px_48px_rgba(0,0,0,0.18)]";
 
 export function TeamOverviewSelectedMemberPanel({
   detail,
@@ -88,9 +88,9 @@ export function TeamOverviewSelectedMemberPanel({
         <aside className={clsx(PANEL_CLASS, "flex flex-col justify-between p-7 text-sm")} role="alert">
           <div>
             <div className="mb-6 h-px w-full bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" aria-hidden />
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Stav načtení</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[color:var(--wp-text-secondary)]">Stav načtení</p>
             <p className="mt-3 text-[18px] font-black tracking-tight text-white">Souhrn se nepodařilo načíst</p>
-            <p className="mt-2 text-[13px] leading-relaxed text-slate-400">
+            <p className="mt-2 text-[13px] leading-relaxed text-[color:var(--wp-text-tertiary)]">
               Zkuste znovu načíst data tlačítkem Obnovit v hlavičce.
             </p>
           </div>
@@ -107,7 +107,7 @@ export function TeamOverviewSelectedMemberPanel({
             <button
               type="button"
               onClick={onClose}
-              className="text-[11px] font-semibold text-slate-400 underline transition hover:text-white"
+              className="text-[11px] font-semibold text-[color:var(--wp-text-tertiary)] underline transition hover:text-white"
             >
               Zrušit výběr
             </button>
@@ -121,19 +121,19 @@ export function TeamOverviewSelectedMemberPanel({
         <div className="flex min-h-full flex-1 flex-col px-8 pb-8 pt-8">
           <div className="h-px w-full shrink-0 bg-gradient-to-r from-transparent via-white/30 to-transparent" aria-hidden />
           <div className="mt-7 flex flex-1 flex-col">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Souhrn člena</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-[color:var(--wp-text-secondary)]">Souhrn člena</p>
             <h2 className="mt-3 text-[24px] font-black leading-[1.15] tracking-tight text-white">Vyberte člena týmu</h2>
-            <p className="mt-3 text-[14px] leading-relaxed text-slate-300">
+            <p className="mt-3 text-[14px] leading-relaxed text-[color:var(--wp-text-tertiary)]">
               Klikněte na řádek v <span className="font-semibold text-white">Lidé</span> nebo{" "}
               <span className="font-semibold text-white">Kariéra</span>, na uzel ve{" "}
               <span className="font-semibold text-white">Struktuře</span>, nebo na jméno v přehledu pozornosti či cadence.
             </p>
-            <p className="mt-3 text-[13px] leading-relaxed text-slate-500">
+            <p className="mt-3 text-[13px] leading-relaxed text-[color:var(--wp-text-secondary)]">
               Stejný panel se používá ve všech záložkách — žádný druhý detailový průvodce.
             </p>
             <div className="mt-8 rounded-[18px] border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.02] px-5 py-5">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Po výběru uvidíte</p>
-              <ul className="mt-4 space-y-3 text-[13px] leading-snug text-slate-300">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-secondary)]">Po výběru uvidíte</p>
+              <ul className="mt-4 space-y-3 text-[13px] leading-snug text-[color:var(--wp-text-tertiary)]">
                 <li className="flex gap-2">
                   <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400/90" aria-hidden />
                   Skupinu, větev a plnění cíle včetně trendu
@@ -148,7 +148,7 @@ export function TeamOverviewSelectedMemberPanel({
                 </li>
               </ul>
             </div>
-            <p className="mt-auto border-t border-white/10 pt-6 text-center text-[11px] leading-relaxed text-slate-600">
+            <p className="mt-auto border-t border-white/10 pt-6 text-center text-[11px] leading-relaxed text-[color:var(--wp-text-secondary)]">
               Pravý sloupec je zarovnaný s přehledem vlevo a zůstává prázdný, dokud nevyberete člena.
             </p>
           </div>
@@ -182,7 +182,7 @@ export function TeamOverviewSelectedMemberPanel({
       <div className="shrink-0 border-b border-white/10 px-7 pb-5 pt-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[9px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Vybraný člen</p>
+            <p className="text-[9px] font-extrabold uppercase tracking-[0.2em] text-[color:var(--wp-text-secondary)]">Vybraný člen</p>
             <h2 className="mt-2 text-[24px] font-black leading-none tracking-tight text-white">{name}</h2>
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
               <span className="rounded-[8px] border border-white/10 bg-white/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-white">
@@ -198,7 +198,7 @@ export function TeamOverviewSelectedMemberPanel({
           <button
             type="button"
             onClick={onClose}
-            className="mt-1 rounded-full bg-white/5 p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
+            className="mt-1 rounded-full bg-white/5 p-2 text-[color:var(--wp-text-tertiary)] transition hover:bg-white/10 hover:text-white"
             aria-label="Zavřít výběr"
           >
             <X className="h-4 w-4" />
@@ -207,7 +207,7 @@ export function TeamOverviewSelectedMemberPanel({
         {fullDetailHref ? (
           <Link
             href={fullDetailHref}
-            className="mt-4 inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 transition hover:text-white"
+            className="mt-4 inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[color:var(--wp-text-secondary)] transition hover:text-white"
           >
             <ExternalLink className="h-3 w-3" aria-hidden />
             Starý detail (záloha)
@@ -228,16 +228,16 @@ export function TeamOverviewSelectedMemberPanel({
         {/* Career info */}
         <div className="grid grid-cols-2 gap-2.5">
           <div className="rounded-[14px] border border-white/5 bg-white/5 px-4 py-3">
-            <div className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Skupina</div>
+            <div className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-secondary)]">Skupina</div>
             <div className="mt-1.5 text-[13px] font-extrabold leading-snug text-white">{poolLine(ce.careerProgramId)}</div>
             <div className="mt-1 text-[9px] font-extrabold uppercase tracking-[0.14em] text-emerald-400">
               {careerProgressShortLabel(ce.progressEvaluation)}
             </div>
           </div>
           <div className="rounded-[14px] border border-white/5 bg-white/5 px-4 py-3">
-            <div className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Větev / pozice</div>
+            <div className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-secondary)]">Větev / pozice</div>
             <div className="mt-1.5 text-[13px] font-extrabold leading-snug text-white">{formatCareerTrackLabel(ce.careerTrackId)}</div>
-            <div className="mt-1 text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
+            <div className="mt-1 text-[9px] font-extrabold uppercase tracking-[0.14em] text-[color:var(--wp-text-tertiary)]">
               {ce.careerPositionLabel ?? "—"}
             </div>
           </div>
@@ -247,11 +247,11 @@ export function TeamOverviewSelectedMemberPanel({
         {m ? (
           <section className="rounded-[14px] border border-white/5 bg-white/5 p-4">
             <div className="flex items-end justify-between gap-3">
-              <span className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Plnění cíle</span>
+              <span className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-secondary)]">Plnění cíle</span>
               <span className="text-[18px] font-black text-white tabular-nums">
                 {formatTeamOverviewProduction(m.productionThisPeriod)}
                 {m.targetProgressPercent != null ? (
-                  <span className="ml-1 text-[11px] font-bold text-slate-500">/ {m.targetProgressPercent}%</span>
+                  <span className="ml-1 text-[11px] font-bold text-[color:var(--wp-text-secondary)]">/ {m.targetProgressPercent}%</span>
                 ) : null}
               </span>
             </div>
@@ -261,7 +261,7 @@ export function TeamOverviewSelectedMemberPanel({
                 style={{ width: `${progressValue}%` }}
               />
             </div>
-            <div className="mt-2 text-[10px] font-bold text-slate-500">
+            <div className="mt-2 text-[10px] font-bold text-[color:var(--wp-text-secondary)]">
               {m.meetingsThisPeriod} schůzek evidováno
             </div>
           </section>
@@ -282,7 +282,7 @@ export function TeamOverviewSelectedMemberPanel({
           >
             {readinessLabel}
           </div>
-          <div className="mt-2 text-[11px] font-bold text-slate-500">
+          <div className="mt-2 text-[11px] font-bold text-[color:var(--wp-text-secondary)]">
             Poslední kontakt:{" "}
             <span className="text-white">
               {m?.daysSinceMeeting != null ? `před ${m.daysSinceMeeting} dny` : "Bez kontaktu"}
@@ -293,7 +293,7 @@ export function TeamOverviewSelectedMemberPanel({
         {/* Adaptation */}
         {detail.adaptation ? (
           <section className="rounded-[14px] border border-white/5 bg-white/5 p-4">
-            <div className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Adaptace</div>
+            <div className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-secondary)]">Adaptace</div>
             <div className="mt-1.5 text-[13px] font-extrabold text-white">
               {detail.adaptation.adaptationStatus} · {detail.adaptation.adaptationScore} %
             </div>
@@ -302,7 +302,7 @@ export function TeamOverviewSelectedMemberPanel({
 
         {/* Coaching */}
         <section>
-          <div className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Coaching a 1:1</div>
+          <div className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-secondary)]">Coaching a 1:1</div>
           <div className="rounded-[14px] border border-white/5 bg-white/5 p-4">
             <p className="text-[13px] font-extrabold leading-snug text-white">
               {detail.careerCoaching.suggestedNextStepLine}
@@ -311,7 +311,7 @@ export function TeamOverviewSelectedMemberPanel({
               {detail.careerCoaching.recommendedActionLabelCs}
             </p>
             {detail.careerCoaching.oneOnOneAgenda.length > 0 ? (
-              <ul className="mt-3 space-y-1.5 text-[11px] text-slate-300">
+              <ul className="mt-3 space-y-1.5 text-[11px] text-[color:var(--wp-text-tertiary)]">
                 {detail.careerCoaching.oneOnOneAgenda.slice(0, 4).map((item, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-slate-500" />
@@ -325,8 +325,8 @@ export function TeamOverviewSelectedMemberPanel({
 
         {coachingBullets.length > 0 ? (
           <section>
-            <div className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Coaching summary</div>
-            <ul className="space-y-1 text-[11px] text-slate-400">
+            <div className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-secondary)]">Coaching summary</div>
+            <ul className="space-y-1 text-[11px] text-[color:var(--wp-text-tertiary)]">
               {coachingBullets.map((b, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-slate-600" />
@@ -338,7 +338,7 @@ export function TeamOverviewSelectedMemberPanel({
         ) : null}
 
         {m ? (
-          <p className="text-[10px] leading-snug text-slate-600">
+          <p className="text-[10px] leading-snug text-[color:var(--wp-text-secondary)]">
             {crmUnitsFootnoteForProgram(ce.careerProgramId)}
           </p>
         ) : null}
@@ -354,19 +354,19 @@ export function TeamOverviewSelectedMemberPanel({
             ) : null}
             {onOpenTask ? (
               <button type="button" onClick={onOpenTask} className={actionBtnClass}>
-                <CheckSquare className="h-4 w-4 text-slate-300" aria-hidden />
+                <CheckSquare className="h-4 w-4 text-[color:var(--wp-text-tertiary)]" aria-hidden />
                 <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-white">Úkol</span>
               </button>
             ) : null}
             {onOpenProgress ? (
               <button type="button" onClick={onOpenProgress} className={actionBtnClass}>
-                <Layers3 className="h-4 w-4 text-slate-300" aria-hidden />
+                <Layers3 className="h-4 w-4 text-[color:var(--wp-text-tertiary)]" aria-hidden />
                 <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-white">Progres</span>
               </button>
             ) : null}
             {onOpenCrm ? (
               <button type="button" onClick={onOpenCrm} className={actionBtnClass}>
-                <FileText className="h-4 w-4 text-slate-300" aria-hidden />
+                <FileText className="h-4 w-4 text-[color:var(--wp-text-tertiary)]" aria-hidden />
                 <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-white">CRM karta</span>
               </button>
             ) : null}

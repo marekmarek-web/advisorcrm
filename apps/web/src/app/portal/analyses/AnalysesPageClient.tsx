@@ -66,10 +66,6 @@ export default function AnalysesPageClient({
   const [archivingId, setArchivingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<{
-    id: string;
-    label: string;
-  } | null>(null);
 
   function getStatusDesign(status: string): { label: string; color: string; icon: ReactNode } {
     switch (status) {
@@ -125,14 +121,19 @@ export default function AnalysesPageClient({
     }
   }
 
-  async function handleConfirmPermanentDelete() {
-    if (!permanentDeleteTarget) return;
-    const { id } = permanentDeleteTarget;
+  async function handlePermanentDelete(id: string, label: string) {
+    setOpenMenuId(null);
+    const ok = await confirm({
+      title: "Trvale smazat analýzu?",
+      message: `${label} bude nenávratně odstraněna z CRM včetně konceptu a historie u této položky. Tuto akci nelze vrátit zpět.`,
+      confirmLabel: "Ano, smazat",
+      cancelLabel: "Ne",
+      variant: "destructive",
+    });
+    if (!ok) return;
     setDeletingId(id);
     try {
       await deleteFinancialAnalysisPermanently(id);
-      setPermanentDeleteTarget(null);
-      setOpenMenuId(null);
       await queryClient.invalidateQueries({ queryKey: queryKeys.analyses.all });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Smazání se nepodařilo.";
@@ -144,48 +145,6 @@ export default function AnalysesPageClient({
 
   return (
     <PortalPageShell maxWidth="standard" innerClassName="hub-bg">
-      {permanentDeleteTarget ? (
-        <div
-          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-black/50"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="fa-delete-title"
-          aria-describedby="fa-delete-desc"
-          onClick={() => (deletingId ? null : setPermanentDeleteTarget(null))}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] shadow-xl p-5 sm:p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 id="fa-delete-title" className="text-lg font-black text-[color:var(--wp-text)] mb-2">
-              Trvale smazat analýzu?
-            </h2>
-            <p id="fa-delete-desc" className="text-sm text-[color:var(--wp-text-secondary)] mb-1">
-              <span className="font-semibold text-[color:var(--wp-text)]">{permanentDeleteTarget.label}</span> bude
-              nenávratně odstraněna z CRM včetně konceptu a historie u této položky.
-            </p>
-            <p className="text-sm text-rose-700 font-medium mb-6">Tuto akci nelze vrátit zpět.</p>
-            <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setPermanentDeleteTarget(null)}
-                disabled={deletingId !== null}
-                className="min-h-[44px] px-5 py-3 rounded-xl border border-[color:var(--wp-border-strong)] text-[color:var(--wp-text-secondary)] font-semibold hover:bg-[color:var(--wp-surface-muted)] disabled:opacity-50"
-              >
-                Ne
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleConfirmPermanentDelete()}
-                disabled={deletingId !== null}
-                className="min-h-[44px] px-5 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold disabled:opacity-50"
-              >
-                {deletingId ? "Mažu…" : "Ano, smazat"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
       <style>{`
         .hub-bg {
           background-image:
@@ -234,7 +193,7 @@ export default function AnalysesPageClient({
         {/* Zvýrazněná CTA karta – Wizard */}
         <Link
           href="/portal/analyses/financial"
-          className="block bg-[color:var(--wp-surface-card)] rounded-[24px] sm:rounded-[32px] p-5 sm:p-6 md:p-8 border border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-lg hover:border-indigo-100 transition-all duration-300 mb-10 sm:mb-12 group relative overflow-hidden"
+          className="block bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] sm:rounded-[32px] p-5 sm:p-6 md:p-8 border border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-lg hover:border-indigo-100 transition-all duration-300 mb-10 sm:mb-12 group relative overflow-hidden"
         >
           <div className="pointer-events-none absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-indigo-50 blur-3xl transition-colors group-hover:bg-indigo-100 dark:bg-indigo-950/50 dark:group-hover:bg-indigo-900/40 sm:h-48 sm:w-48" />
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 relative z-10">
@@ -402,10 +361,10 @@ export default function AnalysesPageClient({
                     <button
                       type="button"
                       onClick={() =>
-                        setPermanentDeleteTarget({
-                          id: a.id,
-                          label: a.clientName || a.analysisTypeLabel || "Analýza bez názvu",
-                        })
+                        void handlePermanentDelete(
+                          a.id,
+                          a.clientName || a.analysisTypeLabel || "Analýza bez názvu",
+                        )
                       }
                       disabled={deletingId === a.id || archivingId === a.id}
                       className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 text-[color:var(--wp-text-tertiary)] hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors min-h-[44px] min-w-[44px] sm:min-w-0 border border-transparent hover:border-rose-200 disabled:opacity-50"
@@ -449,13 +408,12 @@ export default function AnalysesPageClient({
                             </button>
                             <button
                               type="button"
-                              onClick={() => {
-                                setOpenMenuId(null);
-                                setPermanentDeleteTarget({
-                                  id: a.id,
-                                  label: a.clientName || a.analysisTypeLabel || "Analýza bez názvu",
-                                });
-                              }}
+                              onClick={() =>
+                                void handlePermanentDelete(
+                                  a.id,
+                                  a.clientName || a.analysisTypeLabel || "Analýza bez názvu",
+                                )
+                              }
                               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-700 hover:bg-rose-50 rounded-lg"
                             >
                               Trvale smazat…

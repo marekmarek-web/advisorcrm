@@ -347,7 +347,7 @@ export function ManualPaymentSetupModal({
 
       <div
         ref={scrollRef}
-        className="relative z-10 w-full max-w-xl bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-2xl flex flex-col max-h-[90dvh]"
+        className="relative z-10 w-full max-w-xl bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-2xl flex flex-col max-h-[90dvh]"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[color:var(--wp-surface-card-border)] shrink-0">
@@ -382,7 +382,7 @@ export function ManualPaymentSetupModal({
                 value={form.providerName}
                 onChange={(e) => handlePartnerSelect(e.target.value)}
                 placeholder="Allianz, Kooperativa, …"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-2.5 text-sm font-medium text-[color:var(--wp-text)] placeholder:text-[color:var(--wp-text-tertiary)] focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
               />
               <datalist id="mp-provider-names-list">
                 {uniqueProviderNames.map((name) => (
@@ -399,7 +399,7 @@ export function ManualPaymentSetupModal({
               <select
                 value={form.segment}
                 onChange={(e) => setForm((f) => ({ ...f, segment: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-2.5 text-sm font-medium text-[color:var(--wp-text)] focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
               >
                 {SEGMENT_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -418,7 +418,7 @@ export function ManualPaymentSetupModal({
                 value={form.productName}
                 onChange={(e) => setForm((f) => ({ ...f, productName: e.target.value }))}
                 placeholder="Životní pojištění FLEXI, …"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-2.5 text-sm font-medium text-[color:var(--wp-text)] placeholder:text-[color:var(--wp-text-tertiary)] focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
               />
             </div>
 
@@ -431,10 +431,10 @@ export function ManualPaymentSetupModal({
                 value={form.accountNumber}
                 onChange={(e) => setForm((f) => ({ ...f, accountNumber: e.target.value }))}
                 placeholder={institutionDefault?.accountNumberTemplate ?? "123456789/0800"}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 font-mono placeholder:text-slate-400 placeholder:font-sans focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-2.5 text-sm font-medium text-[color:var(--wp-text)] font-mono placeholder:text-[color:var(--wp-text-tertiary)] placeholder:font-sans focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
               />
               {institutionDefault?.note && (
-                <p className="mt-1 flex items-start gap-1 text-[11px] text-slate-600">
+                <p className="mt-1 flex items-start gap-1 text-[11px] text-[color:var(--wp-text-secondary)]">
                   <Info size={12} className="mt-0.5 shrink-0 text-indigo-500" />
                   <span>{institutionDefault.note}</span>
                 </p>
@@ -479,7 +479,7 @@ export function ManualPaymentSetupModal({
                 value={form.iban}
                 onChange={(e) => setForm((f) => ({ ...f, iban: e.target.value }))}
                 placeholder="CZ65 0800 0000 0001 2345 6789"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 font-mono placeholder:text-slate-400 placeholder:font-sans focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-2.5 text-sm font-medium text-[color:var(--wp-text)] font-mono placeholder:text-[color:var(--wp-text-tertiary)] placeholder:font-sans focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
               />
             </div>
 
@@ -496,7 +496,7 @@ export function ManualPaymentSetupModal({
                     ? "(není potřeba – instituce VS nevyžaduje)"
                     : "1234567890"
                 }
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 font-mono placeholder:text-slate-400 placeholder:font-sans focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-2.5 text-sm font-medium text-[color:var(--wp-text)] font-mono placeholder:text-[color:var(--wp-text-tertiary)] placeholder:font-sans focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
               />
             </div>
 
@@ -509,10 +509,10 @@ export function ManualPaymentSetupModal({
                 value={form.constantSymbol}
                 onChange={(e) => setForm((f) => ({ ...f, constantSymbol: e.target.value }))}
                 placeholder={institutionDefault?.constantSymbol ?? "0308"}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 font-mono placeholder:text-slate-400 placeholder:font-sans focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-2.5 text-sm font-medium text-[color:var(--wp-text)] font-mono placeholder:text-[color:var(--wp-text-tertiary)] placeholder:font-sans focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
               />
               {institutionDefault?.constantSymbol && !form.constantSymbol.trim() && (
-                <p className="mt-1 text-[11px] text-slate-500">
+                <p className="mt-1 text-[11px] text-[color:var(--wp-text-secondary)]">
                   Doporučený KS pro tuto instituci: <span className="font-mono">{institutionDefault.constantSymbol}</span>
                 </p>
               )}
@@ -527,10 +527,10 @@ export function ManualPaymentSetupModal({
                 value={form.specificSymbol}
                 onChange={(e) => setForm((f) => ({ ...f, specificSymbol: e.target.value }))}
                 placeholder={institutionDefault?.specificSymbolTemplate ?? "volitelně"}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 font-mono placeholder:text-slate-400 placeholder:font-sans focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-2.5 text-sm font-medium text-[color:var(--wp-text)] font-mono placeholder:text-[color:var(--wp-text-tertiary)] placeholder:font-sans focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
               />
               {institutionDefault?.specificSymbolTemplate && !form.specificSymbol.trim() && (
-                <p className="mt-1 text-[11px] text-slate-500">
+                <p className="mt-1 text-[11px] text-[color:var(--wp-text-secondary)]">
                   {institutionDefault.specificSymbolTemplate.includes("{")
                     ? `Vyplňte podle šablony ${institutionDefault.specificSymbolTemplate} (např. ${describeSpecificSymbolPlaceholder(institutionDefault.specificSymbolTemplate)}).`
                     : `Doporučený SS pro tuto instituci: ${institutionDefault.specificSymbolTemplate}`}
@@ -558,7 +558,7 @@ export function ManualPaymentSetupModal({
                 onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
                 placeholder="2 500"
                 inputMode="decimal"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-2.5 text-sm font-medium text-[color:var(--wp-text)] placeholder:text-[color:var(--wp-text-tertiary)] focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
               />
             </div>
 
@@ -570,7 +570,7 @@ export function ManualPaymentSetupModal({
               <select
                 value={form.currency}
                 onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-2.5 text-sm font-medium text-[color:var(--wp-text)] focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
               >
                 {CURRENCY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -588,7 +588,7 @@ export function ManualPaymentSetupModal({
               <select
                 value={form.frequency}
                 onChange={(e) => setForm((f) => ({ ...f, frequency: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-2.5 text-sm font-medium text-[color:var(--wp-text)] focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
               >
                 <option value="">— nevybráno —</option>
                 {FREQUENCY_OPTIONS.map((opt) => (
@@ -608,7 +608,7 @@ export function ManualPaymentSetupModal({
                 type="date"
                 value={form.firstPaymentDate}
                 onChange={(e) => setForm((f) => ({ ...f, firstPaymentDate: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-2.5 text-sm font-medium text-[color:var(--wp-text)] focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
               />
             </div>
           </div>
@@ -618,7 +618,7 @@ export function ManualPaymentSetupModal({
             <div
               onClick={() => setForm((f) => ({ ...f, visibleToClient: !f.visibleToClient }))}
               className={`relative w-11 h-6 rounded-full transition-colors ${
-                form.visibleToClient ? "bg-emerald-500" : "bg-slate-300"
+                form.visibleToClient ? "bg-emerald-500" : "bg-[color:var(--wp-surface-card-border)]"
               }`}
             >
               <span

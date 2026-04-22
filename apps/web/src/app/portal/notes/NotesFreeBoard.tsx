@@ -100,7 +100,7 @@ function getProductDesign(type: string) {
     case "uvery":
       return {
         icon: <Landmark size={14} />,
-        color: "text-slate-700 bg-slate-100 border-slate-200",
+        color: "text-[color:var(--wp-text)] bg-[color:var(--wp-surface-muted)] border-[color:var(--wp-surface-card-border)]",
         glow: "shadow-slate-500/25",
       };
     default:

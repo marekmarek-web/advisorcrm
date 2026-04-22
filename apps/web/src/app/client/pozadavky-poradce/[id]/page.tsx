@@ -32,13 +32,13 @@ export default async function ClientAdvisorMaterialRequestDetailPage({
         ← Zpět na seznam
       </Link>
       <header>
-        <h1 className="text-2xl font-black text-slate-900">{detail.title}</h1>
-        <p className="text-sm text-slate-500 mt-2">
+        <h1 className="text-2xl font-black text-[color:var(--wp-text)]">{detail.title}</h1>
+        <p className="text-sm text-[color:var(--wp-text-secondary)] mt-2">
           {detail.categoryLabel} · {materialRequestStatusLabel(detail.status)} · priorita {priorityCs(detail.priority)}
           {detail.dueAt ? ` · termín ${new Date(detail.dueAt).toLocaleDateString("cs-CZ")}` : ""}
         </p>
         {detail.description ? (
-          <p className="mt-4 text-slate-700 whitespace-pre-wrap">{detail.description}</p>
+          <p className="mt-4 text-[color:var(--wp-text)] whitespace-pre-wrap">{detail.description}</p>
         ) : null}
 
         {/* 5F: cross-link to related client request (opportunity) when linked */}
@@ -58,9 +58,9 @@ export default async function ClientAdvisorMaterialRequestDetailPage({
       </header>
 
       <section aria-label="Historie">
-        <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide mb-3">Komunikace</h2>
+        <h2 className="text-sm font-black text-[color:var(--wp-text)] uppercase tracking-wide mb-3">Komunikace</h2>
         {detail.messages.length === 0 ? (
-          <p className="text-sm text-slate-500">Zatím žádné zprávy.</p>
+          <p className="text-sm text-[color:var(--wp-text-secondary)]">Zatím žádné zprávy.</p>
         ) : (
           <ul className="space-y-3">
             {detail.messages.map((m) => (
@@ -69,14 +69,14 @@ export default async function ClientAdvisorMaterialRequestDetailPage({
                 className={`rounded-xl px-3 py-2 text-sm ${
                   m.authorRole === "advisor"
                     ? "bg-indigo-50 border border-indigo-100"
-                    : "bg-slate-50 border border-slate-200"
+                    : "bg-[color:var(--wp-main-scroll-bg)] border border-[color:var(--wp-surface-card-border)]"
                 }`}
               >
-                <p className="text-[10px] font-bold text-slate-400 mb-1">
+                <p className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] mb-1">
                   {m.authorRole === "advisor" ? "Poradce" : "Vy"} ·{" "}
                   {new Date(m.createdAt).toLocaleString("cs-CZ")}
                 </p>
-                <p className="whitespace-pre-wrap text-slate-800">{m.body}</p>
+                <p className="whitespace-pre-wrap text-[color:var(--wp-text)]">{m.body}</p>
               </li>
             ))}
           </ul>
@@ -84,9 +84,9 @@ export default async function ClientAdvisorMaterialRequestDetailPage({
       </section>
 
       <section>
-        <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide mb-3">Přílohy</h2>
+        <h2 className="text-sm font-black text-[color:var(--wp-text)] uppercase tracking-wide mb-3">Přílohy</h2>
         {detail.attachments.length === 0 ? (
-          <p className="text-sm text-slate-500">Zatím žádné přílohy.</p>
+          <p className="text-sm text-[color:var(--wp-text-secondary)]">Zatím žádné přílohy.</p>
         ) : (
           <ul className="space-y-2">
             {detail.attachments.map((a) => (
@@ -106,7 +106,7 @@ export default async function ClientAdvisorMaterialRequestDetailPage({
       {detail.status !== "closed" && detail.status !== "done" ? (
         <ClientMaterialRequestRespondForm requestId={detail.id} />
       ) : (
-        <p className="text-sm text-slate-500">Tento požadavek je uzavřený.</p>
+        <p className="text-sm text-[color:var(--wp-text-secondary)]">Tento požadavek je uzavřený.</p>
       )}
     </div>
   );

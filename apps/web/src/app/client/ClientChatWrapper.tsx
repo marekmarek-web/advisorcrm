@@ -103,10 +103,10 @@ export function ClientChatWrapper({ contactId }: ClientChatWrapperProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-slate-50/30 client-hide-scrollbar">
+    <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-[color:var(--wp-main-scroll-bg)]/30 client-hide-scrollbar">
       {messages.length > 0 && (
         <div className="flex justify-center mb-6">
-          <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-full">
+          <span className="px-3 py-1 bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] text-[10px] font-black uppercase tracking-widest rounded-full">
             Dnes
           </span>
         </div>
@@ -131,7 +131,7 @@ export function ClientChatWrapper({ contactId }: ClientChatWrapperProps) {
 
       <div className="space-y-4">
         {messages.length === 0 && !pollError && (
-          <p className="text-sm text-slate-500 text-center">Zatím žádné zprávy.</p>
+          <p className="text-sm text-[color:var(--wp-text-secondary)] text-center">Zatím žádné zprávy.</p>
         )}
 
         {messages.map((message) => {
@@ -148,7 +148,7 @@ export function ClientChatWrapper({ contactId }: ClientChatWrapperProps) {
                 className={`p-4 rounded-2xl text-[15px] leading-relaxed shadow-sm ${
                   isClientMessage
                     ? "bg-indigo-600 text-white rounded-tr-sm"
-                    : "bg-white border border-slate-100 text-slate-800 rounded-tl-sm"
+                    : "bg-white border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text)] rounded-tl-sm"
                 }`}
               >
                 <p className="whitespace-pre-wrap break-words">{message.body}</p>
@@ -158,7 +158,7 @@ export function ClientChatWrapper({ contactId }: ClientChatWrapperProps) {
                       <div
                         key={a.id}
                         className={`rounded-xl border px-3 py-2 text-sm ${
-                          isClientMessage ? "border-white/25 bg-white/10" : "border-slate-200 bg-slate-50"
+                          isClientMessage ? "border-white/25 bg-white/10" : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]"
                         }`}
                       >
                         <a
@@ -175,7 +175,7 @@ export function ClientChatWrapper({ contactId }: ClientChatWrapperProps) {
                   </div>
                 ) : null}
               </div>
-              <span className="text-[10px] font-bold text-slate-400 mt-1.5 px-1">
+              <span className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] mt-1.5 px-1">
                 {new Date(message.createdAt).toLocaleTimeString("cs-CZ", {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -202,15 +202,15 @@ export function ClientChatWrapper({ contactId }: ClientChatWrapperProps) {
           onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
         />
         {files.length > 0 ? (
-          <p className="text-xs text-slate-500 mb-2 px-1">
+          <p className="text-xs text-[color:var(--wp-text-secondary)] mb-2 px-1">
             {files.length === 1 ? `1 soubor vybrán` : `${files.length} soubory vybrány`}
           </p>
         ) : null}
-        <div className="flex items-end gap-2 bg-white border border-slate-200 rounded-[24px] p-2 focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-400 transition-all">
+        <div className="flex items-end gap-2 bg-white border border-[color:var(--wp-surface-card-border)] rounded-[24px] p-2 focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-400 transition-all">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="shrink-0 p-3 text-slate-500 hover:text-indigo-600 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="shrink-0 p-3 text-[color:var(--wp-text-secondary)] hover:text-indigo-600 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Přiložit soubor"
             title="Přiložit soubor"
           >
@@ -222,7 +222,7 @@ export function ClientChatWrapper({ contactId }: ClientChatWrapperProps) {
             onChange={(event) => setBody(event.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Napište zprávu svému poradci..."
-            className="flex-1 bg-transparent border-none outline-none py-3 px-2 text-sm font-medium text-slate-700 resize-none max-h-32"
+            className="flex-1 bg-transparent border-none outline-none py-3 px-2 text-sm font-medium text-[color:var(--wp-text)] resize-none max-h-32"
           />
           <button
             onClick={handleSubmit}

@@ -21,18 +21,18 @@ export function TeamOverviewPremiumRuntimeChecks({
   ];
 
   return (
-    <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mb-6 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
-        <div className="font-semibold text-slate-900">Runtime checks (dev)</div>
+        <div className="font-semibold text-[color:var(--wp-text)]">Runtime checks (dev)</div>
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700"
+          className="rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 py-1.5 text-xs font-medium text-[color:var(--wp-text)]"
         >
           {open ? "Skrýt" : "Zobrazit"}
         </button>
       </div>
-      <p className="mt-1 text-xs text-slate-500">
+      <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">
         Kořenů stromu: {hierarchyRoots}. Slouží jen vývojářům — v produkci se nezobrazuje.
       </p>
       {open ? (

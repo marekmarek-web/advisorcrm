@@ -33,15 +33,15 @@ export function NewClientRequestStandalone({ defaultCaseType }: { defaultCaseTyp
             <ArrowLeft size={16} />
             Zpět na požadavky
           </Link>
-          <h2 className="mt-1 text-3xl font-display font-black text-slate-900 tracking-tight">
+          <h2 className="mt-1 text-3xl font-display font-black text-[color:var(--wp-text)] tracking-tight">
             Nový požadavek
           </h2>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-[color:var(--wp-text-secondary)] mt-1">
             Vyplňte krátký formulář — poradce vás kontaktuje.
           </p>
         </div>
       </div>
-      <div className="bg-white rounded-[24px] border border-slate-100 p-6 sm:p-8 shadow-sm text-sm text-slate-500">
+      <div className="bg-white rounded-[24px] border border-[color:var(--wp-surface-card-border)] p-6 sm:p-8 shadow-sm text-sm text-[color:var(--wp-text-secondary)]">
         Pokud se okno s formulářem nezobrazilo,{" "}
         <button
           type="button"

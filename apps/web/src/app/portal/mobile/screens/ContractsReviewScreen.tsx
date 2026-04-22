@@ -481,7 +481,7 @@ function ReviewDetailPanel({
                       <p className={cx(
                         "text-[10px] leading-none mt-0.5 font-semibold",
                         field.applyPolicy === "manual_required" ? "text-rose-500" :
-                        field.applyPolicy === "do_not_apply" ? "text-slate-400" :
+                        field.applyPolicy === "do_not_apply" ? "text-[color:var(--wp-text-tertiary)]" :
                         "text-amber-600"
                       )}>
                         {field.applyPolicyLabel}
@@ -555,9 +555,9 @@ function ReviewDetailPanel({
                   </div>
                 ) : null}
                 {s.totalExcluded > 0 ? (
-                  <div className="flex items-center gap-2 rounded-lg bg-slate-100 px-2.5 py-1.5">
-                    <XCircle size={13} className="text-slate-500 shrink-0" />
-                    <span className="text-xs font-bold text-slate-600">{s.totalExcluded} — Nezapsáno</span>
+                  <div className="flex items-center gap-2 rounded-lg bg-[color:var(--wp-surface-muted)] px-2.5 py-1.5">
+                    <XCircle size={13} className="text-[color:var(--wp-text-secondary)] shrink-0" />
+                    <span className="text-xs font-bold text-[color:var(--wp-text-secondary)]">{s.totalExcluded} — Nezapsáno</span>
                   </div>
                 ) : null}
               </div>

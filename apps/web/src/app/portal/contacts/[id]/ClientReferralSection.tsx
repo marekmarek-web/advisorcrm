@@ -61,7 +61,7 @@ export function ClientReferralSection({ contactId }: { contactId: string }) {
 
   if (loading) {
     return (
-      <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+      <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
           <h2 className="text-lg font-black text-[color:var(--wp-text)] flex items-center gap-2">
             <Handshake className="text-[color:var(--wp-text-tertiary)]" size={20} />
@@ -77,7 +77,7 @@ export function ClientReferralSection({ contactId }: { contactId: string }) {
 
   if (error || (summary === null && signalsResult === null)) {
     return (
-      <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+      <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
           <h2 className="text-lg font-black text-[color:var(--wp-text)] flex items-center gap-2">
             <Handshake className="text-[color:var(--wp-text-tertiary)]" size={20} />
@@ -103,7 +103,7 @@ export function ClientReferralSection({ contactId }: { contactId: string }) {
   const suppressReason = signalsResult?.suppressReason ?? null;
 
   return (
-    <div id="doporučení" className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+    <div id="doporučení" className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
       <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
         <h2 className="text-lg font-black text-[color:var(--wp-text)] flex items-center gap-2">
           <Handshake className="text-[color:var(--wp-text-tertiary)]" size={20} />

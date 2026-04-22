@@ -39,7 +39,7 @@ const selectedRing = "ring-2 ring-indigo-500 ring-offset-2 ring-offset-[#f8fafc]
 export function NodeRendererCore({ node, isDragging, isSelected, onAddChild }: NodeRenderersProps) {
   return (
     <div
-      className={`bg-aidv-create text-white p-6 rounded-[24px] shadow-xl border-2 border-indigo-500/30 w-72 text-center group relative ${isSelected ? selectedRing : ""}`}
+      className={`bg-aidv-create text-white p-6 rounded-[var(--wp-radius-card)] shadow-xl border-2 border-indigo-500/30 w-72 text-center group relative ${isSelected ? selectedRing : ""}`}
     >
       <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-inner">
         <User size={32} className="text-white" />

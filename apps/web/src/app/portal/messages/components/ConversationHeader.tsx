@@ -45,7 +45,7 @@ export function ConversationHeader({
               <ChevronLeft className="h-5 w-5" />
             </button>
           ) : null}
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px] bg-gradient-to-br from-slate-900 to-violet-700 text-xl font-semibold text-white md:h-16 md:w-16 md:rounded-[24px] md:text-2xl">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px] bg-gradient-to-br from-slate-900 to-violet-700 text-xl font-semibold text-white md:h-16 md:w-16 md:rounded-[var(--wp-radius-card)] md:text-2xl">
             {initials.slice(0, 2)}
           </div>
           <div className="min-w-0">

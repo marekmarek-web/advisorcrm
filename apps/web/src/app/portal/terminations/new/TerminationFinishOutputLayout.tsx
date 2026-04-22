@@ -48,13 +48,13 @@ export function TerminationFinishOutputLayout({
     : null;
 
   return (
-    <div className="rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)] dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] dark:shadow-black/25">
+    <div className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)] dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] dark:shadow-black/25">
       {/* Header */}
-      <div className="border-b border-slate-100 px-5 py-4 dark:border-[color:var(--wp-surface-card-border)] sm:px-8">
+      <div className="border-b border-[color:var(--wp-surface-card-border)] px-5 py-4 dark:border-[color:var(--wp-surface-card-border)] sm:px-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <div className="text-lg font-bold text-slate-950 dark:text-[color:var(--wp-text)]">Dokončit výstup</div>
-            <div className="mt-1 text-sm text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
+            <div className="text-lg font-bold text-[color:var(--wp-text)] dark:text-[color:var(--wp-text)]">Dokončit výstup</div>
+            <div className="mt-1 text-sm text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text-secondary)]">
               Upravte text výpovědi v editoru. Tlačítkem &bdquo;Dokončit žádost&ldquo; uložíte žádost; &bdquo;Exportovat PDF&ldquo; vytiskne dokument.
             </div>
           </div>
@@ -68,39 +68,39 @@ export function TerminationFinishOutputLayout({
       <div className="grid gap-6 p-5 sm:p-8 lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)] xl:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]">
         {/* Left column */}
         <div className="space-y-4">
-          <div className="rounded-2xl bg-slate-50 p-4 dark:bg-[color:var(--wp-surface-muted)]">
-            <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-[color:var(--wp-text-tertiary)]">
+          <div className="rounded-2xl bg-[color:var(--wp-main-scroll-bg)] p-4 dark:bg-[color:var(--wp-surface-muted)]">
+            <div className="text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--wp-text-tertiary)] dark:text-[color:var(--wp-text-tertiary)]">
               Klient
             </div>
-            <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-[color:var(--wp-text)]">
+            <div className="mt-1 text-sm font-semibold text-[color:var(--wp-text)] dark:text-[color:var(--wp-text)]">
               {leftPanel.clientName || "\u2014"}
             </div>
             {leftPanel.clientSubline ? (
-              <div className="mt-1 text-xs text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
+              <div className="mt-1 text-xs text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text-secondary)]">
                 {leftPanel.clientSubline}
               </div>
             ) : null}
           </div>
 
-          <div className="rounded-2xl bg-slate-50 p-4 dark:bg-[color:var(--wp-surface-muted)]">
-            <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-[color:var(--wp-text-tertiary)]">
+          <div className="rounded-2xl bg-[color:var(--wp-main-scroll-bg)] p-4 dark:bg-[color:var(--wp-surface-muted)]">
+            <div className="text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--wp-text-tertiary)] dark:text-[color:var(--wp-text-tertiary)]">
               Instituce
             </div>
-            <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-[color:var(--wp-text)]">
+            <div className="mt-1 text-sm font-semibold text-[color:var(--wp-text)] dark:text-[color:var(--wp-text)]">
               {leftPanel.insurerName || "\u2014"}
             </div>
             {leftPanel.insurerAddress ? (
-              <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
+              <div className="mt-1 text-xs leading-5 text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text-secondary)]">
                 {leftPanel.insurerAddress}
               </div>
             ) : null}
           </div>
 
-          <div className="rounded-2xl bg-slate-50 p-4 dark:bg-[color:var(--wp-surface-muted)]">
-            <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-[color:var(--wp-text-tertiary)]">
+          <div className="rounded-2xl bg-[color:var(--wp-main-scroll-bg)] p-4 dark:bg-[color:var(--wp-surface-muted)]">
+            <div className="text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--wp-text-tertiary)] dark:text-[color:var(--wp-text-tertiary)]">
               Souhrn
             </div>
-            <div className="mt-2 space-y-2 text-sm text-slate-700 dark:text-[color:var(--wp-text-secondary)]">
+            <div className="mt-2 space-y-2 text-sm text-[color:var(--wp-text)] dark:text-[color:var(--wp-text-secondary)]">
               <div>
                 <span className="font-medium">Číslo smlouvy:</span> {leftPanel.contractNumber || "\u2014"}
               </div>
@@ -126,7 +126,7 @@ export function TerminationFinishOutputLayout({
 
           <div className="rounded-2xl bg-slate-900 p-4 text-white">
             <div className="text-sm font-semibold">Jak postupovat dál</div>
-            <div className="mt-3 space-y-3 text-sm text-slate-300">
+            <div className="mt-3 space-y-3 text-sm text-[color:var(--wp-text-tertiary)]">
               <div className="flex gap-3">
                 <FileSignature className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" />
                 <span>Zkontrolujte dopis v náhledu vpravo</span>
@@ -148,7 +148,7 @@ export function TerminationFinishOutputLayout({
           <div className="mb-4">
             <label
               htmlFor="termination-letter-header-date"
-              className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-[color:var(--wp-text-tertiary)]"
+              className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text-tertiary)]"
             >
               Datum v záhlaví dopisu
             </label>
@@ -157,9 +157,9 @@ export function TerminationFinishOutputLayout({
               type="date"
               value={letterHeaderDateIso}
               onChange={(e) => onLetterHeaderDateIsoChange(e.target.value)}
-              className="h-11 w-full max-w-xs rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100 dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:focus:border-violet-400 dark:focus:ring-violet-500/20"
+              className="h-11 w-full max-w-xs rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-white px-3 text-sm text-[color:var(--wp-text)] outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100 dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:focus:border-violet-400 dark:focus:ring-violet-500/20"
             />
-            <p className="mt-1 text-xs text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
+            <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text-secondary)]">
               Volitelné – prázdné pole = dnešní datum; po výběru se první řádek dopisu přepíše.
             </p>
           </div>

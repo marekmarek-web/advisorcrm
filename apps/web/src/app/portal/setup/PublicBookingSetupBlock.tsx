@@ -116,7 +116,7 @@ function buildAvailability(
 const labelClass = "block text-[11px] font-black uppercase tracking-widest text-indigo-200 mb-2 ml-1";
 /** Světlé pole na fialovém panelu — kontrastní hodnoty v number/time inputech v prohlížeči. */
 const inputClass =
-  "w-full px-3 py-2.5 rounded-xl border border-white/30 bg-white/95 text-sm font-bold text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-white/50 min-h-[44px] placeholder:text-slate-400 dark:bg-white/95 dark:text-slate-900";
+  "w-full px-3 py-2.5 rounded-xl border border-white/30 bg-white/95 text-sm font-bold text-[color:var(--wp-text)] shadow-sm outline-none focus:ring-2 focus:ring-white/50 min-h-[44px] placeholder:text-[color:var(--wp-text-tertiary)] dark:bg-white/95 dark:text-[color:var(--wp-text)]";
 
 type Props = {
   initial: PublicBookingSettingsDTO;
@@ -214,7 +214,7 @@ export function PublicBookingSetupBlock({ initial, canonicalBaseUrl }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[24px] p-6 text-white shadow-lg relative overflow-hidden">
+      <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[var(--wp-radius-card)] p-6 text-white shadow-lg relative overflow-hidden">
         <LinkIcon className="absolute -bottom-4 -right-4 w-32 h-32 text-white/10 pointer-events-none" aria-hidden />
         <div className="flex items-start justify-between gap-3 mb-3">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-200 flex items-center gap-2">

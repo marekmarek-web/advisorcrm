@@ -39,13 +39,13 @@ export function ClientRequestCancelButton({
   if (confirmOpen) {
     return (
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end w-full md:w-auto">
-        <p className="text-sm font-medium text-slate-600">Opravdu zrušit tento požadavek?</p>
+        <p className="text-sm font-medium text-[color:var(--wp-text-secondary)]">Opravdu zrušit tento požadavek?</p>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setConfirmOpen(false)}
             disabled={pending}
-            className="min-h-[44px] rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            className="min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-4 text-sm font-bold text-[color:var(--wp-text)] hover:bg-[color:var(--wp-main-scroll-bg)]"
           >
             Ne
           </button>

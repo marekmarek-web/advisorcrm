@@ -157,7 +157,7 @@ export function ContactAiGenerationsBlock({ contactId, initialGenerations }: Pro
 
   return (
     <div
-      className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden p-6"
+      className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden p-6"
       style={{ borderRadius: "var(--wp-radius-lg, 24px)" }}
     >
       <div className="flex items-center gap-2 mb-4">

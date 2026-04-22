@@ -25,7 +25,7 @@ export function ContactLastNotePreview({ contactId }: { contactId: string }) {
   });
 
   return (
-    <div className="bg-amber-50/50 rounded-[24px] border border-amber-100 p-6 flex items-start gap-4">
+    <div className="bg-amber-50/50 rounded-[var(--wp-radius-card)] border border-amber-100 p-6 flex items-start gap-4">
       <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl flex-shrink-0">
         <FileText size={24} />
       </div>

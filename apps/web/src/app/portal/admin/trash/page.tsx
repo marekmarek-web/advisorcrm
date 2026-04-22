@@ -53,11 +53,11 @@ export default function AdminTrashPage() {
       <header className="mb-8">
         <div className="flex items-center gap-3">
           <Trash2 className="h-6 w-6 text-rose-600" aria-hidden />
-          <h1 className="text-2xl font-black tracking-tight text-slate-950">
+          <h1 className="text-2xl font-black tracking-tight text-[color:var(--wp-text)]">
             Koš kontaktů
           </h1>
         </div>
-        <p className="mt-2 max-w-2xl text-sm text-slate-600">
+        <p className="mt-2 max-w-2xl text-sm text-[color:var(--wp-text-secondary)]">
           Smazané kontakty zůstávají v koši <strong>30 dnů</strong> — během této doby je lze obnovit. Po 30 dnech
           kontakt automaticky zmizí i se všemi souvisejícími záznamy (smlouvy, dokumenty, zprávy).
         </p>
@@ -74,20 +74,20 @@ export default function AdminTrashPage() {
       ) : null}
 
       {loading ? (
-        <div className="py-12 text-center text-sm text-slate-500">Načítám…</div>
+        <div className="py-12 text-center text-sm text-[color:var(--wp-text-secondary)]">Načítám…</div>
       ) : rows.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 py-16 text-center text-sm text-slate-500">
+        <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] py-16 text-center text-sm text-[color:var(--wp-text-secondary)]">
           Koš je prázdný.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white shadow-sm">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50">
+            <thead className="bg-[color:var(--wp-main-scroll-bg)]">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Kontakt</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">E-mail</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Smazáno</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Zmizí za</th>
+                <th className="px-4 py-3 text-left font-semibold text-[color:var(--wp-text)]">Kontakt</th>
+                <th className="px-4 py-3 text-left font-semibold text-[color:var(--wp-text)]">E-mail</th>
+                <th className="px-4 py-3 text-left font-semibold text-[color:var(--wp-text)]">Smazáno</th>
+                <th className="px-4 py-3 text-left font-semibold text-[color:var(--wp-text)]">Zmizí za</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -95,12 +95,12 @@ export default function AdminTrashPage() {
               {rows.map((r) => {
                 const days = daysUntil(r.purgeScheduledAt);
                 return (
-                  <tr key={r.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-semibold text-slate-900">
+                  <tr key={r.id} className="hover:bg-[color:var(--wp-main-scroll-bg)]">
+                    <td className="px-4 py-3 font-semibold text-[color:var(--wp-text)]">
                       {r.firstName} {r.lastName}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{r.email ?? "—"}</td>
-                    <td className="px-4 py-3 text-slate-600">{formatDate(r.deletedAt)}</td>
+                    <td className="px-4 py-3 text-[color:var(--wp-text-secondary)]">{r.email ?? "—"}</td>
+                    <td className="px-4 py-3 text-[color:var(--wp-text-secondary)]">{formatDate(r.deletedAt)}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
@@ -108,7 +108,7 @@ export default function AdminTrashPage() {
                             ? "bg-rose-100 text-rose-800"
                             : days <= 7
                               ? "bg-amber-100 text-amber-800"
-                              : "bg-slate-100 text-slate-700"
+                              : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text)]"
                         }`}
                       >
                         {days} {days === 1 ? "den" : days >= 2 && days <= 4 ? "dny" : "dnů"}

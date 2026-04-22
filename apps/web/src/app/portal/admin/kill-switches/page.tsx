@@ -40,7 +40,7 @@ export default async function KillSwitchesAdminPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <h1 className="text-3xl font-black tracking-tight">Kill-switches (Edge Config)</h1>
-      <p className="mt-3 text-sm text-slate-600">
+      <p className="mt-3 text-sm text-[color:var(--wp-text-secondary)]">
         Vzdálené feature flagy bez deploye. Update probíhá ve Vercel Dashboard → Storage →
         Edge Config → <code>aidvisora-ops</code>, nebo přes CLI:
       </p>
@@ -63,7 +63,7 @@ export default async function KillSwitchesAdminPage() {
 
       <table className="mt-8 w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b border-slate-300 text-left text-xs uppercase tracking-wide text-slate-500">
+          <tr className="border-b border-[color:var(--wp-surface-card-border)] text-left text-xs uppercase tracking-wide text-[color:var(--wp-text-secondary)]">
             <th className="py-2 pr-4">Klíč</th>
             <th className="py-2 pr-4">Stav</th>
             <th className="py-2">Popis</th>
@@ -71,26 +71,26 @@ export default async function KillSwitchesAdminPage() {
         </thead>
         <tbody>
           {ALL_FLAG_KEYS.map((key) => (
-            <tr key={key} className="border-b border-slate-100 align-top">
-              <td className="py-3 pr-4 font-mono text-xs font-bold text-slate-900">{key}</td>
+            <tr key={key} className="border-b border-[color:var(--wp-surface-card-border)] align-top">
+              <td className="py-3 pr-4 font-mono text-xs font-bold text-[color:var(--wp-text)]">{key}</td>
               <td className="py-3 pr-4">
                 {states[key] ? (
                   <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-900">
                     AKTIVNÍ
                   </span>
                 ) : (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
+                  <span className="rounded-full bg-[color:var(--wp-surface-muted)] px-2 py-0.5 text-xs font-bold text-[color:var(--wp-text-secondary)]">
                     off
                   </span>
                 )}
               </td>
-              <td className="py-3 text-slate-600">{FLAG_DESCRIPTIONS[key]}</td>
+              <td className="py-3 text-[color:var(--wp-text-secondary)]">{FLAG_DESCRIPTIONS[key]}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      <p className="mt-8 text-xs text-slate-500">
+      <p className="mt-8 text-xs text-[color:var(--wp-text-secondary)]">
         Cache: 10 s TTL. Po změně v Dashboardu se propagace do všech edge regionů projeví do
         1 minuty. Podrobnosti: <code>docs/security/edge-config-kill-switches.md</code>.
       </p>

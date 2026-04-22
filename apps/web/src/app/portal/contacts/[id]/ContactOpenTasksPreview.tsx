@@ -20,7 +20,7 @@ export function ContactOpenTasksPreview({ contactId }: { contactId: string }) {
 
   if (loading) {
     return (
-      <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+      <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50 flex items-center justify-between">
           <h3 className="text-lg font-black text-[color:var(--wp-text)] flex items-center gap-2">
             <CheckCircle size={18} className="text-emerald-500" /> Otevřené úkoly
@@ -35,7 +35,7 @@ export function ContactOpenTasksPreview({ contactId }: { contactId: string }) {
 
   if (tasks.length === 0) {
     return (
-      <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+      <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50 flex items-center justify-between">
           <h3 className="text-lg font-black text-[color:var(--wp-text)] flex items-center gap-2">
             <CheckCircle size={18} className="text-emerald-500" /> Otevřené úkoly
@@ -55,7 +55,7 @@ export function ContactOpenTasksPreview({ contactId }: { contactId: string }) {
   }
 
   return (
-    <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+    <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
       <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50 flex items-center justify-between">
         <h3 className="text-lg font-black text-[color:var(--wp-text)] flex items-center gap-2">
           <CheckCircle size={18} className="text-emerald-500" /> Otevřené úkoly

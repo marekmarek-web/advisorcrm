@@ -117,7 +117,7 @@ export function DashboardAiAssistant() {
   };
 
   const cardShell =
-    "group relative flex min-h-[280px] cursor-pointer flex-col justify-center overflow-hidden rounded-[24px] border border-fuchsia-500/20 bg-gradient-to-b from-fuchsia-500/10 to-indigo-500/5 p-8 text-[color:var(--wp-text)] transition-colors hover:border-fuchsia-500/30 dark:border-fuchsia-400/20 dark:from-fuchsia-500/12 dark:to-indigo-500/8";
+    "group relative flex min-h-[280px] cursor-pointer flex-col justify-center overflow-hidden rounded-[var(--wp-radius-card)] border border-fuchsia-500/20 bg-gradient-to-b from-fuchsia-500/10 to-indigo-500/5 p-8 text-[color:var(--wp-text)] transition-colors hover:border-fuchsia-500/30 dark:border-fuchsia-400/20 dark:from-fuchsia-500/12 dark:to-indigo-500/8";
 
   if (phase === "deferred" || phase === "loading") {
     return (

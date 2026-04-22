@@ -32,27 +32,27 @@ export function TeamOverviewProgressTreeModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-5 top-5 rounded-full bg-slate-100 p-2 hover:bg-slate-200"
+          className="absolute right-5 top-5 rounded-full bg-[color:var(--wp-surface-muted)] p-2 hover:bg-[color:var(--wp-surface-muted)]"
           aria-label="Zavřít"
         >
           <X className="h-5 w-5" />
         </button>
-        <div className="border-b border-slate-100 p-8">
-          <h2 className="text-xl font-black text-slate-900">Strom progresu: {memberName}</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">
+        <div className="border-b border-[color:var(--wp-surface-card-border)] p-8">
+          <h2 className="text-xl font-black text-[color:var(--wp-text)]">Strom progresu: {memberName}</h2>
+          <p className="mt-1 text-sm font-medium text-[color:var(--wp-text-secondary)]">
             Cesta k pozici: {careerEvaluation.nextCareerPositionLabel ?? "—"}
           </p>
         </div>
-        <div className="flex justify-center bg-slate-50/80 px-8 py-12">
+        <div className="flex justify-center bg-[color:var(--wp-main-scroll-bg)]/80 px-8 py-12">
           <div className="relative flex flex-col items-center">
-            <div className="absolute bottom-0 top-0 w-1 -translate-x-1/2 bg-slate-200" style={{ left: "50%" }} />
+            <div className="absolute bottom-0 top-0 w-1 -translate-x-1/2 bg-[color:var(--wp-surface-muted)]" style={{ left: "50%" }} />
 
             <div className="relative z-10 mb-12 flex h-12 w-12 items-center justify-center rounded-full border-4 border-white bg-emerald-500 text-white shadow-lg">
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <div className="absolute right-12 top-2 w-48 pr-6 text-right text-xs">
-              <div className="font-bold text-slate-900">Dosaženo</div>
-              <div className="text-slate-500">Předchozí krok v řádu</div>
+              <div className="font-bold text-[color:var(--wp-text)]">Dosaženo</div>
+              <div className="text-[color:var(--wp-text-secondary)]">Předchozí krok v řádu</div>
             </div>
 
             <div className="relative z-10 mb-12 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-[#16192b] text-sm font-black text-white shadow-xl">
@@ -65,16 +65,16 @@ export function TeamOverviewProgressTreeModal({
 
             <div
               className={`relative z-10 flex h-12 w-12 items-center justify-center rounded-full border-4 border-white ${
-                blocked ? "bg-red-100 text-red-600" : "bg-slate-200 text-slate-500"
+                blocked ? "bg-red-100 text-red-600" : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]"
               }`}
             >
               {blocked ? <AlertTriangle className="h-5 w-5" /> : <Award className="h-5 w-5" />}
             </div>
             <div className="absolute bottom-2 right-12 w-48 pr-6 text-right">
-              <div className={`font-bold ${blocked ? "text-red-600" : "text-slate-900"}`}>
+              <div className={`font-bold ${blocked ? "text-red-600" : "text-[color:var(--wp-text)]"}`}>
                 {careerEvaluation.nextCareerPositionLabel ?? "Další pozice"}
               </div>
-              <div className="mt-1 text-xs text-slate-500">
+              <div className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">
                 {careerEvaluation.missingRequirements[0]?.labelCs ??
                   (blocked ? "Blokováno — doplněte podmínky" : "Čeká na schválení / data")}
               </div>

@@ -112,7 +112,7 @@ export function CareerPositionBlock(): React.ReactElement {
   }
 
   return (
-    <div className="bg-[color:var(--wp-surface-card)] rounded-2xl sm:rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+    <div className="bg-[color:var(--wp-surface-card)] rounded-2xl sm:rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
       <div className="px-6 sm:px-8 py-5 border-b border-[color:var(--wp-surface-card-border)]/50 flex items-center gap-2">
         <Award size={18} className="text-[color:var(--wp-text-tertiary)] shrink-0" aria-hidden />
         <h2 className="text-lg font-black text-[color:var(--wp-text)]">Kariérní pozice</h2>

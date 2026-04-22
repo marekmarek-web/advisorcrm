@@ -53,7 +53,7 @@ const DynamicContactOpportunityBoard = dynamic(
     import("@/app/components/pipeline/ContactOpportunityBoard").then((m) => m.ContactOpportunityBoard),
   {
     loading: () => (
-      <div className="min-h-[320px] animate-pulse rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50" />
+      <div className="min-h-[320px] animate-pulse rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50" />
     ),
   },
 );
@@ -62,7 +62,7 @@ const DynamicClientTimeline = dynamic(
   () => import("./ClientTimeline").then((m) => m.ClientTimeline),
   {
     loading: () => (
-      <div className="min-h-[200px] animate-pulse rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50" />
+      <div className="min-h-[200px] animate-pulse rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50" />
     ),
   },
 );
@@ -71,7 +71,7 @@ const DynamicDocumentsSection = dynamic(
   () => import("@/app/dashboard/contacts/[id]/DocumentsSection").then((m) => m.DocumentsSection),
   {
     loading: () => (
-      <div className="min-h-[200px] animate-pulse rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50" />
+      <div className="min-h-[200px] animate-pulse rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50" />
     ),
   },
 );
@@ -80,7 +80,7 @@ const DynamicBriefingTabContent = dynamic(
   () => import("./BriefingTabContent").then((m) => m.BriefingTabContent),
   {
     loading: () => (
-      <div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 text-sm text-[color:var(--wp-text-secondary)]">
+      <div className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 text-sm text-[color:var(--wp-text-secondary)]">
         Načítání…
       </div>
     ),
@@ -91,7 +91,7 @@ const DynamicMaterialRequestsTab = dynamic(
   () => import("./MaterialRequestsTab").then((m) => m.MaterialRequestsTab),
   {
     loading: () => (
-      <div className="min-h-[200px] animate-pulse rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50" />
+      <div className="min-h-[200px] animate-pulse rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50" />
     ),
   },
 );
@@ -210,7 +210,7 @@ function ContactTabBody({
       );
     case "timeline":
       return (
-        <div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
+        <div className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
           <div className="p-6">
             <DynamicClientTimeline contactId={contactId} />
           </div>
@@ -218,7 +218,7 @@ function ContactTabBody({
       );
     case "podklady":
       return (
-        <div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
+        <div className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
             <h2 className="text-lg font-black text-[color:var(--wp-text)]">Požadavky na podklady</h2>
             <p className="text-sm text-[color:var(--wp-text-secondary)] mt-1">
@@ -235,7 +235,7 @@ function ContactTabBody({
       );
     case "zapisky":
       return (
-        <div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
+        <div className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
           <div className="p-6">
             <ContactNotesSection contactId={contactId} />
           </div>
@@ -243,7 +243,7 @@ function ContactTabBody({
       );
     case "dokumenty":
       return (
-        <div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
+        <div className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
             <h2 className="text-lg font-black text-[color:var(--wp-text)]">Dokumenty</h2>
           </div>
@@ -254,7 +254,7 @@ function ContactTabBody({
       );
     case "ukoly":
       return (
-        <div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
+        <div className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
             <h2 className="text-lg font-black text-[color:var(--wp-text)]">Úkoly a schůzky</h2>
           </div>
@@ -266,7 +266,7 @@ function ContactTabBody({
     case "obchody":
       if (!canReadOpportunities) {
         return (
-          <div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50 p-8 text-sm text-[color:var(--wp-text-secondary)]">
+          <div className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50 p-8 text-sm text-[color:var(--wp-text-secondary)]">
             <p>
               Nemáte oprávnění zobrazit obchody tohoto klienta. Požádejte správce o oprávnění „Obchody — čtení“.
             </p>
@@ -446,12 +446,12 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
       </header>
 
       <main className="max-w-[1400px] mx-auto p-4 sm:p-6 md:p-8 space-y-6">
-        <div className="relative overflow-hidden rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 shadow-sm md:p-8">
+        <div className="relative overflow-hidden rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 shadow-sm md:p-8">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-50 to-blue-50/30 rounded-bl-full -z-10 opacity-50" aria-hidden />
           <div className="flex flex-col xl:flex-row justify-between gap-6 xl:gap-8 z-10">
             <div className="flex flex-col sm:flex-row items-start gap-4 md:gap-6 min-w-0">
               <div className="relative shrink-0">
-                <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border-4 border-[color:var(--wp-surface-card)] bg-gradient-to-br from-[#1e293b] to-aidv-create font-black text-3xl text-white shadow-xl shadow-black/25">
+                <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-[var(--wp-radius-card)] border-4 border-[color:var(--wp-surface-card)] bg-gradient-to-br from-[#1e293b] to-aidv-create font-black text-3xl text-white shadow-xl shadow-black/25">
                   {(() => {
                     const avatarDisplay = toAvatarDisplayUrl(contact.avatarUrl);
                     return avatarDisplay ? (

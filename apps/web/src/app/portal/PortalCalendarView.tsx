@@ -501,17 +501,17 @@ function EventDetailPopup({
         <div className="h-1.5 w-full shrink-0" style={accentStyle} />
         <div className="px-6 pb-6 pt-4 flex flex-col min-h-0 flex-1 overflow-hidden">
           <div className="mb-4 flex items-center justify-end gap-1.5">
-            <button type="button" onClick={onEdit} className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600" aria-label="Upravit">
+            <button type="button" onClick={onEdit} className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-indigo-50 hover:text-indigo-600" aria-label="Upravit">
               <Edit2 size={16} />
             </button>
-            <a href={mailtoHref} className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600" aria-label="Poslat e-mailem">
+            <a href={mailtoHref} className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-indigo-50 hover:text-indigo-600" aria-label="Poslat e-mailem">
               <Send size={16} />
             </a>
-            <button type="button" onClick={onDelete} className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600" aria-label="Smazat">
+            <button type="button" onClick={onDelete} className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-rose-50 hover:text-rose-600" aria-label="Smazat">
               <Trash2 size={16} />
             </button>
-            <div className="mx-1 h-5 w-px bg-slate-200" />
-            <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-800" aria-label="Zavřít">
+            <div className="mx-1 h-5 w-px bg-[color:var(--wp-surface-muted)]" />
+            <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-tertiary)] transition-colors hover:bg-[color:var(--wp-surface-muted)] hover:text-[color:var(--wp-text)]" aria-label="Zavřít">
               <X size={18} />
             </button>
           </div>
@@ -533,10 +533,10 @@ function EventDetailPopup({
 
           <div className="space-y-2 px-1 shrink-0">
             <EventDetailInfoBlock icon={Clock} label="Kdy" accentStyle={accentStyle}>
-              <p className="text-sm font-semibold text-slate-800">{dateLine}</p>
+              <p className="text-sm font-semibold text-[color:var(--wp-text)]">{dateLine}</p>
             </EventDetailInfoBlock>
             <EventDetailInfoBlock icon={MapPin} label="Místo" subdued={!event.location}>
-              <p className={event.location ? "text-sm font-medium text-slate-700" : "text-sm font-medium text-slate-500"}>
+              <p className={event.location ? "text-sm font-medium text-[color:var(--wp-text)]" : "text-sm font-medium text-[color:var(--wp-text-secondary)]"}>
                 {event.location?.trim() || "Místo nebylo zadáno."}
               </p>
             </EventDetailInfoBlock>

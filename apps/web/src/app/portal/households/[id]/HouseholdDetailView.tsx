@@ -315,7 +315,7 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
                     type="button"
                     onClick={() => setIconPickerOpen((o) => !o)}
                     disabled={pending}
-                    className="flex h-20 w-20 items-center justify-center rounded-[24px] border border-[color:var(--wp-border-strong)] bg-gradient-to-br from-[color:var(--wp-surface-muted)] to-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-tertiary)] shadow-inner transition-colors hover:text-indigo-600 disabled:opacity-50"
+                    className="flex h-20 w-20 items-center justify-center rounded-[var(--wp-radius-card)] border border-[color:var(--wp-border-strong)] bg-gradient-to-br from-[color:var(--wp-surface-muted)] to-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-tertiary)] shadow-inner transition-colors hover:text-indigo-600 disabled:opacity-50"
                     aria-label="Změnit ikonu domácnosti"
                   >
                     {household.icon ? <HouseholdIconDisplay iconId={household.icon} /> : <Share2 size={30} />}
@@ -527,7 +527,7 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {household.members.map((m) => (
-                        <div key={m.id} className="bg-[color:var(--wp-surface-card)] p-5 rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-md hover:border-indigo-200 transition-all flex flex-col group">
+                        <div key={m.id} className="bg-[color:var(--wp-surface-card)] p-5 rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-md hover:border-indigo-200 transition-all flex flex-col group">
                           <div className="flex items-start justify-between gap-3 mb-4">
                             <div className="flex items-center gap-3 min-w-0">
                               <div

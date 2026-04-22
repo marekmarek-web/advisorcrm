@@ -376,7 +376,7 @@ export function ProductionScreen({ deviceClass = "phone" }: { deviceClass?: Devi
       ) : null}
       {pending && !summary ? (
         <div className="px-4 pt-4">
-          <div className="h-32 animate-pulse rounded-[24px] bg-gradient-to-br from-[var(--aidv-hero-navy)] to-indigo-950 opacity-60" />
+          <div className="h-32 animate-pulse rounded-[var(--wp-radius-card)] bg-gradient-to-br from-[var(--aidv-hero-navy)] to-indigo-950 opacity-60" />
         </div>
       ) : null}
 

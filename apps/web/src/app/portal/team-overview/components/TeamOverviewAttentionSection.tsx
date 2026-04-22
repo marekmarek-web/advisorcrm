@@ -28,15 +28,15 @@ export function TeamOverviewAttentionSection({
   if (scope === "me") {
     return (
       <section
-        className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.055)]"
+        className="overflow-hidden rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)]/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.055)]"
         aria-labelledby="self-priority-heading"
       >
-        <div className="border-b border-slate-100 px-7 py-4">
-          <h2 id="self-priority-heading" className="text-[17px] font-black tracking-tight text-slate-950">
+        <div className="border-b border-[color:var(--wp-surface-card-border)] px-7 py-4">
+          <h2 id="self-priority-heading" className="text-[17px] font-black tracking-tight text-[color:var(--wp-text)]">
             Vyžaduje pozornost
           </h2>
         </div>
-        <p className="max-w-xl px-7 py-4 text-sm text-slate-500">
+        <p className="max-w-xl px-7 py-4 text-sm text-[color:var(--wp-text-secondary)]">
           V osobním rozsahu se seznam pozornosti neukazuje. Přepněte na týmový scope pro manažerský přehled.
         </p>
       </section>
@@ -46,9 +46,9 @@ export function TeamOverviewAttentionSection({
   const hasCritical = topAttentionAlerts.some((a) => a.severity === "critical");
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.055)]" aria-labelledby="team-priority-heading">
-      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-7 py-4">
-        <h2 id="team-priority-heading" className="text-[17px] font-black tracking-tight text-slate-950">
+    <section className="overflow-hidden rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)]/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.055)]" aria-labelledby="team-priority-heading">
+      <div className="flex items-center justify-between gap-3 border-b border-[color:var(--wp-surface-card-border)] px-7 py-4">
+        <h2 id="team-priority-heading" className="text-[17px] font-black tracking-tight text-[color:var(--wp-text)]">
           Vyžaduje pozornost
         </h2>
         {hasCritical && (
@@ -60,10 +60,10 @@ export function TeamOverviewAttentionSection({
 
       <div className="grid gap-0 lg:grid-cols-2">
         {/* Signály */}
-        <div className="border-b border-slate-100 lg:border-b-0 lg:border-r">
-          <div className="flex items-center gap-2 border-b border-slate-100/60 bg-slate-50/60 px-5 py-3">
+        <div className="border-b border-[color:var(--wp-surface-card-border)] lg:border-b-0 lg:border-r">
+          <div className="flex items-center gap-2 border-b border-[color:var(--wp-surface-card-border)]/60 bg-[color:var(--wp-main-scroll-bg)]/60 px-5 py-3">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden />
-            <h3 className="text-[12px] font-extrabold tracking-tight text-slate-900">Signály</h3>
+            <h3 className="text-[12px] font-extrabold tracking-tight text-[color:var(--wp-text)]">Signály</h3>
             {topAttentionAlerts.length > 0 && (
               <span className="ml-auto text-[10px] font-extrabold tabular-nums text-amber-600">
                 {topAttentionAlerts.length}
@@ -92,7 +92,7 @@ export function TeamOverviewAttentionSection({
                       <button
                         type="button"
                         onClick={() => selectMember(a.memberId)}
-                        className="group block w-full rounded-[16px] border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-left transition hover:border-amber-200 hover:bg-amber-50/30"
+                        className="group block w-full rounded-[16px] border border-[color:var(--wp-surface-card-border)]/80 bg-[color:var(--wp-main-scroll-bg)]/60 px-3.5 py-2.5 text-left transition hover:border-amber-200 hover:bg-amber-50/30"
                       >
                         <div className="flex items-center gap-2">
                           <span
@@ -102,10 +102,10 @@ export function TeamOverviewAttentionSection({
                           >
                             {isCritical ? "Kritické" : "Pozornost"}
                           </span>
-                          <ChevronRight className="ml-auto h-3 w-3 text-slate-300 opacity-0 transition group-hover:opacity-100" aria-hidden />
+                          <ChevronRight className="ml-auto h-3 w-3 text-[color:var(--wp-text-tertiary)] opacity-0 transition group-hover:opacity-100" aria-hidden />
                         </div>
-                        <p className="mt-1 text-[13px] font-extrabold text-slate-900">{name}</p>
-                        <p className="line-clamp-1 text-[11px] text-slate-400">{a.title}</p>
+                        <p className="mt-1 text-[13px] font-extrabold text-[color:var(--wp-text)]">{name}</p>
+                        <p className="line-clamp-1 text-[11px] text-[color:var(--wp-text-tertiary)]">{a.title}</p>
                       </button>
                     </li>
                   );
@@ -117,9 +117,9 @@ export function TeamOverviewAttentionSection({
 
         {/* Doporučené navázání */}
         <div>
-          <div className="flex items-center gap-2 border-b border-slate-100/60 bg-slate-50/60 px-5 py-3">
+          <div className="flex items-center gap-2 border-b border-[color:var(--wp-surface-card-border)]/60 bg-[color:var(--wp-main-scroll-bg)]/60 px-5 py-3">
             <HeartHandshake className="h-3.5 w-3.5 shrink-0 text-violet-600" aria-hidden />
-            <h3 className="text-[12px] font-extrabold tracking-tight text-slate-900">Doporučené navázání</h3>
+            <h3 className="text-[12px] font-extrabold tracking-tight text-[color:var(--wp-text)]">Doporučené navázání</h3>
             {pageModel.coachingAttention.length > 0 && (
               <span className="ml-auto text-[10px] font-extrabold tabular-nums text-violet-600">
                 {pageModel.coachingAttention.length}
@@ -128,9 +128,9 @@ export function TeamOverviewAttentionSection({
           </div>
           <div className="p-4">
             {pageModel.coachingAttention.length === 0 ? (
-              <div className="rounded-[16px] border border-slate-200/70 bg-slate-50/60 px-4 py-3.5">
-                <p className="text-[13px] font-extrabold text-slate-900">Vyrovnaný přehled</p>
-                <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+              <div className="rounded-[16px] border border-[color:var(--wp-surface-card-border)]/70 bg-[color:var(--wp-main-scroll-bg)]/60 px-4 py-3.5">
+                <p className="text-[13px] font-extrabold text-[color:var(--wp-text)]">Vyrovnaný přehled</p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-[color:var(--wp-text-secondary)]">
                   Z kariérního pohledu nikdo nevyčnívá.
                 </p>
               </div>
@@ -145,13 +145,13 @@ export function TeamOverviewAttentionSection({
                         <button
                           type="button"
                           onClick={() => selectMember(c.userId)}
-                          className="group block w-full rounded-[16px] border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-left transition hover:border-violet-200 hover:bg-violet-50/60"
+                          className="group block w-full rounded-[16px] border border-[color:var(--wp-surface-card-border)]/80 bg-[color:var(--wp-main-scroll-bg)]/60 px-3.5 py-2.5 text-left transition hover:border-violet-200 hover:bg-violet-50/60"
                         >
                           <div className="flex items-center gap-2">
-                            <p className="text-[13px] font-extrabold text-slate-900">{name}</p>
+                            <p className="text-[13px] font-extrabold text-[color:var(--wp-text)]">{name}</p>
                             <ChevronRight className="ml-auto h-3 w-3 text-violet-400 opacity-0 transition group-hover:opacity-100" aria-hidden />
                           </div>
-                          <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-400">{c.reasonCs}</p>
+                          <p className="mt-0.5 line-clamp-1 text-[11px] text-[color:var(--wp-text-tertiary)]">{c.reasonCs}</p>
                           <p className="mt-0.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-violet-700">
                             {c.recommendedActionLabelCs}
                           </p>

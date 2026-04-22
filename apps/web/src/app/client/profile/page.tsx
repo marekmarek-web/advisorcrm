@@ -13,8 +13,8 @@ function ProfileErrorCard({ reason }: { reason: string }) {
           ⚠️
         </span>
       </div>
-      <h2 className="text-lg font-black text-slate-900">Profil se nepodařilo načíst</h2>
-      <p className="text-sm text-slate-500">
+      <h2 className="text-lg font-black text-[color:var(--wp-text)]">Profil se nepodařilo načíst</h2>
+      <p className="text-sm text-[color:var(--wp-text-secondary)]">
         {reason} Zkuste stránku obnovit. Pokud se chyba opakuje, kontaktujte poradce.
       </p>
       <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -26,7 +26,7 @@ function ProfileErrorCard({ reason }: { reason: string }) {
         </Link>
         <Link
           href="/client"
-          className="inline-flex min-h-[44px] items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+          className="inline-flex min-h-[44px] items-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-4 text-sm font-bold text-[color:var(--wp-text)] hover:bg-[color:var(--wp-main-scroll-bg)]"
         >
           Zpět na přehled
         </Link>

@@ -48,16 +48,16 @@ export function ClientPortalTopbar({
   }, [fullName]);
 
   return (
-    <header className="sticky top-0 z-20 bg-white/85 backdrop-blur-md border-b border-slate-100 px-4 sm:px-5 lg:px-6 py-3 sm:py-3 shadow-sm">
+    <header className="sticky top-0 z-20 bg-white/85 backdrop-blur-md border-b border-[color:var(--wp-surface-card-border)] px-4 sm:px-5 lg:px-6 py-3 sm:py-3 shadow-sm">
       <div className="mx-auto w-full max-w-[1400px] flex items-center justify-between gap-3 sm:gap-4">
-        <h1 className="text-lg sm:text-xl font-display font-black text-slate-900 tracking-tight">
+        <h1 className="text-lg sm:text-xl font-display font-black text-[color:var(--wp-text)] tracking-tight">
           {pageTitle}
         </h1>
         <div className="flex items-center gap-3">
           <Link
             href="/client/notifications"
             aria-label="Otevřít oznámení"
-            className="relative p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
+            className="relative p-2 rounded-xl text-[color:var(--wp-text-secondary)] hover:text-indigo-600 hover:bg-[color:var(--wp-main-scroll-bg)] transition-colors"
           >
             <Bell size={20} />
             {unreadNotificationsCount > 0 && (
@@ -68,12 +68,12 @@ export function ClientPortalTopbar({
           </Link>
           <Link
             href="/client/profile"
-            className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1.5 pr-3 rounded-full border border-slate-200 transition-colors"
+            className="flex items-center gap-2 cursor-pointer hover:bg-[color:var(--wp-main-scroll-bg)] p-1.5 pr-3 rounded-full border border-[color:var(--wp-surface-card-border)] transition-colors"
           >
             <div className="w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-black">
               {initials}
             </div>
-            <span className="text-sm font-bold text-slate-700 hidden sm:block max-w-44 truncate">
+            <span className="text-sm font-bold text-[color:var(--wp-text)] hidden sm:block max-w-44 truncate">
               {fullName}
             </span>
           </Link>

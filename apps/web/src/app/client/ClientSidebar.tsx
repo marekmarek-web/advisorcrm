@@ -139,13 +139,13 @@ export function ClientSidebar({
         className={`group flex items-center justify-between gap-3 px-3 py-3 rounded-xl text-[13px] transition-all min-h-[44px] ${
           isActive
             ? "bg-slate-900 text-white shadow-md"
-            : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-900"
+            : "text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-main-scroll-bg)]/80 hover:text-[color:var(--wp-text)]"
         }`}
       >
         <div className="flex items-center gap-3 min-w-0">
           <Icon
             size={18}
-            className={isActive ? "text-emerald-400" : "text-slate-400 group-hover:text-emerald-500"}
+            className={isActive ? "text-emerald-400" : "text-[color:var(--wp-text-tertiary)] group-hover:text-emerald-500"}
           />
           <span className="font-bold tracking-wide truncate">{v.label}</span>
         </div>
@@ -164,13 +164,13 @@ export function ClientSidebar({
 
   return (
     <>
-      <div className="md:hidden fixed left-0 top-0 bottom-0 z-20 w-12 bg-white border-r border-slate-200 flex flex-col items-center pt-3 gap-2">
+      <div className="md:hidden fixed left-0 top-0 bottom-0 z-20 w-12 bg-white border-r border-[color:var(--wp-surface-card-border)] flex flex-col items-center pt-3 gap-2">
         <div className="w-7 h-7 rounded-md bg-gradient-to-br from-indigo-500 to-emerald-400 flex items-center justify-center text-white text-xs font-semibold shrink-0">
           C
         </div>
         <button
           onClick={() => setMobileOpen(true)}
-          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-slate-500 hover:bg-slate-100"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-main-scroll-bg)]"
           aria-label="Otevřít menu"
         >
           <Menu size={20} />
@@ -186,26 +186,26 @@ export function ClientSidebar({
 
       <aside
         className={[
-          "fixed left-0 top-0 bottom-0 flex flex-col bg-white border-r border-slate-200 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]",
+          "fixed left-0 top-0 bottom-0 flex flex-col bg-white border-r border-[color:var(--wp-surface-card-border)] shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]",
           "transition-transform duration-200 ease-in-out",
           "md:z-20 md:translate-x-0",
           mobileOpen ? "z-40 translate-x-0" : "z-40 -translate-x-full",
         ].join(" ")}
         style={{ width: CLIENT_SIDEBAR_WIDTH_PX }}
       >
-        <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100">
+        <div className="h-20 flex items-center justify-between px-6 border-b border-[color:var(--wp-surface-card-border)]">
           <div className="flex items-center justify-between">
             <Link href="/client" className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-emerald-400 flex items-center justify-center text-white font-black shadow-lg shadow-emerald-500/20">
                 C
               </div>
-              <span className="text-slate-900 font-black text-xl tracking-tight">
+              <span className="text-[color:var(--wp-text)] font-black text-xl tracking-tight">
                 Klientská<span className="text-emerald-500">Zóna</span>
               </span>
             </Link>
             <button
               onClick={() => setMobileOpen(false)}
-              className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 ml-2"
+              className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-main-scroll-bg)] ml-2"
               aria-label="Zavřít menu"
             >
               <X size={20} />
@@ -215,16 +215,16 @@ export function ClientSidebar({
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           <div className="px-2 pb-1">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-[color:var(--wp-text-tertiary)]">
               Menu
             </h4>
           </div>
           {navLinks}
         </nav>
 
-        <div className="p-4 border-t border-slate-100 bg-slate-50/60 space-y-3">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+        <div className="p-4 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]/60 space-y-3">
+          <div className="bg-white p-4 rounded-2xl border border-[color:var(--wp-surface-card-border)] shadow-sm">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-3">
               Váš osobní poradce
             </h4>
             <div className="flex items-center gap-3 mb-3">
@@ -232,10 +232,10 @@ export function ClientSidebar({
                 {advisor?.initials ?? "VP"}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-black text-slate-900 truncate">
+                <p className="text-sm font-black text-[color:var(--wp-text)] truncate">
                   {advisor?.fullName ?? "Váš poradce"}
                 </p>
-                <p className="text-[11px] font-bold text-slate-500 truncate">
+                <p className="text-[11px] font-bold text-[color:var(--wp-text-secondary)] truncate">
                   {advisor?.email ?? "Podpora klientské zóny"}
                 </p>
               </div>

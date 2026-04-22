@@ -36,18 +36,18 @@ export function ClientMaterialRequestRespondForm({ requestId }: { requestId: str
   }
 
   return (
-    <form onSubmit={(e) => void onSubmit(e)} className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
-      <h2 className="text-lg font-black text-slate-900">Vaše odpověď</h2>
+    <form onSubmit={(e) => void onSubmit(e)} className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-white p-6 space-y-4">
+      <h2 className="text-lg font-black text-[color:var(--wp-text)]">Vaše odpověď</h2>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={4}
-        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+        className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 py-2 text-sm"
         placeholder="Napište textovou odpověď nebo doplnění…"
       />
       <div>
-        <label className="block text-xs font-bold text-slate-500 mb-1">Přiložit soubor (PDF, obrázky)</label>
+        <label className="block text-xs font-bold text-[color:var(--wp-text-secondary)] mb-1">Přiložit soubor (PDF, obrázky)</label>
         <input
           type="file"
           multiple

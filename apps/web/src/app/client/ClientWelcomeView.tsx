@@ -73,7 +73,7 @@ export function ClientWelcomeView({
           <h2 className="text-3xl sm:text-4xl font-display font-black tracking-tight mb-3">
             Vítejte, {firstName}
           </h2>
-          <p className="text-slate-300 text-base font-medium leading-relaxed max-w-lg">
+          <p className="text-[color:var(--wp-text-tertiary)] text-base font-medium leading-relaxed max-w-lg">
             Vaše klientská zóna je připravená. Najdete tu dokumenty, smlouvy a přímou komunikaci
             s&nbsp;vaším poradcem — vše na jednom místě.
           </p>
@@ -85,7 +85,7 @@ export function ClientWelcomeView({
           <Link
             key={action.href}
             href={action.href}
-            className={`group bg-white rounded-2xl border border-slate-100 ${action.hoverBorder} hover:shadow-md p-5 flex items-start gap-4 transition-all`}
+            className={`group bg-white rounded-2xl border border-[color:var(--wp-surface-card-border)] ${action.hoverBorder} hover:shadow-md p-5 flex items-start gap-4 transition-all`}
           >
             <div
               className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center ${action.color} group-hover:scale-105 transition-transform border`}
@@ -94,13 +94,13 @@ export function ClientWelcomeView({
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-black text-slate-900">{action.label}</h3>
+                <h3 className="text-sm font-black text-[color:var(--wp-text)]">{action.label}</h3>
                 <ArrowRight
                   size={16}
-                  className="text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all shrink-0"
+                  className="text-[color:var(--wp-text-tertiary)] group-hover:text-[color:var(--wp-text-secondary)] group-hover:translate-x-0.5 transition-all shrink-0"
                 />
               </div>
-              <p className="text-xs text-slate-500 font-medium mt-0.5 leading-relaxed">
+              <p className="text-xs text-[color:var(--wp-text-secondary)] font-medium mt-0.5 leading-relaxed">
                 {action.description}
               </p>
             </div>
@@ -109,17 +109,17 @@ export function ClientWelcomeView({
       </div>
 
       {advisorName && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 flex items-center gap-4">
+        <div className="bg-white rounded-2xl border border-[color:var(--wp-surface-card-border)] p-6 flex items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-sm shrink-0">
             {advisorInitials ?? "VP"}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+            <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-0.5">
               Váš poradce
             </p>
-            <p className="text-sm font-bold text-slate-900 truncate">{advisorName}</p>
+            <p className="text-sm font-bold text-[color:var(--wp-text)] truncate">{advisorName}</p>
             {advisorEmail && (
-              <p className="text-xs text-slate-500 truncate">{advisorEmail}</p>
+              <p className="text-xs text-[color:var(--wp-text-secondary)] truncate">{advisorEmail}</p>
             )}
           </div>
           <Link
@@ -132,7 +132,7 @@ export function ClientWelcomeView({
         </div>
       )}
 
-      <p className="text-xs text-slate-400 font-medium leading-relaxed">
+      <p className="text-xs text-[color:var(--wp-text-tertiary)] font-medium leading-relaxed">
         Jakmile váš poradce přidá smlouvy a dokumenty, zobrazí se automaticky v příslušných sekcích.
         Celý přehled najdete v menu vlevo.
       </p>

@@ -122,13 +122,13 @@ export function ClientMaterialRequestToastStack() {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="pointer-events-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+          className="pointer-events-auto rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-white p-4 shadow-xl"
         >
           <div className="flex justify-between gap-2">
-            <p className="text-sm font-bold text-slate-900">{t.title}</p>
+            <p className="text-sm font-bold text-[color:var(--wp-text)]">{t.title}</p>
             <button
               type="button"
-              className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100"
+              className="shrink-0 rounded-lg p-1 text-[color:var(--wp-text-tertiary)] hover:bg-[color:var(--wp-main-scroll-bg)]"
               aria-label="Zavřít"
               onClick={() => dismiss(t.id)}
             >
@@ -145,7 +145,7 @@ export function ClientMaterialRequestToastStack() {
             </button>
             <Link
               href={t.href}
-              className="inline-flex min-h-[44px] items-center rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-800"
+              className="inline-flex min-h-[44px] items-center rounded-xl border border-[color:var(--wp-surface-card-border)] px-4 text-sm font-bold text-[color:var(--wp-text)]"
               onClick={() => dismiss(t.id)}
             >
               Zobrazit

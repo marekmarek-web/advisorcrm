@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import { createPortal } from "react-dom";
+import { BaseModal } from "@/app/components/BaseModal";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1043,7 +1044,7 @@ function TasksPageContent() {
           </div>
 
           {/* Quick add */}
-          <div className={`bg-[color:var(--wp-surface-card)] rounded-[24px] border transition-all duration-300 overflow-hidden shadow-sm ${isInputFocused ? "border-indigo-400 ring-4 ring-indigo-50 shadow-md" : "border-[color:var(--wp-surface-card-border)] hover:border-indigo-300"}`}>
+          <div className={`bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border transition-all duration-300 overflow-hidden shadow-sm ${isInputFocused ? "border-indigo-400 ring-4 ring-indigo-50 shadow-md" : "border-[color:var(--wp-surface-card-border)] hover:border-indigo-300"}`}>
             <div className="p-1 flex flex-col md:flex-row items-center gap-2">
               <div className="flex-1 flex items-start w-full relative">
                 <div className="p-4 text-[color:var(--wp-text-tertiary)] shrink-0"><Plus size={20} className={isInputFocused ? "text-indigo-500" : ""} /></div>
@@ -1123,7 +1124,7 @@ function TasksPageContent() {
                 ))}
               </div>
             ) : visibleTasks.length === 0 ? (
-              <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] border-dashed p-16 flex flex-col items-center justify-center text-center shadow-sm">
+              <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] border-dashed p-16 flex flex-col items-center justify-center text-center shadow-sm">
                 <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-400 mb-6 shadow-inner">
                   <CheckCircle2 size={40} strokeWidth={1.5} />
                 </div>
@@ -1353,15 +1354,15 @@ function TasksPageContent() {
         <TaskSettingsModal settings={settings} onSave={handleSettingsSave} onClose={() => setIsSettingsOpen(false)} />
       )}
 
-      {/* Mobile edit overlay */}
-      {mobileEditId && (
-        <div className="fixed inset-0 z-[100] md:hidden flex flex-col bg-[color:var(--wp-surface-card)]" role="dialog" aria-modal="true" aria-labelledby="mobile-edit-title">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[color:var(--wp-surface-card-border)] shrink-0">
-            <h2 id="mobile-edit-title" className="text-lg font-bold text-[color:var(--wp-text)]">Upravit úkol</h2>
-            <button type="button" onClick={() => { setMobileEditId(null); setEditId(null); }} className="p-2 text-[color:var(--wp-text-secondary)] hover:text-[color:var(--wp-text-secondary)] rounded-lg" aria-label="Zavřít">
-              <X size={20} />
-            </button>
-          </div>
+      {/* Mobile edit overlay → BaseModal (sheet na mobilu) */}
+      <BaseModal
+        open={Boolean(mobileEditId)}
+        onClose={() => { setMobileEditId(null); setEditId(null); }}
+        title="Upravit úkol"
+        maxWidth="md"
+        mobileVariant="fullScreen"
+      >
+        <div className="flex flex-col">
           <div className="flex-1 overflow-auto p-4 space-y-4">
             <div>
               <label className="block text-xs font-bold text-[color:var(--wp-text-secondary)] uppercase tracking-wider mb-1">Název</label>
@@ -1381,7 +1382,7 @@ function TasksPageContent() {
             <button type="button" onClick={handleSaveEdit} className={clsx(portalPrimaryButtonClassName, "flex-1 px-5 py-3 min-h-[44px]")}>Uložit</button>
           </div>
         </div>
-      )}
+      </BaseModal>
     </div>
   );
 }
@@ -1405,13 +1406,13 @@ function TasksLoading() {
         <div className="flex gap-2">
           {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-10 w-24 bg-[color:var(--wp-surface-card-border)] rounded-xl" />)}
         </div>
-        <div className="rounded-[24px] border-2 border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 space-y-3">
+        <div className="rounded-[var(--wp-radius-card)] border-2 border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 space-y-3">
           <div className="h-4 w-32 bg-[color:var(--wp-surface-muted)] rounded" />
           <div className="h-12 bg-[color:var(--wp-surface-muted)] rounded-xl" />
           <div className="h-12 bg-[color:var(--wp-surface-muted)] rounded-xl" />
           <div className="h-10 w-24 bg-indigo-100 rounded-xl" />
         </div>
-        <div className="h-64 bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)]" />
+        <div className="h-64 bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)]" />
       </div>
     </div>
   );

@@ -65,12 +65,12 @@ export function ClientNotificationsList({
 
   if (items.length === 0) {
     return (
-      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center space-y-2">
-        <div className="mx-auto w-12 h-12 rounded-2xl bg-slate-100 grid place-items-center text-slate-400">
+      <div className="bg-white rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm p-10 text-center space-y-2">
+        <div className="mx-auto w-12 h-12 rounded-2xl bg-[color:var(--wp-surface-muted)] grid place-items-center text-[color:var(--wp-text-tertiary)]">
           <Bell size={22} />
         </div>
-        <p className="font-semibold text-slate-700">Žádná oznámení</p>
-        <p className="text-sm text-slate-500 max-w-sm mx-auto">
+        <p className="font-semibold text-[color:var(--wp-text)]">Žádná oznámení</p>
+        <p className="text-sm text-[color:var(--wp-text-secondary)] max-w-sm mx-auto">
           Nové zprávy, dokumenty a požadavky od poradce se zobrazí zde.
         </p>
       </div>
@@ -100,7 +100,7 @@ export function ClientNotificationsList({
               className={`w-full text-left rounded-xl border shadow-sm p-4 transition-all hover:shadow-md ${
                 isUnread
                   ? "bg-indigo-50/60 border-indigo-200 hover:border-indigo-300"
-                  : "bg-white border-slate-100 hover:border-slate-200"
+                  : "bg-white border-[color:var(--wp-surface-card-border)] hover:border-[color:var(--wp-surface-card-border)]"
               }`}
             >
               <div className="flex items-start gap-3">
@@ -108,14 +108,14 @@ export function ClientNotificationsList({
                   className={`shrink-0 mt-0.5 w-10 h-10 rounded-xl border grid place-items-center ${
                     isUnread
                       ? "bg-indigo-100 border-indigo-200 text-indigo-600"
-                      : "bg-slate-100 border-slate-200 text-slate-500"
+                      : "bg-[color:var(--wp-surface-muted)] border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)]"
                   }`}
                 >
                   <Icon size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 mb-0.5">
-                    <p className={`font-bold text-sm leading-snug ${isUnread ? "text-slate-900" : "text-slate-700"}`}>
+                    <p className={`font-bold text-sm leading-snug ${isUnread ? "text-[color:var(--wp-text)]" : "text-[color:var(--wp-text)]"}`}>
                       {n.title}
                     </p>
                     {isUnread && (
@@ -123,12 +123,12 @@ export function ClientNotificationsList({
                     )}
                   </div>
                   {n.body && (
-                    <p className="text-sm text-slate-500 line-clamp-2 mt-0.5">
+                    <p className="text-sm text-[color:var(--wp-text-secondary)] line-clamp-2 mt-0.5">
                       {formatPortalNotificationBody(n.type, n.body)}
                     </p>
                   )}
                   <div className="flex items-center gap-3 mt-1.5">
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-[color:var(--wp-text-tertiary)]">
                       {new Date(n.createdAt).toLocaleDateString("cs-CZ", {
                         day: "numeric",
                         month: "short",

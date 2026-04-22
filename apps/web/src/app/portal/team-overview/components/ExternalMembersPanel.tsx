@@ -39,7 +39,7 @@ export function ExternalMembersPanel({ roleName, members }: Props) {
 
   if (!canWrite) {
     return (
-      <div className="rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+      <div className="rounded border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] p-4 text-sm text-[color:var(--wp-text-secondary)]">
         Nemáte oprávnění spravovat externí členy týmu.
       </div>
     );
@@ -61,28 +61,28 @@ export function ExternalMembersPanel({ roleName, members }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded border border-slate-200 bg-white p-4">
-        <h4 className="mb-1 text-sm font-semibold text-slate-800">Přidat externího člena týmu</h4>
-        <p className="mb-3 text-xs text-slate-500">
+      <div className="rounded border border-[color:var(--wp-surface-card-border)] bg-white p-4">
+        <h4 className="mb-1 text-sm font-semibold text-[color:var(--wp-text)]">Přidat externího člena týmu</h4>
+        <p className="mb-3 text-xs text-[color:var(--wp-text-secondary)]">
           Členové, kteří nemají Aidvisora účet — například spolupracující poradci, jejichž data evidujete ručně.
         </p>
         <form onSubmit={submitCreate} className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
           <input
-            className="rounded border border-slate-300 px-2 py-1 text-sm"
+            className="rounded border border-[color:var(--wp-surface-card-border)] px-2 py-1 text-sm"
             placeholder="Jméno *"
             value={form.displayName}
             onChange={(e) => setForm({ ...form, displayName: e.target.value })}
             required
           />
           <input
-            className="rounded border border-slate-300 px-2 py-1 text-sm"
+            className="rounded border border-[color:var(--wp-surface-card-border)] px-2 py-1 text-sm"
             placeholder="Email (volitelně)"
             type="email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
           <select
-            className="rounded border border-slate-300 px-2 py-1 text-sm"
+            className="rounded border border-[color:var(--wp-surface-card-border)] px-2 py-1 text-sm"
             value={form.parentMemberId}
             onChange={(e) => setForm({ ...form, parentMemberId: e.target.value })}
           >
@@ -102,31 +102,31 @@ export function ExternalMembersPanel({ roleName, members }: Props) {
           </button>
         </form>
         {err && <p className="mt-2 text-xs text-rose-600">{err}</p>}
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-[color:var(--wp-text-secondary)]">
           Externí člen nemá Aidvisora účet — data evidujete ručně. Později je možné propárovat se skutečným účtem.
         </p>
       </div>
 
-      <div className="rounded border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 px-4 py-2 text-sm font-semibold text-slate-800">
+      <div className="rounded border border-[color:var(--wp-surface-card-border)] bg-white">
+        <div className="border-b border-[color:var(--wp-surface-card-border)] px-4 py-2 text-sm font-semibold text-[color:var(--wp-text)]">
           Externí členové ({externals.length})
         </div>
         {externals.length === 0 ? (
-          <div className="px-4 py-6 text-sm text-slate-500">Zatím žádní externí členové.</div>
+          <div className="px-4 py-6 text-sm text-[color:var(--wp-text-secondary)]">Zatím žádní externí členové.</div>
         ) : (
           <ul className="divide-y divide-slate-100">
             {externals.map((m) => (
               <li key={m.userId} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="text-sm font-medium text-slate-800">{m.displayName ?? m.email ?? "(bez jména)"}</div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-sm font-medium text-[color:var(--wp-text)]">{m.displayName ?? m.email ?? "(bez jména)"}</div>
+                  <div className="text-xs text-[color:var(--wp-text-secondary)]">
                     {m.roleName} · {m.status} · {m.careerProgram ?? "bez programu"}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setOpenPeriodFor(m.teamMemberId)}
-                    className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
+                    className="rounded border border-[color:var(--wp-surface-card-border)] px-2 py-1 text-xs hover:bg-[color:var(--wp-main-scroll-bg)]"
                   >
                     Zadat měsíc
                   </button>
@@ -138,7 +138,7 @@ export function ExternalMembersPanel({ roleName, members }: Props) {
                         });
                       })
                     }
-                    className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
+                    className="rounded border border-[color:var(--wp-surface-card-border)] px-2 py-1 text-xs hover:bg-[color:var(--wp-main-scroll-bg)]"
                   >
                     {m.status === "active" ? "Pozastavit" : "Aktivovat"}
                   </button>
@@ -204,7 +204,7 @@ function ManualPeriodModal({ teamMemberId, onClose }: { teamMemberId: string; on
               type="number"
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm"
+              className="mt-1 w-full rounded border border-[color:var(--wp-surface-card-border)] px-2 py-1 text-sm"
             />
           </label>
           <label className="text-xs">
@@ -215,7 +215,7 @@ function ManualPeriodModal({ teamMemberId, onClose }: { teamMemberId: string; on
               max={12}
               value={month}
               onChange={(e) => setMonth(Number(e.target.value))}
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm"
+              className="mt-1 w-full rounded border border-[color:var(--wp-surface-card-border)] px-2 py-1 text-sm"
             />
           </label>
           <label className="text-xs">
@@ -225,7 +225,7 @@ function ManualPeriodModal({ teamMemberId, onClose }: { teamMemberId: string; on
               step="0.01"
               value={units}
               onChange={(e) => setUnits(e.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm"
+              className="mt-1 w-full rounded border border-[color:var(--wp-surface-card-border)] px-2 py-1 text-sm"
             />
           </label>
           <label className="text-xs">
@@ -235,7 +235,7 @@ function ManualPeriodModal({ teamMemberId, onClose }: { teamMemberId: string; on
               step="0.01"
               value={production}
               onChange={(e) => setProduction(e.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm"
+              className="mt-1 w-full rounded border border-[color:var(--wp-surface-card-border)] px-2 py-1 text-sm"
             />
           </label>
           <label className="text-xs">
@@ -244,7 +244,7 @@ function ManualPeriodModal({ teamMemberId, onClose }: { teamMemberId: string; on
               type="number"
               value={meetings}
               onChange={(e) => setMeetings(e.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm"
+              className="mt-1 w-full rounded border border-[color:var(--wp-surface-card-border)] px-2 py-1 text-sm"
             />
           </label>
           <label className="text-xs">
@@ -253,7 +253,7 @@ function ManualPeriodModal({ teamMemberId, onClose }: { teamMemberId: string; on
               type="number"
               value={contracts}
               onChange={(e) => setContracts(e.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm"
+              className="mt-1 w-full rounded border border-[color:var(--wp-surface-card-border)] px-2 py-1 text-sm"
             />
           </label>
         </div>
@@ -262,7 +262,7 @@ function ManualPeriodModal({ teamMemberId, onClose }: { teamMemberId: string; on
           <select
             value={confidence}
             onChange={(e) => setConfidence(e.target.value as typeof confidence)}
-            className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm"
+            className="mt-1 w-full rounded border border-[color:var(--wp-surface-card-border)] px-2 py-1 text-sm"
           >
             <option value="manual_confirmed">Potvrzeno</option>
             <option value="manual_estimated">Odhad</option>
@@ -273,12 +273,12 @@ function ManualPeriodModal({ teamMemberId, onClose }: { teamMemberId: string; on
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm"
+            className="mt-1 w-full rounded border border-[color:var(--wp-surface-card-border)] px-2 py-1 text-sm"
           />
         </label>
         {err && <p className="mt-2 text-xs text-rose-600">{err}</p>}
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded border border-slate-300 px-3 py-1 text-sm">
+          <button type="button" onClick={onClose} className="rounded border border-[color:var(--wp-surface-card-border)] px-3 py-1 text-sm">
             Zrušit
           </button>
           <button

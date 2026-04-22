@@ -50,31 +50,31 @@ export function TeamOverviewAttentionCard({
 
   if (top.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
+      <div className="rounded-lg border border-[color:var(--wp-surface-card-border)] bg-white p-4 text-sm text-[color:var(--wp-text-secondary)]">
         \u017d\u00e1dn\u00e1 otev\u0159en\u00e1 doporu\u010den\u00ed pro tento t\u00fdden. V\u0161e klape.
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white">
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2">
-        <h3 className="text-sm font-semibold text-slate-800">Na co se pod\u00edvat jako prvn\u00ed</h3>
-        <span className="text-xs text-slate-500">{recommendations.length} doporu\u010den\u00ed</span>
+    <div className="rounded-lg border border-[color:var(--wp-surface-card-border)] bg-white">
+      <div className="flex items-center justify-between border-b border-[color:var(--wp-surface-card-border)] px-4 py-2">
+        <h3 className="text-sm font-semibold text-[color:var(--wp-text)]">Na co se pod\u00edvat jako prvn\u00ed</h3>
+        <span className="text-xs text-[color:var(--wp-text-secondary)]">{recommendations.length} doporu\u010den\u00ed</span>
       </div>
       <ul className="divide-y divide-slate-100">
         {top.map((r) => (
           <li key={r.id}>
             <button
               onClick={() => setSelected(r)}
-              className="flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-slate-50"
+              className="flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-[color:var(--wp-main-scroll-bg)]"
             >
               <span className={`mt-0.5 inline-flex h-2 w-2 flex-none rounded-full ${priorityDot(r.priority)}`} />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-slate-800">{r.title}</div>
-                <div className="truncate text-xs text-slate-500">{r.summary}</div>
+                <div className="truncate text-sm font-medium text-[color:var(--wp-text)]">{r.title}</div>
+                <div className="truncate text-xs text-[color:var(--wp-text-secondary)]">{r.summary}</div>
               </div>
-              <span className="whitespace-nowrap text-[11px] text-slate-400">{timingShort(r.timing)}</span>
+              <span className="whitespace-nowrap text-[11px] text-[color:var(--wp-text-tertiary)]">{timingShort(r.timing)}</span>
             </button>
           </li>
         ))}
@@ -89,7 +89,7 @@ function priorityDot(p: Recommendation["priority"]): string {
     case "critical": return "bg-rose-500";
     case "high": return "bg-amber-500";
     case "medium": return "bg-sky-500";
-    case "low": return "bg-slate-300";
+    case "low": return "bg-[color:var(--wp-surface-card-border)]";
   }
 }
 

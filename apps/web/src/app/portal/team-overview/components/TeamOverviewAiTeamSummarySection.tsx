@@ -55,7 +55,7 @@ export function TeamOverviewAiTeamSummarySection({
                 compact ? "text-sm" : "text-lg"
               }`}
             >
-              <Sparkles className={compact ? "h-4 w-4 text-slate-400" : "w-5 h-5 text-violet-500"} />
+              <Sparkles className={compact ? "h-4 w-4 text-[color:var(--wp-text-tertiary)]" : "w-5 h-5 text-violet-500"} />
               Shrnutí týmu (AI)
             </h2>
             {!compact ? (

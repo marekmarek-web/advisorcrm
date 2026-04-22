@@ -206,7 +206,7 @@ const ACCENT_ICON: Record<Accent, string> = {
   violet: "bg-violet-50 text-violet-600 border-violet-100/50",
   amber: "bg-amber-50 text-amber-600 border-amber-100/50",
   rose: "bg-rose-50 text-rose-600 border-rose-100/50",
-  slate: "bg-slate-50 text-slate-600 border-slate-100/50",
+  slate: "bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-secondary)] border-[color:var(--wp-surface-card-border)]/50",
 };
 
 const ACCENT_SUB: Record<Accent, string> = {
@@ -215,7 +215,7 @@ const ACCENT_SUB: Record<Accent, string> = {
   violet: "text-violet-600",
   amber: "text-amber-700",
   rose: "text-rose-600",
-  slate: "text-slate-600",
+  slate: "text-[color:var(--wp-text-secondary)]",
 };
 
 const ACCENT_PROGRESS: Record<Accent, string> = {
@@ -344,7 +344,7 @@ export function AdvisorClientRequestToastStack() {
               openDetail(t.navigateHref, t.id, t.notificationId);
             }
           }}
-          className={`pointer-events-auto relative w-full cursor-pointer overflow-hidden rounded-[24px] border border-white bg-white/95 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.15)] ring-1 ring-slate-900/5 backdrop-blur-2xl ${
+          className={`pointer-events-auto relative w-full cursor-pointer overflow-hidden rounded-[var(--wp-radius-card)] border border-white bg-white/95 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.15)] ring-1 ring-slate-900/5 backdrop-blur-2xl ${
             t.isExiting ? "aidv-client-request-toast--out" : "aidv-client-request-toast--in"
           }`}
         >
@@ -362,14 +362,14 @@ export function AdvisorClientRequestToastStack() {
                 <p className="truncate font-[family-name:var(--font-jakarta)] text-[15px] font-extrabold text-[#0B1021]">
                   {t.clientName}
                 </p>
-                <span className="flex shrink-0 items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                <span className="flex shrink-0 items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
                   <Clock size={10} /> {t.timeLabel}
                 </span>
               </div>
               <p className={`mb-1.5 font-[family-name:var(--font-jakarta)] text-xs font-bold ${ACCENT_SUB[t.accent]}`}>
                 {t.categoryLabel}
               </p>
-              <p className="line-clamp-2 text-[13px] font-medium leading-relaxed text-slate-500">{t.preview}</p>
+              <p className="line-clamp-2 text-[13px] font-medium leading-relaxed text-[color:var(--wp-text-secondary)]">{t.preview}</p>
 
               <div className="mt-4">
                 <button
@@ -391,14 +391,14 @@ export function AdvisorClientRequestToastStack() {
                 e.stopPropagation();
                 dismiss(t.id);
               }}
-              className="-mr-1 -mt-1 shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-800"
+              className="-mr-1 -mt-1 shrink-0 rounded-lg p-1.5 text-[color:var(--wp-text-tertiary)] transition-colors hover:bg-[color:var(--wp-surface-muted)] hover:text-[color:var(--wp-text)]"
               aria-label="Zavřít"
             >
               <X size={16} />
             </button>
           </div>
 
-          <div className="absolute bottom-0 left-0 h-1 w-full bg-slate-100">
+          <div className="absolute bottom-0 left-0 h-1 w-full bg-[color:var(--wp-surface-muted)]">
             <div
               className={`h-full ${ACCENT_PROGRESS[t.accent]}`}
               style={{

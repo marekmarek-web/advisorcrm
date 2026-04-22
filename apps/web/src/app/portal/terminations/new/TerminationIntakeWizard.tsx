@@ -86,13 +86,13 @@ const WIZARD_STEP_COUNT = WIZARD_STEPS.length;
 
 // Aidvisora: light + dark (portal tokeny); PDF/tisk zůstává světlý přes termination-letter-html.
 const TERMINATION_FIELD_CLASS =
-  "h-12 w-full min-h-[44px] rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:placeholder:text-[color:var(--wp-text-muted)] dark:focus:bg-[color:var(--wp-surface-card)] dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20";
+  "h-12 w-full min-h-[44px] rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] px-4 text-sm font-bold text-[color:var(--wp-text)] outline-none transition placeholder:text-[color:var(--wp-text-tertiary)] focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:placeholder:text-[color:var(--wp-text-muted)] dark:focus:bg-[color:var(--wp-surface-card)] dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20";
 const TERMINATION_LABEL_CLASS =
-  "mb-2 ml-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-[color:var(--wp-text-tertiary)]";
+  "mb-2 ml-1 block text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] dark:text-[color:var(--wp-text-tertiary)]";
 const TERMINATION_TEXTAREA_CLASS =
-  "min-h-[104px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 resize-none dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:placeholder:text-[color:var(--wp-text-muted)] dark:focus:bg-[color:var(--wp-surface-card)] dark:focus:ring-indigo-500/20";
+  "min-h-[104px] w-full rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] px-4 py-3 text-sm font-bold text-[color:var(--wp-text)] outline-none transition placeholder:text-[color:var(--wp-text-tertiary)] focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 resize-none dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:placeholder:text-[color:var(--wp-text-muted)] dark:focus:bg-[color:var(--wp-surface-card)] dark:focus:ring-indigo-500/20";
 const TERMINATION_DATE_INPUT_CLASS =
-  "h-12 w-full min-h-[44px] rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:placeholder:text-[color:var(--wp-text-muted)] dark:focus:bg-[color:var(--wp-surface-card)] dark:focus:ring-indigo-500/20";
+  "h-12 w-full min-h-[44px] rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] px-4 text-sm font-bold text-[color:var(--wp-text)] outline-none transition placeholder:text-[color:var(--wp-text-tertiary)] focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:placeholder:text-[color:var(--wp-text-muted)] dark:focus:bg-[color:var(--wp-surface-card)] dark:focus:ring-indigo-500/20";
 const TERMINATION_DATE_LABEL_CLASS = TERMINATION_LABEL_CLASS;
 
 type Props = {
@@ -785,7 +785,7 @@ export function TerminationIntakeWizard({
   const contextBanner = useMemo(() => {
     if (prefill.mode === "crm") {
       return (
-        <p className="text-sm font-medium text-slate-500 mt-1">
+        <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] mt-1">
           Kontext: smlouva z CRM
           {prefill.contactLabel ? ` · klient ${prefill.contactLabel}` : ""}
           {prefill.contractId ? ` · smlouva ${prefill.contractId.slice(0, 8)}…` : ""}
@@ -794,14 +794,14 @@ export function TerminationIntakeWizard({
     }
     if (prefill.mode === "contact_only") {
       return (
-        <p className="text-sm font-medium text-slate-500 mt-1">
+        <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] mt-1">
           Kontext: klient bez vybrané smlouvy
           {prefill.contactLabel ? ` · ${prefill.contactLabel}` : ""} – doplňte údaje nebo nahrajte dokument.
         </p>
       );
     }
     return (
-      <p className="text-sm font-medium text-slate-500 mt-1">
+      <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] mt-1">
         Kontext: obecný intak – zvažte vybrat klienta v kontaktech pro předvyplnění.
       </p>
     );
@@ -890,7 +890,7 @@ export function TerminationIntakeWizard({
               done && "border-emerald-100 bg-emerald-50/50 text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/35 dark:text-emerald-300",
               !active &&
                 !done &&
-                "border-slate-100 bg-white text-slate-400 opacity-60 dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] dark:text-[color:var(--wp-text-secondary)] dark:opacity-100",
+                "border-[color:var(--wp-surface-card-border)] bg-white text-[color:var(--wp-text-tertiary)] opacity-60 dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] dark:text-[color:var(--wp-text-secondary)] dark:opacity-100",
             )}
           >
             <div
@@ -898,7 +898,7 @@ export function TerminationIntakeWizard({
                 "flex shrink-0 items-center justify-center rounded-full text-[10px] font-black transition-colors h-7 w-7 sm:h-9 sm:w-9 sm:text-sm",
                 active && "bg-indigo-600 text-white shadow-sm",
                 done && "bg-emerald-500 text-white",
-                !active && !done && "bg-slate-100 text-slate-400 dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)]",
+                !active && !done && "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-tertiary)] dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)]",
               )}
             >
               {done ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={3} /> : index + 1}
@@ -909,14 +909,14 @@ export function TerminationIntakeWizard({
                   "block whitespace-nowrap text-[11px] font-bold uppercase tracking-widest sm:text-sm sm:normal-case sm:tracking-normal sm:font-bold",
                   active && "text-indigo-900 dark:text-indigo-200",
                   done && "text-emerald-800 dark:text-emerald-300",
-                  !active && !done && "text-slate-500 dark:text-[color:var(--wp-text-secondary)]",
+                  !active && !done && "text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text-secondary)]",
                 )}
               >
                 <span className="sm:hidden">{step.stepperShort}</span>
                 <span className="hidden sm:inline">{step.title}</span>
               </span>
               {active ? (
-                <span className="hidden sm:block text-xs font-medium text-slate-400 dark:text-[color:var(--wp-text-muted)] mt-0.5">
+                <span className="hidden sm:block text-xs font-medium text-[color:var(--wp-text-tertiary)] dark:text-[color:var(--wp-text-muted)] mt-0.5">
                   Aktuální krok
                 </span>
               ) : done ? (
@@ -934,31 +934,31 @@ export function TerminationIntakeWizard({
   const contactDocsHref = contactId ? `/portal/contacts/${contactId}?tab=dokumenty` : "/portal/contacts/new";
 
   return (
-    <div className="flex w-full flex-col bg-[#f8fafc] text-slate-900 dark:bg-[color:var(--wp-bg)] dark:text-[color:var(--wp-text)]">
+    <div className="flex w-full flex-col bg-[#f8fafc] text-[color:var(--wp-text)] dark:bg-[color:var(--wp-bg)] dark:text-[color:var(--wp-text)]">
       {/* Mobilní horní lišta — plný krok, bez simulace zařízení / status baru */}
-      <header className="sticky top-0 z-30 flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-4 py-3 md:hidden dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)]">
+      <header className="sticky top-0 z-30 flex shrink-0 items-center justify-between border-b border-[color:var(--wp-surface-card-border)] bg-white px-4 py-3 md:hidden dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)]">
         <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
             disabled={wizardStep === 0}
             onClick={() => setWizardStep((s) => Math.max(0, s - 1))}
-            className="rounded-full p-1.5 text-slate-500 transition hover:bg-slate-100 disabled:opacity-40 dark:text-[color:var(--wp-text-secondary)] dark:hover:bg-[color:var(--wp-surface-muted)]"
+            className="rounded-full p-1.5 text-[color:var(--wp-text-secondary)] transition hover:bg-[color:var(--wp-surface-muted)] disabled:opacity-40 dark:text-[color:var(--wp-text-secondary)] dark:hover:bg-[color:var(--wp-surface-muted)]"
             aria-label="Zpět"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-black tracking-tight text-slate-900 dark:text-[color:var(--wp-text)]">
+            <h1 className="truncate text-lg font-black tracking-tight text-[color:var(--wp-text)] dark:text-[color:var(--wp-text)]">
               Výpověď smlouvy
             </h1>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-[color:var(--wp-text-tertiary)]">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[color:var(--wp-text-tertiary)] dark:text-[color:var(--wp-text-tertiary)]">
               Průvodce
             </p>
           </div>
         </div>
         <Link
           href={cancelHref}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)] dark:hover:bg-[color:var(--wp-surface-raised)]"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] transition hover:bg-[color:var(--wp-surface-muted)] dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)] dark:hover:bg-[color:var(--wp-surface-raised)]"
           aria-label="Zavřít průvodce"
         >
           <X className="h-4 w-4" strokeWidth={2.5} />
@@ -969,17 +969,17 @@ export function TerminationIntakeWizard({
         {/* Hlavička — desktop */}
         <div className="hidden flex-col gap-4 md:flex md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-[color:var(--wp-text)] lg:text-3xl">
+            <h1 className="text-2xl font-black tracking-tight text-[color:var(--wp-text)] dark:text-[color:var(--wp-text)] lg:text-3xl">
               Výpověď smlouvy
             </h1>
-            <p className="mt-1.5 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
+            <p className="mt-1.5 max-w-2xl text-sm font-medium leading-6 text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text-secondary)]">
               Vyberte klienta, instituci a typ ukončení. V posledním kroku zkontrolujte náhled dopisu před dokončením.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <Link
               href={cancelHref}
-              className="hidden h-9 shrink-0 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 transition hover:bg-slate-50 dark:border-[color:var(--wp-border-strong)] dark:bg-transparent dark:text-[color:var(--wp-text)] dark:hover:bg-[color:var(--wp-surface-muted)] shadow-sm md:inline-flex"
+              className="hidden h-9 shrink-0 items-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-4 text-sm font-bold text-[color:var(--wp-text-secondary)] transition hover:bg-[color:var(--wp-main-scroll-bg)] dark:border-[color:var(--wp-border-strong)] dark:bg-transparent dark:text-[color:var(--wp-text)] dark:hover:bg-[color:var(--wp-surface-muted)] shadow-sm md:inline-flex"
             >
               Zrušit
             </Link>
@@ -998,7 +998,7 @@ export function TerminationIntakeWizard({
         </div>
 
         {/* Mobilní stav — kompaktní pás (stejná logika jako chip na desktopu) */}
-        <div className="shrink-0 border-b border-slate-100 bg-[#f8fafc] pb-2 pt-1 dark:border-[color:var(--wp-surface-card-border)] dark:bg-transparent md:hidden">
+        <div className="shrink-0 border-b border-[color:var(--wp-surface-card-border)] bg-[#f8fafc] pb-2 pt-1 dark:border-[color:var(--wp-surface-card-border)] dark:bg-transparent md:hidden">
           <div
             className={cx(
               "flex items-center gap-3 rounded-xl border px-3 py-2.5 shadow-sm",
@@ -1026,7 +1026,7 @@ export function TerminationIntakeWizard({
         ) : null}
 
         {partialRequestId ? (
-          <p className="text-xs text-slate-400 font-mono dark:text-[color:var(--wp-text-muted)]">Koncept: {partialRequestId}</p>
+          <p className="text-xs text-[color:var(--wp-text-tertiary)] font-mono dark:text-[color:var(--wp-text-muted)]">Koncept: {partialRequestId}</p>
         ) : null}
 
         {partialSavedOk ? (
@@ -1107,7 +1107,7 @@ export function TerminationIntakeWizard({
           className="space-y-6"
         >
           {/* Hlavní formulářový panel */}
-          <div className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] sm:p-8 lg:p-10">
+          <div className="rounded-[32px] border border-[color:var(--wp-surface-card-border)] bg-white p-6 shadow-sm dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] sm:p-8 lg:p-10">
             {wizardStep === 0 ? (
               <div className="space-y-6">
                 {/* Source karty — mobil: horizontální snap (dle mocku); desktop: mřížka */}
@@ -1117,10 +1117,10 @@ export function TerminationIntakeWizard({
                     disabled={prefill.mode !== "crm"}
                     onClick={() => setSourceCard("crm")}
                     className={cx(
-                      "min-w-[min(85vw,20rem)] shrink-0 snap-center rounded-[24px] border-2 p-6 text-left transition duration-200 group min-h-[44px] md:min-w-0 md:w-auto md:shrink",
+                      "min-w-[min(85vw,20rem)] shrink-0 snap-center rounded-[var(--wp-radius-card)] border-2 p-6 text-left transition duration-200 group min-h-[44px] md:min-w-0 md:w-auto md:shrink",
                       sourceCard === "crm"
                         ? "border-indigo-500 bg-indigo-50/30 shadow-md dark:border-indigo-400 dark:bg-indigo-950/40"
-                        : "border-slate-100 bg-white hover:border-indigo-200 hover:bg-slate-50 dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] dark:hover:border-indigo-400/50 dark:hover:bg-[color:var(--wp-surface-muted)]",
+                        : "border-[color:var(--wp-surface-card-border)] bg-white hover:border-indigo-200 hover:bg-[color:var(--wp-main-scroll-bg)] dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] dark:hover:border-indigo-400/50 dark:hover:bg-[color:var(--wp-surface-muted)]",
                       prefill.mode !== "crm" && "opacity-50 cursor-not-allowed",
                     )}
                   >
@@ -1129,16 +1129,16 @@ export function TerminationIntakeWizard({
                         "mb-4 flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
                         sourceCard === "crm"
                           ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/25 dark:text-indigo-200"
-                          : "bg-slate-100 text-slate-500 group-hover:text-indigo-500 dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)] dark:group-hover:text-indigo-300",
+                          : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] group-hover:text-indigo-500 dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)] dark:group-hover:text-indigo-300",
                       )}
                     >
                       <FileText className="h-5 w-5" />
                     </div>
                     <div className={cx(
                       "text-base font-bold mb-1",
-                      sourceCard === "crm" ? "text-indigo-900 dark:text-indigo-100" : "text-slate-800 dark:text-[color:var(--wp-text)]",
+                      sourceCard === "crm" ? "text-indigo-900 dark:text-indigo-100" : "text-[color:var(--wp-text)] dark:text-[color:var(--wp-text)]",
                     )}>Vybrat z CRM</div>
-                    <div className="text-xs font-medium text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
+                    <div className="text-xs font-medium text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text-secondary)]">
                       Nejrychlejší cesta s předvyplněním údajů.
                     </div>
                   </button>
@@ -1146,10 +1146,10 @@ export function TerminationIntakeWizard({
                     type="button"
                     onClick={() => setSourceCard("upload")}
                     className={cx(
-                      "min-w-[min(85vw,20rem)] shrink-0 snap-center rounded-[24px] border-2 p-6 text-left transition duration-200 group min-h-[44px] md:min-w-0 md:w-auto md:shrink",
+                      "min-w-[min(85vw,20rem)] shrink-0 snap-center rounded-[var(--wp-radius-card)] border-2 p-6 text-left transition duration-200 group min-h-[44px] md:min-w-0 md:w-auto md:shrink",
                       sourceCard === "upload"
                         ? "border-indigo-500 bg-indigo-50/30 shadow-md dark:border-indigo-400 dark:bg-indigo-950/40"
-                        : "border-slate-100 bg-white hover:border-indigo-200 hover:bg-slate-50 dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] dark:hover:border-indigo-400/50 dark:hover:bg-[color:var(--wp-surface-muted)]",
+                        : "border-[color:var(--wp-surface-card-border)] bg-white hover:border-indigo-200 hover:bg-[color:var(--wp-main-scroll-bg)] dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] dark:hover:border-indigo-400/50 dark:hover:bg-[color:var(--wp-surface-muted)]",
                     )}
                   >
                     <div
@@ -1157,16 +1157,16 @@ export function TerminationIntakeWizard({
                         "mb-4 flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
                         sourceCard === "upload"
                           ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/25 dark:text-indigo-200"
-                          : "bg-slate-100 text-slate-500 group-hover:text-indigo-500 dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)] dark:group-hover:text-indigo-300",
+                          : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] group-hover:text-indigo-500 dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)] dark:group-hover:text-indigo-300",
                       )}
                     >
                       <Upload className="h-5 w-5" />
                     </div>
                     <div className={cx(
                       "text-base font-bold mb-1",
-                      sourceCard === "upload" ? "text-indigo-900 dark:text-indigo-100" : "text-slate-800 dark:text-[color:var(--wp-text)]",
+                      sourceCard === "upload" ? "text-indigo-900 dark:text-indigo-100" : "text-[color:var(--wp-text)] dark:text-[color:var(--wp-text)]",
                     )}>Nahrát smlouvu</div>
-                    <div className="text-xs font-medium text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
+                    <div className="text-xs font-medium text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text-secondary)]">
                       AI přečte instituci, číslo smlouvy a pojistníka.
                     </div>
                   </button>
@@ -1174,10 +1174,10 @@ export function TerminationIntakeWizard({
                     type="button"
                     onClick={() => setSourceCard("manual")}
                     className={cx(
-                      "min-w-[min(85vw,20rem)] shrink-0 snap-center rounded-[24px] border-2 p-6 text-left transition duration-200 group min-h-[44px] md:min-w-0 md:w-auto md:shrink",
+                      "min-w-[min(85vw,20rem)] shrink-0 snap-center rounded-[var(--wp-radius-card)] border-2 p-6 text-left transition duration-200 group min-h-[44px] md:min-w-0 md:w-auto md:shrink",
                       sourceCard === "manual"
                         ? "border-indigo-500 bg-indigo-50/30 shadow-md dark:border-indigo-400 dark:bg-indigo-950/40"
-                        : "border-slate-100 bg-white hover:border-indigo-200 hover:bg-slate-50 dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] dark:hover:border-indigo-400/50 dark:hover:bg-[color:var(--wp-surface-muted)]",
+                        : "border-[color:var(--wp-surface-card-border)] bg-white hover:border-indigo-200 hover:bg-[color:var(--wp-main-scroll-bg)] dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] dark:hover:border-indigo-400/50 dark:hover:bg-[color:var(--wp-surface-muted)]",
                     )}
                   >
                     <div
@@ -1185,16 +1185,16 @@ export function TerminationIntakeWizard({
                         "mb-4 flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
                         sourceCard === "manual"
                           ? "bg-indigo-600 text-white shadow-sm dark:bg-indigo-500 dark:text-white"
-                          : "bg-slate-100 text-slate-500 group-hover:text-indigo-500 dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)] dark:group-hover:text-indigo-300",
+                          : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] group-hover:text-indigo-500 dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)] dark:group-hover:text-indigo-300",
                       )}
                     >
                       <Building2 className="h-5 w-5" />
                     </div>
                     <div className={cx(
                       "text-base font-bold mb-1",
-                      sourceCard === "manual" ? "text-indigo-900 dark:text-indigo-100" : "text-slate-800 dark:text-[color:var(--wp-text)]",
+                      sourceCard === "manual" ? "text-indigo-900 dark:text-indigo-100" : "text-[color:var(--wp-text)] dark:text-[color:var(--wp-text)]",
                     )}>Vyplnit ručně</div>
-                    <div className="text-xs font-medium text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
+                    <div className="text-xs font-medium text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text-secondary)]">
                       Pro cizí smlouvy nebo nový případ.
                     </div>
                   </button>
@@ -1249,12 +1249,12 @@ export function TerminationIntakeWizard({
                     <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-indigo-500 dark:text-indigo-300" />
                     <div>
                       <div className="text-sm font-bold text-indigo-900 dark:text-indigo-100">Adresa pro odeslání</div>
-                      <div className="mt-1 text-sm font-medium text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
+                      <div className="mt-1 text-sm font-medium text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text-secondary)]">
                         {deliveryAddressLine ??
                           "Vyberte instituci ze seznamu nebo zadejte název — přesná adresa se doplní z registru po vyhodnocení."}
                       </div>
                       {registryDeliveryMeta?.channelHint ? (
-                        <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-[color:var(--wp-text-muted)]">
+                        <div className="mt-2 text-xs leading-5 text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text-muted)]">
                           Kanál: {terminationDeliveryChannelLabel(registryDeliveryMeta.channelHint)}
                         </div>
                       ) : null}
@@ -1276,7 +1276,7 @@ export function TerminationIntakeWizard({
                       }}
                     />
                     <div
-                      className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/70 p-6 cursor-pointer hover:border-violet-300 hover:bg-slate-50 transition dark:border-[color:var(--wp-border-strong)] dark:bg-[color:var(--wp-surface-muted)] dark:hover:border-violet-400/55 dark:hover:bg-[color:var(--wp-surface-raised)]"
+                      className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]/70 p-6 cursor-pointer hover:border-violet-300 hover:bg-[color:var(--wp-main-scroll-bg)] transition dark:border-[color:var(--wp-border-strong)] dark:bg-[color:var(--wp-surface-muted)] dark:hover:border-violet-400/55 dark:hover:bg-[color:var(--wp-surface-raised)]"
                       onClick={() => fileInputRef.current?.click()}
                       onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
                       role="button"
@@ -1288,8 +1288,8 @@ export function TerminationIntakeWizard({
                         if (f) void onFileSelected(f);
                       }}
                     >
-                      <Upload className="h-8 w-8 text-slate-400 dark:text-[color:var(--wp-text-muted)]" />
-                      <div className="text-sm font-medium text-slate-600 dark:text-[color:var(--wp-text)]">
+                      <Upload className="h-8 w-8 text-[color:var(--wp-text-tertiary)] dark:text-[color:var(--wp-text-muted)]" />
+                      <div className="text-sm font-medium text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text)]">
                         {uploadBusy || aiExtractBusy
                           ? uploadBusy
                             ? "Nahrávám soubor…"
@@ -1298,10 +1298,10 @@ export function TerminationIntakeWizard({
                             ? "Soubor nahrán — klikněte pro nový"
                             : "Přetáhněte soubor nebo klikněte pro výběr"}
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-[color:var(--wp-text-secondary)]">PDF nebo obrázek, max 20 MB</div>
+                      <div className="text-xs text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text-secondary)]">PDF nebo obrázek, max 20 MB</div>
                     </div>
                     {sourceDocumentId.trim() ? (
-                      <p className="text-xs text-slate-500 font-mono">
+                      <p className="text-xs text-[color:var(--wp-text-secondary)] font-mono">
                         Dok: {sourceDocumentId.slice(0, 16)}…
                       </p>
                     ) : null}
@@ -1323,12 +1323,12 @@ export function TerminationIntakeWizard({
                   </div>
                 )}
 
-                <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 cursor-pointer min-h-[44px] hover:bg-slate-100 transition mt-2">
+                <label className="flex items-center gap-3 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]/80 px-4 py-3 text-sm text-[color:var(--wp-text)] cursor-pointer min-h-[44px] hover:bg-[color:var(--wp-surface-muted)] transition mt-2">
                   <input
                     type="checkbox"
                     checked={uncertainInsurer}
                     onChange={(e) => setUncertainInsurer(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 accent-indigo-500"
+                    className="h-4 w-4 rounded border-[color:var(--wp-surface-card-border)] accent-indigo-500"
                   />
                   Nejsem si jistý institucí nebo adresou, chci to poslat do kontroly
                 </label>
@@ -1338,8 +1338,8 @@ export function TerminationIntakeWizard({
             {wizardStep === 1 ? (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-black text-slate-900 mb-1">Režim a termín ukončení</h2>
-                  <p className="mt-1 text-sm font-medium text-slate-500">
+                  <h2 className="text-xl font-black text-[color:var(--wp-text)] mb-1">Režim a termín ukončení</h2>
+                  <p className="mt-1 text-sm font-medium text-[color:var(--wp-text-secondary)]">
                     Zvolte segment a způsob ukončení. Datum účinnosti lze doplnit podle potřeby.
                   </p>
                 </div>
@@ -1353,7 +1353,7 @@ export function TerminationIntakeWizard({
                       className={`${TERMINATION_FIELD_CLASS} appearance-none cursor-pointer`}
                     >
                       {segments.map((s) => (
-                        <option key={s} value={s} className="bg-white text-slate-800">
+                        <option key={s} value={s} className="bg-white text-[color:var(--wp-text)]">
                           {segmentLabel(s)}
                         </option>
                       ))}
@@ -1374,7 +1374,7 @@ export function TerminationIntakeWizard({
                       {MODE_OPTIONS.filter((m) =>
                         isTerminationModeAllowedForSegment(m.value, productSegment),
                       ).map((m) => (
-                        <option key={m.value} value={m.value} className="bg-white text-slate-800">
+                        <option key={m.value} value={m.value} className="bg-white text-[color:var(--wp-text)]">
                           {m.label}
                         </option>
                       ))}
@@ -1430,18 +1430,18 @@ export function TerminationIntakeWizard({
                             : "Navržené datum účinnosti (náhled)"}
                         </div>
                         {terminationMode === "within_two_months_from_inception" ? (
-                          <div className="mt-1 space-y-1 text-base font-black text-slate-900">
+                          <div className="mt-1 space-y-1 text-base font-black text-[color:var(--wp-text)]">
                             <div>
-                              <span className="text-sm font-medium text-slate-500">Datum podání: </span>
+                              <span className="text-sm font-medium text-[color:var(--wp-text-secondary)]">Datum podání: </span>
                               {submissionPreviewLabel}
                             </div>
                             <div>
-                              <span className="text-sm font-medium text-slate-500">Účinnost (pravidla): </span>
+                              <span className="text-sm font-medium text-[color:var(--wp-text-secondary)]">Účinnost (pravidla): </span>
                               {effectivePreviewLabel}
                             </div>
                           </div>
                         ) : (
-                          <div className="mt-1 text-lg font-black text-slate-900">{effectivePreviewLabel}</div>
+                          <div className="mt-1 text-lg font-black text-[color:var(--wp-text)]">{effectivePreviewLabel}</div>
                         )}
                         <div className="mt-2 text-xs leading-5 text-purple-700/70">
                           {terminationMode === "end_of_insurance_period" && contractAnniversaryDate.trim()
@@ -1476,14 +1476,14 @@ export function TerminationIntakeWizard({
             {wizardStep === 2 ? (
               <div className="space-y-6">
                 {/* Detail fields: policyholder, place, note */}
-                <details className="rounded-2xl border border-slate-200">
-                  <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-900 select-none hover:bg-slate-50 rounded-2xl transition">
+                <details className="rounded-2xl border border-[color:var(--wp-surface-card-border)]">
+                  <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-[color:var(--wp-text)] select-none hover:bg-[color:var(--wp-main-scroll-bg)] rounded-2xl transition">
                     Upřesnit pojistníka a poznámku
                   </summary>
                   <div className="space-y-4 p-4 pt-2">
-                    <fieldset className="rounded-2xl border border-slate-200 p-3 space-y-2">
-                      <legend className="text-xs font-medium text-slate-600 px-1">Pojistník v dopise</legend>
-                      <label className="flex items-center gap-2 text-sm min-h-[40px] cursor-pointer text-slate-700">
+                    <fieldset className="rounded-2xl border border-[color:var(--wp-surface-card-border)] p-3 space-y-2">
+                      <legend className="text-xs font-medium text-[color:var(--wp-text-secondary)] px-1">Pojistník v dopise</legend>
+                      <label className="flex items-center gap-2 text-sm min-h-[40px] cursor-pointer text-[color:var(--wp-text)]">
                         <input
                           type="radio"
                           name="ph-kind"
@@ -1493,7 +1493,7 @@ export function TerminationIntakeWizard({
                         />
                         Fyzická osoba (jméno z kontaktu)
                       </label>
-                      <label className="flex items-center gap-2 text-sm min-h-[40px] cursor-pointer text-slate-700">
+                      <label className="flex items-center gap-2 text-sm min-h-[40px] cursor-pointer text-[color:var(--wp-text)]">
                         <input
                           type="radio"
                           name="ph-kind"
@@ -1614,7 +1614,7 @@ export function TerminationIntakeWizard({
                 </div>
 
                 {previewSyncBusy ? (
-                  <p className="text-xs text-slate-500">Aktualizuji náhled…</p>
+                  <p className="text-xs text-[color:var(--wp-text-secondary)]">Aktualizuji náhled…</p>
                 ) : null}
 
                 {partialRequestId ? (
@@ -1658,7 +1658,7 @@ export function TerminationIntakeWizard({
                     }}
                   />
                 ) : (
-                  <div className="rounded-[28px] border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)]">
+                  <div className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-white p-8 text-center text-sm text-[color:var(--wp-text-secondary)] dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)]">
                     {previewSyncBusy ? "Připravuji koncept pro náhled…" : "Náhled bude k dispozici po uložení konceptu."}
                   </div>
                 )}
@@ -1676,7 +1676,7 @@ export function TerminationIntakeWizard({
 
       {/* Akční lišta — sticky v rámci kontejneru wizardu (SF6) */}
       <div
-        className="sticky bottom-0 z-20 mt-6 w-full border-t border-slate-200/80 bg-[#f8fafc]/90 backdrop-blur supports-[backdrop-filter]:bg-[#f8fafc]/75 dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-bg)]/85 dark:supports-[backdrop-filter]:bg-[color:var(--wp-bg)]/70"
+        className="sticky bottom-0 z-20 mt-6 w-full border-t border-[color:var(--wp-surface-card-border)]/80 bg-[#f8fafc]/90 backdrop-blur supports-[backdrop-filter]:bg-[#f8fafc]/75 dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-bg)]/85 dark:supports-[backdrop-filter]:bg-[color:var(--wp-bg)]/70"
         style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }}
       >
         <div className="mx-auto flex max-w-[1440px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10 xl:px-14">
@@ -1688,14 +1688,14 @@ export function TerminationIntakeWizard({
               type="button"
               disabled={wizardStep === 0}
               onClick={() => setWizardStep((s) => Math.max(0, s - 1))}
-              className="h-11 min-h-[44px] shrink-0 rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 dark:border-[color:var(--wp-border-strong)] dark:bg-transparent dark:text-[color:var(--wp-text)] dark:hover:bg-[color:var(--wp-surface-muted)] shadow-sm dark:shadow-none"
+              className="h-11 min-h-[44px] shrink-0 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-5 text-sm font-bold text-[color:var(--wp-text-secondary)] transition hover:bg-[color:var(--wp-main-scroll-bg)] disabled:opacity-40 dark:border-[color:var(--wp-border-strong)] dark:bg-transparent dark:text-[color:var(--wp-text)] dark:hover:bg-[color:var(--wp-surface-muted)] shadow-sm dark:shadow-none"
             >
               Zpět
             </button>
           </div>
           <Link
             href="/portal/terminations"
-            className="hidden sm:inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-[color:var(--wp-border-strong)] dark:bg-transparent dark:text-[color:var(--wp-text)] dark:hover:bg-[color:var(--wp-surface-muted)] shadow-sm dark:shadow-none"
+            className="hidden sm:inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-4 text-sm font-semibold text-[color:var(--wp-text-secondary)] transition hover:bg-[color:var(--wp-main-scroll-bg)] dark:border-[color:var(--wp-border-strong)] dark:bg-transparent dark:text-[color:var(--wp-text)] dark:hover:bg-[color:var(--wp-surface-muted)] shadow-sm dark:shadow-none"
           >
             <FileText className="h-4 w-4 shrink-0" />
             <span>Seznam výpovědí</span>
@@ -1745,7 +1745,7 @@ export function TerminationIntakeWizard({
                   type="button"
                   disabled={!canWrite || isPending || !partialRequestId || !advisorConfirmed}
                   onClick={() => onExportPdf()}
-                  className="inline-flex h-11 min-h-[44px] shrink-0 items-center gap-2 rounded-xl border border-slate-300 bg-white px-6 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 dark:border-[color:var(--wp-border-strong)] dark:bg-[color:var(--wp-surface-raised)] dark:text-[color:var(--wp-text)] dark:hover:bg-[color:var(--wp-surface-muted)]"
+                  className="inline-flex h-11 min-h-[44px] shrink-0 items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-6 text-sm font-bold text-[color:var(--wp-text)] shadow-sm transition hover:bg-[color:var(--wp-main-scroll-bg)] disabled:opacity-50 dark:border-[color:var(--wp-border-strong)] dark:bg-[color:var(--wp-surface-raised)] dark:text-[color:var(--wp-text)] dark:hover:bg-[color:var(--wp-surface-muted)]"
                 >
                   <span className="sm:hidden">PDF</span>
                   <span className="hidden sm:inline">Exportovat PDF</span>

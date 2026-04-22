@@ -139,15 +139,15 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
       onClick={resetAndClose}
     >
       <div
-        className="w-full max-w-[640px] bg-white rounded-[30px] border border-slate-100 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col client-scale-in"
+        className="w-full max-w-[640px] bg-white rounded-[30px] border border-[color:var(--wp-surface-card-border)] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col client-scale-in"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="px-6 sm:px-8 py-5 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
-          <h2 className="text-xl font-black text-slate-900">Nový požadavek na poradce</h2>
+        <div className="px-6 sm:px-8 py-5 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]/70 flex items-center justify-between">
+          <h2 className="text-xl font-black text-[color:var(--wp-text)]">Nový požadavek na poradce</h2>
           <button
             onClick={resetAndClose}
             aria-label="Zavřít modal"
-            className="p-2 rounded-full border border-slate-200 bg-white text-slate-500 hover:text-slate-800"
+            className="p-2 rounded-full border border-[color:var(--wp-surface-card-border)] bg-white text-[color:var(--wp-text-secondary)] hover:text-[color:var(--wp-text)]"
           >
             <X size={16} />
           </button>
@@ -156,7 +156,7 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
         <div className="p-6 sm:p-8 overflow-y-auto client-custom-scrollbar">
           {step === 1 && (
             <div className="space-y-5">
-              <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">
+              <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-[color:var(--wp-text-tertiary)]">
                 1. Co potřebujete vyřešit?
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -167,7 +167,7 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
                       setCategoryId(category.id);
                       setStep(2);
                     }}
-                    className="p-4 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-left font-bold text-slate-700 transition-all shadow-sm min-h-[54px]"
+                    className="p-4 rounded-2xl border border-[color:var(--wp-surface-card-border)] hover:border-indigo-400 hover:bg-indigo-50 text-left font-bold text-[color:var(--wp-text)] transition-all shadow-sm min-h-[54px]"
                   >
                     {category.label}
                   </button>
@@ -184,7 +184,7 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
               >
                 ← Zpět na kategorie
               </button>
-              <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">
+              <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-[color:var(--wp-text-tertiary)]">
                 2. Upřesněte: {selectedCategory.label}
               </h3>
               <div className="space-y-3">
@@ -196,10 +196,10 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
                       setRequestTitle(option.label);
                       setStep(3);
                     }}
-                    className="w-full p-4 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-left font-bold text-slate-700 transition-all shadow-sm flex justify-between items-center group min-h-[54px]"
+                    className="w-full p-4 rounded-2xl border border-[color:var(--wp-surface-card-border)] hover:border-indigo-400 hover:bg-indigo-50 text-left font-bold text-[color:var(--wp-text)] transition-all shadow-sm flex justify-between items-center group min-h-[54px]"
                   >
                     {option.label}
-                    <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-500" />
+                    <ChevronRight size={16} className="text-[color:var(--wp-text-tertiary)] group-hover:text-indigo-500" />
                   </button>
                 ))}
               </div>
@@ -214,32 +214,32 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
               >
                 ← Zpět na výběr
               </button>
-              <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">
+              <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-[color:var(--wp-text-tertiary)]">
                 3. Detaily požadavku
               </h3>
 
               <div>
-                <label className="text-xs text-slate-500 font-bold block mb-2">
+                <label className="text-xs text-[color:var(--wp-text-secondary)] font-bold block mb-2">
                   Název požadavku
                 </label>
                 <input
                   type="text"
                   value={requestTitle}
                   onChange={(event) => setRequestTitle(event.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all"
+                  className="w-full p-3 bg-[color:var(--wp-main-scroll-bg)] border border-[color:var(--wp-surface-card-border)] rounded-xl text-sm font-medium outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all"
                   placeholder="Např. Refinancování hypotéky"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-slate-500 font-bold block mb-2">
+                <label className="text-xs text-[color:var(--wp-text-secondary)] font-bold block mb-2">
                   Detailní popis
                 </label>
                                <textarea
                   rows={5}
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
-                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all resize-none"
+                  className="w-full p-4 bg-[color:var(--wp-main-scroll-bg)] border border-[color:var(--wp-surface-card-border)] rounded-2xl text-sm font-medium outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all resize-none"
                   placeholder="Upřesněte částku, termín nebo další kontext..."
                 />
               </div>
@@ -256,13 +256,13 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 hover:bg-slate-100 transition-colors"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] px-4 text-sm font-bold text-[color:var(--wp-text)] hover:bg-[color:var(--wp-main-scroll-bg)] transition-colors"
                 >
-                  <Paperclip size={16} className="shrink-0 text-slate-500" />
+                  <Paperclip size={16} className="shrink-0 text-[color:var(--wp-text-secondary)]" />
                   Přiložit soubor
                 </button>
                 {files.length > 0 ? (
-                  <p className="mt-2 text-xs text-slate-500">
+                  <p className="mt-2 text-xs text-[color:var(--wp-text-secondary)]">
                     {files.length === 1
                       ? `Vybrán soubor: ${files[0]?.name ?? ""}`
                       : `Vybrány soubory (${files.length})`}
@@ -291,8 +291,8 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
               <div className="w-24 h-24 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-sm">
                 <Check size={48} strokeWidth={3} />
               </div>
-              <h3 className="text-2xl font-black text-slate-900 mb-2">Požadavek odeslán</h3>
-              <p className="text-slate-500 font-medium mb-8 max-w-sm">
+              <h3 className="text-2xl font-black text-[color:var(--wp-text)] mb-2">Požadavek odeslán</h3>
+              <p className="text-[color:var(--wp-text-secondary)] font-medium mb-8 max-w-sm">
                 Požadavek je v poradenském portálu v pipeline. Pokud má váš tým v Aidvisoře nastavený e-mail pro
                 oznámení, odešle se také upozornění na schránku pro tým.
               </p>
@@ -303,7 +303,7 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
               )}
               <button
                 onClick={resetAndClose}
-                className="px-8 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+                className="px-8 py-3 bg-[color:var(--wp-surface-muted)] hover:bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text)] font-bold rounded-xl transition-colors"
               >
                 Zavřít okno
               </button>

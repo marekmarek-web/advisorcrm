@@ -34,7 +34,7 @@ export function ContactOpportunitiesPreview({
   const newDealHref = buildHref(contactId, baseQueryNoTab, "obchody", true);
 
   return (
-    <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+    <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
       <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50 flex items-center justify-between">
         <h2 className="text-lg font-black text-[color:var(--wp-text)] flex items-center gap-2">
           <Briefcase size={20} className="text-emerald-500" aria-hidden />

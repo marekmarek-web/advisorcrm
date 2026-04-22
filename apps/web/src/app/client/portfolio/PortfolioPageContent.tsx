@@ -93,10 +93,10 @@ function groupIconColors(g: PortfolioUiGroup): string {
     case "income_protection_life": return "bg-purple-100 text-purple-600";
     case "children": return "bg-pink-100 text-pink-600";
     case "property_liability": return "bg-blue-100 text-blue-600";
-    case "vehicles": return "bg-slate-200 text-slate-600";
+    case "vehicles": return "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]";
     case "travel": return "bg-sky-100 text-sky-600";
     case "business": return "bg-amber-100 text-amber-600";
-    default: return "bg-slate-100 text-slate-600";
+    default: return "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]";
   }
 }
 
@@ -183,7 +183,7 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
     st === "Aktivní"
       ? "bg-emerald-50 text-emerald-700 border-emerald-100"
       : st === "Ukončené"
-        ? "bg-slate-100 text-slate-500 border-slate-200"
+        ? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] border-[color:var(--wp-surface-card-border)]"
         : "bg-amber-50 text-amber-700 border-amber-100";
 
   const showLogo = !!logoPath && !logoError;
@@ -192,7 +192,7 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
   return (
     <article
       className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-shadow hover:shadow-md ${
-        expanded ? "border-indigo-200 ring-2 ring-indigo-50" : "border-slate-200"
+        expanded ? "border-indigo-200 ring-2 ring-indigo-50" : "border-[color:var(--wp-surface-card-border)]"
       }`}
     >
       {/* Header — always visible, clickable when detail available */}
@@ -220,7 +220,7 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
             />
           ) : (
             <div
-              className="h-11 w-11 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center text-[11px] font-black text-slate-600 shrink-0"
+              className="h-11 w-11 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] flex items-center justify-center text-[11px] font-black text-[color:var(--wp-text-secondary)] shrink-0"
               aria-hidden
             >
               {initials}
@@ -233,11 +233,11 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
           <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3 justify-between">
             {/* Left: name + partner */}
             <div className="min-w-0 flex-1">
-              <h4 className="font-black text-slate-900 text-[15px] leading-snug line-clamp-2">
+              <h4 className="font-black text-[color:var(--wp-text)] text-[15px] leading-snug line-clamp-2">
                 {contract.productName || "Produkt"}
               </h4>
-              <p className="text-xs text-slate-500 font-semibold mt-0.5 truncate flex items-center gap-1">
-                <Building2 size={11} className="shrink-0 text-slate-400" />
+              <p className="text-xs text-[color:var(--wp-text-secondary)] font-semibold mt-0.5 truncate flex items-center gap-1">
+                <Building2 size={11} className="shrink-0 text-[color:var(--wp-text-tertiary)]" />
                 {contract.partnerName || "—"}
               </p>
             </div>
@@ -248,7 +248,7 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
               >
                 {st}
               </span>
-              <span className="text-[15px] font-black text-slate-900 tabular-nums whitespace-nowrap">
+              <span className="text-[15px] font-black text-[color:var(--wp-text)] tabular-nums whitespace-nowrap">
                 {formatPortalPremiumLineCs(
                   contract.premiumAmount,
                   contract.premiumAnnual,
@@ -260,16 +260,16 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
 
           {/* Meta badges */}
           <div className="flex items-center gap-2 flex-wrap mt-2">
-            <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wide rounded-md bg-slate-100 text-slate-500">
+            <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wide rounded-md bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]">
               {p.segmentLabel}
             </span>
             {contract.contractNumber ? (
-              <span className="text-[10px] font-bold text-slate-400 font-mono">
+              <span className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] font-mono">
                 č.&nbsp;{contract.contractNumber}
               </span>
             ) : null}
             {contract.startDate ? (
-              <span className="text-[10px] font-medium text-slate-400">
+              <span className="text-[10px] font-medium text-[color:var(--wp-text-tertiary)]">
                 od&nbsp;{formatDisplayDateCs(contract.startDate) || contract.startDate}
               </span>
             ) : null}
@@ -282,7 +282,7 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
             className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all duration-200 shrink-0 ${
               expanded
                 ? "bg-indigo-600 text-white border-indigo-600"
-                : "bg-slate-50 text-slate-400 border-slate-200"
+                : "bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-tertiary)] border-[color:var(--wp-surface-card-border)]"
             }`}
             aria-hidden
           >
@@ -296,19 +296,19 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
 
       {/* Expanded detail */}
       {expanded && hasDetail && (
-        <div className="border-t border-slate-100 px-4 pb-5 sm:px-5 pt-4 space-y-4 bg-slate-50/40">
+        <div className="border-t border-[color:var(--wp-surface-card-border)] px-4 pb-5 sm:px-5 pt-4 space-y-4 bg-[color:var(--wp-main-scroll-bg)]/40">
           {/* Detail rows grid */}
           {detailRows.length > 0 && (
-            <div className="rounded-2xl border border-slate-200/90 bg-white shadow-sm overflow-hidden">
+            <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)]/90 bg-white shadow-sm overflow-hidden">
               {detailRows.map((row, idx) => (
                 <div
                   key={`${row.label}-${idx}`}
-                  className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6 px-4 py-3.5 border-b border-slate-100 last:border-b-0"
+                  className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6 px-4 py-3.5 border-b border-[color:var(--wp-surface-card-border)] last:border-b-0"
                 >
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 sm:w-[min(42%,14rem)] sm:shrink-0">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)] sm:w-[min(42%,14rem)] sm:shrink-0">
                     {row.label}
                   </span>
-                  <span className="text-sm font-bold text-slate-900 sm:text-right min-w-0 leading-snug break-words">
+                  <span className="text-sm font-bold text-[color:var(--wp-text)] sm:text-right min-w-0 leading-snug break-words">
                     {row.value}
                   </span>
                 </div>
@@ -319,18 +319,18 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
           {/* Persons */}
           {persons.length > 0 && (
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2">
                 Osoby ve smlouvě
               </p>
               <div className="space-y-1.5">
                 {persons.map((person, i) => (
-                  <div key={i} className="flex items-center gap-2.5 text-xs text-slate-700">
+                  <div key={i} className="flex items-center gap-2.5 text-xs text-[color:var(--wp-text)]">
                     <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-[11px] shrink-0">
                       {(person.name ?? "?").charAt(0).toUpperCase()}
                     </div>
                     <span className="font-semibold">{person.name || "—"}</span>
                     {person.role && (
-                      <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] bg-[color:var(--wp-surface-muted)] px-1.5 py-0.5 rounded">
                         {PERSON_ROLE_LABELS[person.role] ?? person.role}
                       </span>
                     )}
@@ -343,20 +343,20 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
           {/* Risks — tile grid (label + amount) */}
           {risks.length > 0 && (
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5 px-0.5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)] mb-2.5 px-0.5">
                 Rizika / krytí
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {risks.map((r, i) => (
                   <div
                     key={i}
-                    className="rounded-xl border border-slate-200/90 bg-white p-3 shadow-sm flex items-start justify-between gap-3"
+                    className="rounded-xl border border-[color:var(--wp-surface-card-border)]/90 bg-white p-3 shadow-sm flex items-start justify-between gap-3"
                   >
                     <div className="min-w-0">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-0.5">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-tertiary)] mb-0.5">
                         Krytí
                       </p>
-                      <p className="text-[13px] font-bold text-slate-800 leading-snug break-words">
+                      <p className="text-[13px] font-bold text-[color:var(--wp-text)] leading-snug break-words">
                         {r.label || "—"}
                       </p>
                     </div>
@@ -379,9 +379,9 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
               </p>
               <div className="space-y-2">
                 {dpsBreakdown.participant ? (
-                  <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+                  <div className="flex justify-between items-center text-xs font-bold text-[color:var(--wp-text)]">
                     <span>Vlastní vklad</span>
-                    <span className="tabular-nums text-slate-900">{dpsBreakdown.participant}</span>
+                    <span className="tabular-nums text-[color:var(--wp-text)]">{dpsBreakdown.participant}</span>
                   </div>
                 ) : null}
                 {dpsBreakdown.state ? (
@@ -531,25 +531,25 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractA
     <div className="space-y-8 client-fade-in">
       {/* Page title */}
       <div>
-        <h2 className="text-2xl sm:text-3xl font-display font-black text-slate-900 tracking-tight">
+        <h2 className="text-2xl sm:text-3xl font-display font-black text-[color:var(--wp-text)] tracking-tight">
           Moje portfolio
         </h2>
-        <p className="text-sm font-medium text-slate-500 mt-1.5">
+        <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] mt-1.5">
           Přehled produktů evidovaných vaším poradcem. Údaje odpovídají stavu smluv — žádné ukázkové hodnoty.
         </p>
       </div>
 
       {contracts.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 md:p-10 text-center space-y-4">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
+        <div className="bg-white rounded-2xl border border-[color:var(--wp-surface-card-border)] shadow-sm p-8 md:p-10 text-center space-y-4">
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-[color:var(--wp-surface-muted)] flex items-center justify-center text-[color:var(--wp-text-tertiary)]">
             <Briefcase size={28} />
           </div>
-          <p className="text-slate-700 font-semibold text-lg">Zatím zde nemáte zobrazené žádné produkty</p>
-          <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed">
+          <p className="text-[color:var(--wp-text)] font-semibold text-lg">Zatím zde nemáte zobrazené žádné produkty</p>
+          <p className="text-[color:var(--wp-text-secondary)] text-sm max-w-md mx-auto leading-relaxed">
             Jakmile váš poradce doplní a zveřejní smlouvy v klientské zóně, objeví se zde přehledně podle skupin —
             investice, úvěry, pojištění a další.
           </p>
-          <p className="text-slate-400 text-xs">
+          <p className="text-[color:var(--wp-text-tertiary)] text-xs">
             Máte dotaz? Napište poradci přes Zprávy nebo vytvořte požadavek z hlavní stránky portálu.
           </p>
         </div>
@@ -559,7 +559,7 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractA
           <section aria-label="Souhrn portfolia">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               {/* Tvorba rezerv */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-5 relative overflow-hidden">
+              <div className="bg-white rounded-2xl border border-[color:var(--wp-surface-card-border)] shadow-sm p-4 md:p-5 relative overflow-hidden">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                     <TrendingUp size={14} />
@@ -568,15 +568,15 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractA
                     Tvorba rezerv
                   </p>
                 </div>
-                <p className="text-[22px] font-black text-slate-900 leading-none tabular-nums">
+                <p className="text-[22px] font-black text-[color:var(--wp-text)] leading-none tabular-nums">
                   {metrics.monthlyInvestments.toLocaleString("cs-CZ")} Kč
                 </p>
-                <p className="text-[10px] font-bold text-slate-400 mt-1">měsíčně</p>
+                <p className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] mt-1">měsíčně</p>
                 <div className="absolute -right-3 -bottom-3 w-20 h-20 bg-emerald-50 rounded-full blur-2xl pointer-events-none" />
               </div>
 
               {/* Ochrana — měsíčně */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-5 relative overflow-hidden">
+              <div className="bg-white rounded-2xl border border-[color:var(--wp-surface-card-border)] shadow-sm p-4 md:p-5 relative overflow-hidden">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
                     <Shield size={14} />
@@ -585,16 +585,16 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractA
                     Ochrana
                   </p>
                 </div>
-                <p className="text-[22px] font-black text-slate-900 leading-none tabular-nums">
+                <p className="text-[22px] font-black text-[color:var(--wp-text)] leading-none tabular-nums">
                   {metrics.monthlyInsurancePremiums.toLocaleString("cs-CZ")} Kč
                 </p>
-                <p className="text-[10px] font-bold text-slate-400 mt-1">měsíční pojistné</p>
+                <p className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] mt-1">měsíční pojistné</p>
                 <div className="absolute -right-3 -bottom-3 w-20 h-20 bg-purple-50 rounded-full blur-2xl pointer-events-none" />
               </div>
 
               {/* Roční pojistné */}
               {annualInsurance > 0 && (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-5 relative overflow-hidden">
+                <div className="bg-white rounded-2xl border border-[color:var(--wp-surface-card-border)] shadow-sm p-4 md:p-5 relative overflow-hidden">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
                       <Shield size={14} />
@@ -603,17 +603,17 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractA
                       Roční pojistné
                     </p>
                   </div>
-                  <p className="text-[22px] font-black text-slate-900 leading-none tabular-nums">
+                  <p className="text-[22px] font-black text-[color:var(--wp-text)] leading-none tabular-nums">
                     {annualInsurance.toLocaleString("cs-CZ")} Kč
                   </p>
-                  <p className="text-[10px] font-bold text-slate-400 mt-1">ročně</p>
+                  <p className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] mt-1">ročně</p>
                   <div className="absolute -right-3 -bottom-3 w-20 h-20 bg-violet-50 rounded-full blur-2xl pointer-events-none" />
                 </div>
               )}
 
               {/* Závazky / Položky */}
               {metrics.totalLoanPrincipal > 0 ? (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-5 relative overflow-hidden">
+                <div className="bg-white rounded-2xl border border-[color:var(--wp-surface-card-border)] shadow-sm p-4 md:p-5 relative overflow-hidden">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
                       <Home size={14} />
@@ -622,14 +622,14 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractA
                       Závazky
                     </p>
                   </div>
-                  <p className="text-[22px] font-black text-slate-900 leading-none tabular-nums">
+                  <p className="text-[22px] font-black text-[color:var(--wp-text)] leading-none tabular-nums">
                     {metrics.totalLoanPrincipal.toLocaleString("cs-CZ")} Kč
                   </p>
-                  <p className="text-[10px] font-bold text-slate-400 mt-1">jistiny úvěrů</p>
+                  <p className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] mt-1">jistiny úvěrů</p>
                   <div className="absolute -right-3 -bottom-3 w-20 h-20 bg-rose-50 rounded-full blur-2xl pointer-events-none" />
                 </div>
               ) : (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-5 relative overflow-hidden">
+                <div className="bg-white rounded-2xl border border-[color:var(--wp-surface-card-border)] shadow-sm p-4 md:p-5 relative overflow-hidden">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
                       <Briefcase size={14} />
@@ -638,15 +638,15 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractA
                       Položky
                     </p>
                   </div>
-                  <p className="text-[22px] font-black text-slate-900 leading-none tabular-nums">
+                  <p className="text-[22px] font-black text-[color:var(--wp-text)] leading-none tabular-nums">
                     {metrics.activeContractCount}
                   </p>
-                  <p className="text-[10px] font-bold text-slate-400 mt-1">v přehledu</p>
+                  <p className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] mt-1">v přehledu</p>
                   <div className="absolute -right-3 -bottom-3 w-20 h-20 bg-indigo-50 rounded-full blur-2xl pointer-events-none" />
                 </div>
               )}
             </div>
-            <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
+            <p className="text-[10px] text-[color:var(--wp-text-tertiary)] mt-2 leading-relaxed">
               Souhrn vychází z aktivních smluv. Ukončené smlouvy jsou zobrazeny v přehledu níže.
             </p>
           </section>
@@ -662,13 +662,13 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractA
                   return (
                     <div
                       key={gk}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm snap-center shrink-0"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-1.5 text-xs font-bold text-[color:var(--wp-text)] shadow-sm snap-center shrink-0"
                     >
                       <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${colors}`}>
                         <Icon size={11} />
                       </div>
                       <span className="whitespace-nowrap">{PORTFOLIO_GROUP_LABELS[gk]}</span>
-                      <span className="text-slate-400 font-black tabular-nums">{n}</span>
+                      <span className="text-[color:var(--wp-text-tertiary)] font-black tabular-nums">{n}</span>
                     </div>
                   );
                 })}
@@ -679,10 +679,10 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractA
           {/* ── B2. Coverage projection (evidence-based, informative only) ─── */}
           <section aria-label="Přehled evidovaných oblastí">
             <div className="flex items-baseline justify-between mb-2">
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-500">
+              <h3 className="text-sm font-black uppercase tracking-wider text-[color:var(--wp-text-secondary)]">
                 Přehled evidovaných oblastí
               </h3>
-              <p className="text-[10px] text-slate-400 font-medium">
+              <p className="text-[10px] text-[color:var(--wp-text-tertiary)] font-medium">
                 Pouze informativní — odráží stav v evidenci poradce
               </p>
             </div>
@@ -695,18 +695,18 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractA
                   <div
                     key={group}
                     className={`bg-white rounded-2xl border p-3 md:p-4 flex items-start gap-2.5 transition-colors ${
-                      covered ? "border-slate-200" : "border-dashed border-slate-200"
+                      covered ? "border-[color:var(--wp-surface-card-border)]" : "border-dashed border-[color:var(--wp-surface-card-border)]"
                     }`}
                   >
                     <div
                       className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                        covered ? colors : "bg-slate-50 text-slate-300"
+                        covered ? colors : "bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-tertiary)]"
                       }`}
                     >
                       <Icon size={14} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-bold text-slate-700 leading-tight line-clamp-2">
+                      <p className="text-[11px] font-bold text-[color:var(--wp-text)] leading-tight line-clamp-2">
                         {PORTFOLIO_GROUP_LABELS[group]}
                       </p>
                       {covered ? (
@@ -714,12 +714,12 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractA
                           V evidenci
                         </p>
                       ) : (
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)] mt-1">
                           Bez evidence
                         </p>
                       )}
                       {covered && (risksCount > 0 || personsCount > 0) ? (
-                        <p className="text-[10px] text-slate-500 mt-1 leading-snug">
+                        <p className="text-[10px] text-[color:var(--wp-text-secondary)] mt-1 leading-snug">
                           {risksCount > 0 ? (
                             <span>
                               {risksCount} {risksCount === 1 ? "krytí" : "krytí"}
@@ -734,7 +734,7 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractA
                         </p>
                       ) : null}
                       {covered && count > 1 ? (
-                        <p className="text-[10px] text-slate-400 mt-0.5">{count} smluv</p>
+                        <p className="text-[10px] text-[color:var(--wp-text-tertiary)] mt-0.5">{count} smluv</p>
                       ) : null}
                     </div>
                   </div>
@@ -752,17 +752,17 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractA
             return (
               <section key={groupKey} className="space-y-3">
                 {/* Group header with separator */}
-                <div className="flex items-center gap-3 pb-3 border-b border-slate-200">
+                <div className="flex items-center gap-3 pb-3 border-b border-[color:var(--wp-surface-card-border)]">
                   <div
                     className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconColors}`}
                   >
                     <Icon size={17} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-black text-slate-900 leading-tight">
+                    <h3 className="text-base font-black text-[color:var(--wp-text)] leading-tight">
                       {PORTFOLIO_GROUP_LABELS[groupKey]}
                     </h3>
-                    <p className="text-[11px] text-slate-400 font-medium">
+                    <p className="text-[11px] text-[color:var(--wp-text-tertiary)] font-medium">
                       {items.length}{" "}
                       {items.length === 1 ? "produkt" : items.length < 5 ? "produkty" : "produktů"}
                     </p>
@@ -789,17 +789,17 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractA
           })}
 
           {anyFvShown ? (
-            <p className="text-[11px] text-slate-500 leading-relaxed">
+            <p className="text-[11px] text-[color:var(--wp-text-secondary)] leading-relaxed">
               U investičních a penzijních produktů může být uveden odhad budoucí hodnoty zjednodušeným modelem.
               Vždy jde o nezávaznou ilustraci na základě údajů ve smlouvě — ne o příslib výnosu.
             </p>
           ) : null}
 
           {/* CTA footer */}
-          <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 md:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <section className="bg-white rounded-2xl border border-[color:var(--wp-surface-card-border)] shadow-sm p-5 md:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h3 className="text-base font-black text-slate-900">Potřebujete změnu nebo vysvětlení?</h3>
-              <p className="text-sm text-slate-500 mt-1 max-w-md">
+              <h3 className="text-base font-black text-[color:var(--wp-text)]">Potřebujete změnu nebo vysvětlení?</h3>
+              <p className="text-sm text-[color:var(--wp-text-secondary)] mt-1 max-w-md">
                 Portfolio odráží stav v evidenci poradce. Pro úpravy, dotazy nebo srovnání kontaktujte svého poradce.
               </p>
             </div>

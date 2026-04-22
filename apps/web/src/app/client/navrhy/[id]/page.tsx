@@ -45,7 +45,7 @@ export default async function ClientAdvisorProposalDetailPage({
       <div>
         <Link
           href="/client/navrhy"
-          className="inline-flex items-center gap-1 text-sm font-bold text-slate-500 hover:text-slate-700"
+          className="inline-flex items-center gap-1 text-sm font-bold text-[color:var(--wp-text-secondary)] hover:text-[color:var(--wp-text)]"
         >
           <ArrowLeft size={14} /> Zpět na návrhy
         </Link>
@@ -60,7 +60,7 @@ export default async function ClientAdvisorProposalDetailPage({
             <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">
               Návrh od vašeho poradce · {segmentLabel}
             </p>
-            <h1 className="text-2xl sm:text-3xl font-display font-black text-slate-900 leading-tight mt-1">
+            <h1 className="text-2xl sm:text-3xl font-display font-black text-[color:var(--wp-text)] leading-tight mt-1">
               {proposal.title}
             </h1>
             <div className="flex flex-wrap gap-2 mt-3">
@@ -68,7 +68,7 @@ export default async function ClientAdvisorProposalDetailPage({
                 {statusLabel}
               </span>
               {proposal.validUntil && (
-                <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md border bg-slate-50 text-slate-600 border-slate-200">
+                <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md border bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-secondary)] border-[color:var(--wp-surface-card-border)]">
                   Platí do {formatDateCs(proposal.validUntil)}
                 </span>
               )}
@@ -86,18 +86,18 @@ export default async function ClientAdvisorProposalDetailPage({
             </p>
             <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)]">
                   Aktuální stav
                 </p>
-                <p className="font-bold text-slate-900 mt-0.5">
+                <p className="font-bold text-[color:var(--wp-text)] mt-0.5">
                   {formatMoneyCs(proposal.currentAnnualCost, proposal.currency)} / rok
                 </p>
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)]">
                   Návrh poradce
                 </p>
-                <p className="font-bold text-slate-900 mt-0.5">
+                <p className="font-bold text-[color:var(--wp-text)] mt-0.5">
                   {formatMoneyCs(proposal.proposedAnnualCost, proposal.currency)} / rok
                 </p>
               </div>
@@ -107,10 +107,10 @@ export default async function ClientAdvisorProposalDetailPage({
 
         {proposal.summary && (
           <div>
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1">
+            <p className="text-xs font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-1">
               Shrnutí od poradce
             </p>
-            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+            <p className="text-sm text-[color:var(--wp-text)] whitespace-pre-wrap leading-relaxed">
               {proposal.summary}
             </p>
           </div>
@@ -118,19 +118,19 @@ export default async function ClientAdvisorProposalDetailPage({
 
         {proposal.benefits && proposal.benefits.length > 0 && (
           <div>
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2">
+            <p className="text-xs font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-2">
               Co poradce považuje za přínos
             </p>
             <ul className="space-y-2">
               {proposal.benefits.map((b, i) => (
                 <li
                   key={i}
-                  className="flex items-start gap-2 text-sm text-slate-700 leading-relaxed"
+                  className="flex items-start gap-2 text-sm text-[color:var(--wp-text)] leading-relaxed"
                 >
                   <CheckCircle2 size={16} className="text-emerald-600 mt-0.5 shrink-0" />
                   <span>
                     <span className="font-bold">{b.label}</span>
-                    {b.delta ? <span className="text-slate-500"> — {b.delta}</span> : null}
+                    {b.delta ? <span className="text-[color:var(--wp-text-secondary)]"> — {b.delta}</span> : null}
                   </span>
                 </li>
               ))}
@@ -138,7 +138,7 @@ export default async function ClientAdvisorProposalDetailPage({
           </div>
         )}
 
-        <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600 leading-relaxed">
+        <div className="rounded-xl bg-[color:var(--wp-main-scroll-bg)] border border-[color:var(--wp-surface-card-border)] p-4 text-xs text-[color:var(--wp-text-secondary)] leading-relaxed">
           Tento návrh připravil ručně váš poradce jako nezávazné porovnání pro vaši informaci.
           Nejde o automatické doporučení platformy Aidvisora a finální rozhodnutí je vždy na vás.
         </div>

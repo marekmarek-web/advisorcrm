@@ -401,10 +401,10 @@ export function TeamOverviewView({
     selectedUserId != null ? members.find((m) => m.userId === selectedUserId) : undefined;
 
   const peopleLideTab = (
-    <div className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
-      <div className="border-b border-slate-100 px-7 py-5">
-        <h2 className="text-[22px] font-black tracking-tight text-slate-950">Lidé v týmu</h2>
-        <p className="mt-1 text-[13px] text-slate-500">
+    <div className="overflow-hidden rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)]/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
+      <div className="border-b border-[color:var(--wp-surface-card-border)] px-7 py-5">
+        <h2 className="text-[22px] font-black tracking-tight text-[color:var(--wp-text)]">Lidé v týmu</h2>
+        <p className="mt-1 text-[13px] text-[color:var(--wp-text-secondary)]">
           Klikněte na řádek pro souhrn v pravém panelu — kariéra, coaching, CRM.
         </p>
       </div>
@@ -421,8 +421,8 @@ export function TeamOverviewView({
         />
       </div>
       {selectedMemberForStrip && visibleMembers.length > 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/90 px-7 py-3.5">
-          <p className="text-[12px] font-extrabold text-slate-600">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]/90 px-7 py-3.5">
+          <p className="text-[12px] font-extrabold text-[color:var(--wp-text-secondary)]">
             Vybráno:{" "}
             <span className="text-[#16192b]">{displayName(selectedMemberForStrip)}</span>
             {selectedOutsideFilter ? (
@@ -434,7 +434,7 @@ export function TeamOverviewView({
           <button
             type="button"
             onClick={() => selectMember(null)}
-            className="inline-flex h-9 items-center justify-center rounded-[10px] border border-slate-200 bg-white px-3.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 transition hover:bg-slate-50"
+            className="inline-flex h-9 items-center justify-center rounded-[10px] border border-[color:var(--wp-surface-card-border)] bg-white px-3.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[color:var(--wp-text-secondary)] transition hover:bg-[color:var(--wp-main-scroll-bg)]"
           >
             Zrušit výběr
           </button>
@@ -442,7 +442,7 @@ export function TeamOverviewView({
       ) : null}
       {visibleMembers.length === 0 ? (
         <div className="px-7 pb-8 text-center">
-          <p className="rounded-[20px] border border-slate-200/80 bg-slate-50/90 px-5 py-8 text-sm text-slate-500">
+          <p className="rounded-[20px] border border-[color:var(--wp-surface-card-border)]/80 bg-[color:var(--wp-main-scroll-bg)]/90 px-5 py-8 text-sm text-[color:var(--wp-text-secondary)]">
             {members.length === 0
               ? "V tomto rozsahu zatím nejsou žádní členové — zkuste jiný rozsah nebo doplnění hierarchie."
               : "Žádný člen neodpovídá filtru — upravte segment nebo vyhledávání."}
@@ -450,15 +450,15 @@ export function TeamOverviewView({
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto border-t border-slate-100">
+          <div className="overflow-x-auto border-t border-[color:var(--wp-surface-card-border)]">
             <table className="w-full min-w-[800px] text-left text-sm">
-              <thead className="bg-slate-50/80 text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
+              <thead className="bg-[color:var(--wp-main-scroll-bg)]/80 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-tertiary)]">
                 <tr>
-                  <th className="border-b border-slate-100 px-7 py-3.5">Jméno a role</th>
-                  <th className="border-b border-slate-100 px-4 py-3.5">Program / track</th>
-                  <th className="border-b border-slate-100 px-4 py-3.5">Produkce</th>
-                  <th className="border-b border-slate-100 px-4 py-3.5">Status</th>
-                  <th className="border-b border-slate-100 px-7 py-3.5 text-right">Akce</th>
+                  <th className="border-b border-[color:var(--wp-surface-card-border)] px-7 py-3.5">Jméno a role</th>
+                  <th className="border-b border-[color:var(--wp-surface-card-border)] px-4 py-3.5">Program / track</th>
+                  <th className="border-b border-[color:var(--wp-surface-card-border)] px-4 py-3.5">Produkce</th>
+                  <th className="border-b border-[color:var(--wp-surface-card-border)] px-4 py-3.5">Status</th>
+                  <th className="border-b border-[color:var(--wp-surface-card-border)] px-7 py-3.5 text-right">Akce</th>
                 </tr>
               </thead>
               <tbody>
@@ -469,50 +469,50 @@ export function TeamOverviewView({
                   return (
                     <tr
                       key={mem.userId}
-                      className={`cursor-pointer transition ${isActive ? "bg-slate-50" : "hover:bg-slate-50/60"}`}
+                      className={`cursor-pointer transition ${isActive ? "bg-[color:var(--wp-main-scroll-bg)]" : "hover:bg-[color:var(--wp-main-scroll-bg)]/60"}`}
                       onClick={() => selectMember(mem.userId)}
                     >
-                      <td className="border-b border-slate-100/80 px-7 py-4">
+                      <td className="border-b border-[color:var(--wp-surface-card-border)]/80 px-7 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-slate-100 text-sm font-black text-slate-700">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[color:var(--wp-surface-muted)] text-sm font-black text-[color:var(--wp-text)]">
                             {displayName(mem).slice(0, 1).toUpperCase()}
                           </div>
                           <div>
-                            <div className={`text-[14px] font-extrabold ${isActive ? "text-[#16192b]" : "text-slate-900"}`}>{displayName(mem)}</div>
-                            <div className="mt-0.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
+                            <div className={`text-[14px] font-extrabold ${isActive ? "text-[#16192b]" : "text-[color:var(--wp-text)]"}`}>{displayName(mem)}</div>
+                            <div className="mt-0.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[color:var(--wp-text-tertiary)]">
                               {mem.roleName}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="border-b border-slate-100/80 px-4 py-4">
-                        <div className="text-[12px] font-bold text-slate-800">
+                      <td className="border-b border-[color:var(--wp-surface-card-border)]/80 px-4 py-4">
+                        <div className="text-[12px] font-bold text-[color:var(--wp-text)]">
                           {ce ? formatCareerProgramLabel(ce.careerProgramId) : "—"}
                         </div>
-                        <div className="mt-0.5 text-[11px] text-slate-400">
+                        <div className="mt-0.5 text-[11px] text-[color:var(--wp-text-tertiary)]">
                           {ce ? formatCareerTrackLabel(ce.careerTrackId) : "—"} · {ce?.careerPositionLabel ?? "—"}
                         </div>
                       </td>
-                      <td className="border-b border-slate-100/80 px-4 py-4">
-                        <div className="text-[14px] font-black text-slate-950">
+                      <td className="border-b border-[color:var(--wp-surface-card-border)]/80 px-4 py-4">
+                        <div className="text-[14px] font-black text-[color:var(--wp-text)]">
                           {mm ? formatTeamOverviewProduction(mm.productionThisPeriod) : "—"}
                         </div>
-                        <div className="mt-0.5 text-[11px] text-slate-400">
+                        <div className="mt-0.5 text-[11px] text-[color:var(--wp-text-tertiary)]">
                           {ce ? poolColumnLabel(ce.careerProgramId) : "—"} · {mm != null ? mm.unitsThisPeriod : "—"} j.
                         </div>
                       </td>
-                      <td className="border-b border-slate-100/80 px-4 py-4">
+                      <td className="border-b border-[color:var(--wp-surface-card-border)]/80 px-4 py-4">
                         <span className={`inline-flex items-center rounded-[10px] border px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] ${
                           ce?.managerProgressLabel === "Na dobré cestě"
                             ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                             : ce?.managerProgressLabel === "Potřebuje pozornost"
                               ? "border-amber-200 bg-amber-50 text-amber-700"
-                              : "border-slate-200 bg-slate-50 text-slate-600"
+                              : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-secondary)]"
                         }`}>
                           {ce?.managerProgressLabel ?? "—"}
                         </span>
                       </td>
-                      <td className="border-b border-slate-100/80 px-7 py-4 text-right">
+                      <td className="border-b border-[color:var(--wp-surface-card-border)]/80 px-7 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
@@ -521,7 +521,7 @@ export function TeamOverviewView({
                               openMemberModal("progress", mem.userId);
                               selectMember(mem.userId);
                             }}
-                            className="inline-flex h-9 items-center justify-center rounded-[10px] bg-slate-100 px-3.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#16192b] transition hover:bg-slate-200"
+                            className="inline-flex h-9 items-center justify-center rounded-[10px] bg-[color:var(--wp-surface-muted)] px-3.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#16192b] transition hover:bg-[color:var(--wp-surface-muted)]"
                           >
                             Progres
                           </button>
@@ -532,7 +532,7 @@ export function TeamOverviewView({
                               openMemberModal("crm", mem.userId);
                               selectMember(mem.userId);
                             }}
-                            className="inline-flex h-9 items-center justify-center rounded-[10px] border border-slate-200 bg-white px-3.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700 transition hover:bg-slate-50"
+                            className="inline-flex h-9 items-center justify-center rounded-[10px] border border-[color:var(--wp-surface-card-border)] bg-white px-3.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[color:var(--wp-text)] transition hover:bg-[color:var(--wp-main-scroll-bg)]"
                           >
                             CRM
                           </button>

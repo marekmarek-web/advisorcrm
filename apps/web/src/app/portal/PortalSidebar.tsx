@@ -835,7 +835,7 @@ export function PortalSidebar({
               {paletteOpen && (
                 <div
                   role="menu"
-                  className="absolute bottom-full left-0 right-0 z-[100] mb-2 max-h-[min(70dvh,calc(100dvh-6rem))] overflow-y-auto rounded-[24px] border border-[color:var(--wp-theme-popover-border)] bg-[color:var(--wp-theme-popover-bg)] p-2 shadow-2xl backdrop-blur-2xl pointer-events-auto animate-theme-popover-in"
+                  className="absolute bottom-full left-0 right-0 z-[100] mb-2 max-h-[min(70dvh,calc(100dvh-6rem))] overflow-y-auto rounded-[var(--wp-radius-card)] border border-[color:var(--wp-theme-popover-border)] bg-[color:var(--wp-theme-popover-bg)] p-2 shadow-2xl backdrop-blur-2xl pointer-events-auto animate-theme-popover-in"
                 >
                   <p
                     className={clsx(

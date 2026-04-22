@@ -77,7 +77,7 @@ export function TeamOverviewPremiumShell({
                 <Link
                   href={teamManagementHref}
                   onClick={onTeamManagementOpen}
-                  className="inline-flex min-h-[40px] items-center gap-2 rounded-[12px] border border-slate-200 bg-white px-4 text-[10px] font-extrabold uppercase leading-none tracking-[0.16em] text-slate-700 shadow-sm transition hover:bg-slate-50"
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-[12px] border border-[color:var(--wp-surface-card-border)] bg-white px-4 text-[10px] font-extrabold uppercase leading-none tracking-[0.16em] text-[color:var(--wp-text)] shadow-sm transition hover:bg-[color:var(--wp-main-scroll-bg)]"
                 >
                   <UserPlus className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   Správa týmu
@@ -88,7 +88,7 @@ export function TeamOverviewPremiumShell({
                 type="button"
                 onClick={onRefresh}
                 disabled={loading}
-                className="inline-flex min-h-[40px] items-center gap-2 rounded-[12px] border border-slate-200 bg-white px-4 text-[10px] font-extrabold uppercase leading-none tracking-[0.16em] text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+                className="inline-flex min-h-[40px] items-center gap-2 rounded-[12px] border border-[color:var(--wp-surface-card-border)] bg-white px-4 text-[10px] font-extrabold uppercase leading-none tracking-[0.16em] text-[color:var(--wp-text)] shadow-sm transition hover:bg-[color:var(--wp-main-scroll-bg)] disabled:opacity-50"
                 aria-label="Obnovit data"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} aria-hidden />
@@ -99,7 +99,7 @@ export function TeamOverviewPremiumShell({
 
           {/* Line tabs */}
           <nav
-            className="mt-4 flex flex-wrap items-end gap-x-0.5 border-b border-slate-200/80"
+            className="mt-4 flex flex-wrap items-end gap-x-0.5 border-b border-[color:var(--wp-surface-card-border)]"
             aria-label="Sekce týmového přehledu"
           >
             {viewItems.map((item) => (
@@ -110,7 +110,7 @@ export function TeamOverviewPremiumShell({
                 className={`relative -mb-px min-h-[44px] border-b-2 border-transparent px-4 pb-3 pt-2 text-[13px] font-extrabold leading-snug tracking-tight transition-colors md:px-5 ${
                   viewActive === item
                     ? "border-[#16192b] text-[#16192b]"
-                    : "text-slate-400 hover:border-slate-200 hover:text-slate-700"
+                    : "text-[color:var(--wp-text-tertiary)] hover:border-[color:var(--wp-surface-card-border)] hover:text-[color:var(--wp-text)]"
                 }`}
               >
                 {item}
@@ -138,13 +138,13 @@ export function TeamOverviewPremiumShell({
               className="absolute inset-0"
               onClick={() => onMobileAsideClose?.()}
             />
-            <div className="relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[24px] border-t border-slate-200 bg-white shadow-[0_-18px_48px_rgba(15,23,42,0.2)]">
-              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Detail člena</span>
+            <div className="relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[24px] border-t border-[color:var(--wp-surface-card-border)] bg-white shadow-[var(--wp-shadow-card)]">
+              <div className="flex items-center justify-between border-b border-[color:var(--wp-surface-card-border)] px-4 py-3">
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-tertiary)]">Detail člena</span>
                 <button
                   type="button"
                   onClick={() => onMobileAsideClose?.()}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"
                   aria-label="Zavřít detail"
                 >
                   <X size={18} />
@@ -184,15 +184,15 @@ export function TeamOverviewPremiumBriefingDark({
     : "Tým je ve stabilním stavu. Pokračujte v pravidelném rytmu 1:1 a kariérních krocích.";
 
   return (
-    <section className="rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.055)]">
+    <section className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-white shadow-[var(--wp-shadow-card)]">
       {/* Hero briefing */}
-      <div className="border-b border-slate-100 px-7 pb-6 pt-7">
-        <div className="flex flex-wrap items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
+      <div className="border-b border-[color:var(--wp-surface-card-border)] px-7 pb-6 pt-7">
+        <div className="flex flex-wrap items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-tertiary)]">
           <span>{periodLabel}</span>
           <span>·</span>
           <span>{scopeLabel}</span>
         </div>
-        <h2 className="mt-2.5 text-[22px] font-black tracking-tight text-slate-950 leading-tight max-w-3xl">
+        <h2 className="mt-2.5 text-[22px] font-black tracking-tight text-[color:var(--wp-text)] leading-tight max-w-3xl">
           {heroLine}
         </h2>
       </div>
@@ -214,10 +214,10 @@ export function TeamOverviewPremiumBriefingDark({
           <p className="mt-2 text-[28px] font-black leading-none tabular-nums text-emerald-900">{stats.onTrack}</p>
           <p className="mt-1.5 text-[10px] font-semibold text-emerald-700/70">Kariérní evaluace</p>
         </div>
-        <div className="flex min-h-[108px] flex-col justify-between rounded-[20px] border border-slate-200/80 bg-slate-50/60 px-4 py-4">
-          <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Manažerská</p>
-          <p className="mt-2 text-[28px] font-black leading-none tabular-nums text-slate-900">{stats.managerial}</p>
-          <p className="mt-1.5 text-[10px] font-semibold text-slate-400">větev struktury</p>
+        <div className="flex min-h-[108px] flex-col justify-between rounded-[20px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] px-4 py-4">
+          <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-secondary)]">Manažerská</p>
+          <p className="mt-2 text-[28px] font-black leading-none tabular-nums text-[color:var(--wp-text)]">{stats.managerial}</p>
+          <p className="mt-1.5 text-[10px] font-semibold text-[color:var(--wp-text-tertiary)]">větev struktury</p>
         </div>
         <div className="flex min-h-[108px] flex-col justify-between rounded-[20px] border border-violet-200/70 bg-violet-50/60 px-4 py-4">
           <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-violet-700/80">Výkon</p>
@@ -228,18 +228,18 @@ export function TeamOverviewPremiumBriefingDark({
 
       {/* Priority briefing notes */}
       {priorityItems.length > 0 ? (
-        <div className="border-t border-slate-100 px-7 py-5">
-          <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
+        <div className="border-t border-[color:var(--wp-surface-card-border)] px-7 py-5">
+          <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-tertiary)]">
             Briefing — priority v rozsahu
           </p>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {priorityItems.slice(0, 6).map((item) => (
               <div
                 key={item.title}
-                className="rounded-[16px] border border-slate-200/80 bg-slate-50/70 px-4 py-3 transition hover:border-slate-300"
+                className="rounded-[16px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] px-4 py-3 transition hover:border-[color:var(--wp-surface-card-border)]"
               >
-                <p className="text-[12px] font-bold text-slate-900">{item.title}</p>
-                <p className="mt-1 text-[11px] leading-4 text-slate-500">{item.subtitle}</p>
+                <p className="text-[12px] font-bold text-[color:var(--wp-text)]">{item.title}</p>
+                <p className="mt-1 text-[11px] leading-4 text-[color:var(--wp-text-secondary)]">{item.subtitle}</p>
               </div>
             ))}
           </div>

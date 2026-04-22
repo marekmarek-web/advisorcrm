@@ -42,7 +42,7 @@ export function ConversationList({
   onRetryList: () => void;
 }) {
   return (
-    <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[28px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm">
+    <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm">
       <div className="shrink-0 border-b border-[color:var(--wp-surface-card-border)] p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-3">

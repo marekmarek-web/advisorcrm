@@ -34,7 +34,7 @@ const CONFIG: Record<MetricSource, { label: string; shortLabel: string; aria: st
     shortLabel: "A",
     aria: "Zdroj: automaticky z CRM",
     title: "Automaticky z CRM (contracts / events / activity_log).",
-    className: "border-slate-200 bg-slate-50 text-slate-500",
+    className: "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-secondary)]",
   },
   manual_confirmed: {
     label: "Manuáln\u011b",
@@ -62,6 +62,6 @@ const CONFIG: Record<MetricSource, { label: string; shortLabel: string; aria: st
     shortLabel: "!",
     aria: "Zdroj: data nejsou k dispozici",
     title: "Data za dan\u00e9 obdob\u00ed nejsou k dispozici. Dopl\u0148te manu\u00e1ln\u011b, nebo ignorujte.",
-    className: "border-dashed border-slate-300 bg-white text-slate-400",
+    className: "border-dashed border-[color:var(--wp-surface-card-border)] bg-white text-[color:var(--wp-text-tertiary)]",
   },
 };

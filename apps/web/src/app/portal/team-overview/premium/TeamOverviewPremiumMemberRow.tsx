@@ -43,21 +43,21 @@ export function TeamOverviewPremiumMemberRow({
     <button
       type="button"
       onClick={onClick}
-      className={`grid w-full grid-cols-12 items-center gap-3 rounded-[24px] border px-4 py-3 text-left transition ${
+      className={`grid w-full grid-cols-12 items-center gap-3 rounded-[var(--wp-radius-card)] border px-4 py-3 text-left transition ${
         active
           ? "border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-900/10"
-          : "border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/60"
+          : "border-[color:var(--wp-surface-card-border)]/80 bg-white hover:border-[color:var(--wp-surface-card-border)] hover:bg-[color:var(--wp-main-scroll-bg)]/60"
       }`}
     >
       <div className="col-span-5 min-w-0 lg:col-span-4">
         <div className="truncate text-sm font-semibold">{displayName(member)}</div>
-        <div className={`truncate text-xs ${active ? "text-slate-300" : "text-slate-500"}`}>{member.roleName}</div>
+        <div className={`truncate text-xs ${active ? "text-[color:var(--wp-text-tertiary)]" : "text-[color:var(--wp-text-secondary)]"}`}>{member.roleName}</div>
       </div>
       <div className="col-span-3 hidden lg:block xl:col-span-2">
         {ce ? (
           <PremiumPill tone={active ? "dark" : poolTone(ce.careerProgramId)}>{programLabel}</PremiumPill>
         ) : (
-          <span className={`text-xs ${active ? "text-slate-400" : "text-slate-500"}`}>—</span>
+          <span className={`text-xs ${active ? "text-[color:var(--wp-text-tertiary)]" : "text-[color:var(--wp-text-secondary)]"}`}>—</span>
         )}
       </div>
       <div className="col-span-2 hidden xl:block text-sm">{trackLabel}</div>
@@ -66,7 +66,7 @@ export function TeamOverviewPremiumMemberRow({
         {ce ? (
           <PremiumPill tone={active ? "dark" : evalTone(evalLabel)}>{evalLabel}</PremiumPill>
         ) : (
-          <span className={`text-xs ${active ? "text-slate-400" : "text-slate-500"}`}>—</span>
+          <span className={`text-xs ${active ? "text-[color:var(--wp-text-tertiary)]" : "text-[color:var(--wp-text-secondary)]"}`}>—</span>
         )}
       </div>
     </button>

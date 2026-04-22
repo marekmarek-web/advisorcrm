@@ -25,34 +25,34 @@ export function ExplanationDrawer({
       >
         <div className="mb-3 flex items-start justify-between gap-2">
           <div>
-            <div className="text-[11px] uppercase tracking-wider text-slate-500">{priorityLabel(r.priority)} \u00b7 {timingLabel(r.timing)}</div>
-            <h3 className="mt-1 text-base font-semibold text-slate-900">{r.title}</h3>
+            <div className="text-[11px] uppercase tracking-wider text-[color:var(--wp-text-secondary)]">{priorityLabel(r.priority)} \u00b7 {timingLabel(r.timing)}</div>
+            <h3 className="mt-1 text-base font-semibold text-[color:var(--wp-text)]">{r.title}</h3>
           </div>
           <button
             onClick={onClose}
-            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="rounded p-1 text-[color:var(--wp-text-tertiary)] hover:bg-[color:var(--wp-surface-muted)] hover:text-[color:var(--wp-text)]"
             aria-label="Zav\u0159\u00edt"
           >
             \u2715
           </button>
         </div>
-        <p className="mb-4 text-sm text-slate-700">{r.summary}</p>
+        <p className="mb-4 text-sm text-[color:var(--wp-text)]">{r.summary}</p>
 
-        <div className="mb-4 rounded border border-slate-200 bg-slate-50 p-3 text-xs">
-          <div className="mb-2 font-semibold text-slate-700">Co data \u0159\u00edkaj\u00ed</div>
+        <div className="mb-4 rounded border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] p-3 text-xs">
+          <div className="mb-2 font-semibold text-[color:var(--wp-text)]">Co data \u0159\u00edkaj\u00ed</div>
           <dl className="space-y-1">
             {r.explanation.map((row, i) => (
               <div key={i} className="flex items-start justify-between gap-2">
-                <dt className="text-slate-500">{row.label}</dt>
-                <dd className="text-right font-medium text-slate-800">{row.value}</dd>
+                <dt className="text-[color:var(--wp-text-secondary)]">{row.label}</dt>
+                <dd className="text-right font-medium text-[color:var(--wp-text)]">{row.value}</dd>
               </div>
             ))}
           </dl>
         </div>
 
-        <div className="mb-4 text-xs text-slate-500">
-          <div>Zodpov\u011bdn\u00fd: <span className="font-medium text-slate-700">{ownerLabel(r.owner)}</span></div>
-          <div>Typ: <span className="font-medium text-slate-700">{r.kind}</span></div>
+        <div className="mb-4 text-xs text-[color:var(--wp-text-secondary)]">
+          <div>Zodpov\u011bdn\u00fd: <span className="font-medium text-[color:var(--wp-text)]">{ownerLabel(r.owner)}</span></div>
+          <div>Typ: <span className="font-medium text-[color:var(--wp-text)]">{r.kind}</span></div>
         </div>
 
         <div className="flex gap-2">
@@ -64,7 +64,7 @@ export function ExplanationDrawer({
               {r.cta.label}
             </button>
           )}
-          <button onClick={onClose} className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
+          <button onClick={onClose} className="rounded border border-[color:var(--wp-surface-card-border)] px-3 py-1.5 text-sm hover:bg-[color:var(--wp-main-scroll-bg)]">
             Zav\u0159\u00edt
           </button>
         </div>

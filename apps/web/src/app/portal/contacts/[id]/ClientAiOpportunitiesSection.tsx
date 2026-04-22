@@ -34,7 +34,7 @@ export function ClientAiOpportunitiesSection({ contactId, data }: Props) {
   if (!hasAnyData && opportunities.length === 0) {
     return (
       <div
-        className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden p-6"
+        className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden p-6"
         style={{ borderRadius: "var(--wp-radius-lg, 24px)" }}
       >
         <div className="flex items-center gap-2 mb-4">
@@ -67,7 +67,7 @@ export function ClientAiOpportunitiesSection({ contactId, data }: Props) {
   if (opportunities.length === 0) {
     return (
       <div
-        className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden p-6"
+        className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden p-6"
         style={{ borderRadius: "var(--wp-radius-lg, 24px)" }}
       >
         <div className="flex items-center gap-2 mb-4">
@@ -89,7 +89,7 @@ export function ClientAiOpportunitiesSection({ contactId, data }: Props) {
 
   return (
     <div
-      className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden"
+      className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden"
       style={{ borderRadius: "var(--wp-radius-lg, 24px)" }}
     >
       <div className="p-6 space-y-6">

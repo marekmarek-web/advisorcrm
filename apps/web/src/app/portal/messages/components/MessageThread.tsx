@@ -46,7 +46,7 @@ export function MessageThread({
           <div className="space-y-4 py-6" aria-busy="true" aria-label="Načítání zpráv">
             {[1, 2, 3].map((k) => (
               <div key={k} className={`flex ${k % 2 ? "justify-end" : "justify-start"}`}>
-                <div className="h-16 w-[min(100%,280px)] animate-pulse rounded-[24px] bg-[color:var(--wp-surface-muted)]" />
+                <div className="h-16 w-[min(100%,280px)] animate-pulse rounded-[var(--wp-radius-card)] bg-[color:var(--wp-surface-muted)]" />
               </div>
             ))}
           </div>

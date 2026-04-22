@@ -189,31 +189,31 @@ export function MobileContactContractsStrip({ contactId }: { contactId: string }
                 </div>
 
                 {showPayment ? (
-                  <div className="mt-3 rounded-xl bg-slate-50/80 px-3 py-2.5 ring-1 ring-slate-100">
-                    <p className="mb-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                  <div className="mt-3 rounded-xl bg-[color:var(--wp-main-scroll-bg)]/80 px-3 py-2.5 ring-1 ring-slate-100">
+                    <p className="mb-1.5 text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-secondary)]">
                       Platební instrukce
                     </p>
-                    <div className="flex flex-col gap-1.5 text-[11px] font-semibold text-slate-700">
+                    <div className="flex flex-col gap-1.5 text-[11px] font-semibold text-[color:var(--wp-text)]">
                       {payment.account ? (
                         <div className="flex items-center gap-1.5">
-                          <Banknote className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+                          <Banknote className="h-3.5 w-3.5 shrink-0 text-[color:var(--wp-text-tertiary)]" aria-hidden />
                           <span className="font-mono">{payment.account}</span>
                         </div>
                       ) : null}
                       {payment.variableSymbol ? (
                         <div className="flex items-center gap-1.5">
-                          <Hash className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+                          <Hash className="h-3.5 w-3.5 shrink-0 text-[color:var(--wp-text-tertiary)]" aria-hidden />
                           <span className="font-mono">VS {payment.variableSymbol}</span>
                         </div>
                       ) : null}
                       {premiumLabel ? (
                         <div className="flex items-center gap-1.5">
-                          <Coins className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+                          <Coins className="h-3.5 w-3.5 shrink-0 text-[color:var(--wp-text-tertiary)]" aria-hidden />
                           <span>{premiumLabel}</span>
                         </div>
                       ) : payment.frequency ? (
                         <div className="flex items-center gap-1.5">
-                          <CalendarClock className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+                          <CalendarClock className="h-3.5 w-3.5 shrink-0 text-[color:var(--wp-text-tertiary)]" aria-hidden />
                           <span>{payment.frequency}</span>
                         </div>
                       ) : null}
@@ -240,8 +240,8 @@ export function MobileContactContractsStrip({ contactId }: { contactId: string }
                     <span className="text-[10px] text-[color:var(--wp-text-tertiary)]">Načítám stav polí…</span>
                   ) : null}
                   {prov?.supportingDocumentGuard ? (
-                    <span className="inline-flex items-start gap-1.5 text-[10px] leading-snug text-slate-600">
-                      <FileCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+                    <span className="inline-flex items-start gap-1.5 text-[10px] leading-snug text-[color:var(--wp-text-secondary)]">
+                      <FileCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[color:var(--wp-text-tertiary)]" aria-hidden />
                       <span>Podkladový dokument — evidenční záznam bez potvrzovacího toku</span>
                     </span>
                   ) : prov ? (

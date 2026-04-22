@@ -96,7 +96,7 @@ export function DashboardMiniNotes({ initialNotes }: { initialNotes: MeetingNote
   const notes = initialNotes.slice(0, 8);
   if (notes.length === 0) {
     return (
-      <div className="mt-8 rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm p-6">
+      <div className="mt-8 rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm p-6">
         <h3 className="text-sm font-black text-[color:var(--wp-text)] flex items-center gap-2 mb-1">
           <FileText size={18} className="text-indigo-600" /> Zápisky
         </h3>
@@ -178,7 +178,7 @@ export function DashboardMiniNotes({ initialNotes }: { initialNotes: MeetingNote
   });
 
   return (
-    <div className="mt-8 rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
+    <div className="mt-8 rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
       <div className="px-4 sm:px-5 py-4 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/30 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h3 className="text-sm font-black text-[color:var(--wp-text)] flex items-center gap-2">

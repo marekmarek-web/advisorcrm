@@ -62,24 +62,24 @@ export function TeamManagementPanel({
   return (
     <section
       id="sprava-tymu"
-      className="scroll-mt-24 overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)] animate-in fade-in duration-300"
+      className="scroll-mt-24 overflow-hidden rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)]/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)] animate-in fade-in duration-300"
       aria-labelledby="team-management-heading"
     >
       {/* Header */}
-      <div className="border-b border-slate-100 px-7 py-5">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400">Workspace a přístupy</p>
-        <h2 id="team-management-heading" className="mt-2 text-[22px] font-black tracking-tight text-slate-950">
+      <div className="border-b border-[color:var(--wp-surface-card-border)] px-7 py-5">
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[color:var(--wp-text-tertiary)]">Workspace a přístupy</p>
+        <h2 id="team-management-heading" className="mt-2 text-[22px] font-black tracking-tight text-[color:var(--wp-text)]">
           Správa týmu
         </h2>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-slate-500">
+        <p className="mt-1.5 text-[13px] leading-relaxed text-[color:var(--wp-text-secondary)]">
           Spolupracujte na klientech se svými asistenty nebo kolegy.
         </p>
       </div>
 
       {/* Default career program */}
       {canManageTeamCareer ? (
-        <div className="border-b border-slate-100 bg-slate-50/50 px-7 py-6">
-          <p className="mb-4 text-[11px] font-bold leading-relaxed text-slate-500">
+        <div className="border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]/50 px-7 py-6">
+          <p className="mb-4 text-[11px] font-bold leading-relaxed text-[color:var(--wp-text-secondary)]">
             Výchozí kariérní program pro workspace — předvyplní se u členů bez uloženého programu (nepřepisuje jejich údaje).
           </p>
           <div className="flex flex-wrap items-center gap-2.5">
@@ -88,7 +88,7 @@ export function TeamManagementPanel({
               onChange={(e) =>
                 setTenantDefaultCareerProgram(e.target.value as "beplan" | "premium_brokers" | "__none__")
               }
-              className="h-10 rounded-[12px] border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#16192b]/10"
+              className="h-10 rounded-[12px] border border-[color:var(--wp-surface-card-border)] bg-white px-3 text-sm font-medium text-[color:var(--wp-text)] focus:outline-none focus:ring-2 focus:ring-[#16192b]/10"
             >
               <option value="__none__">Žádný výchozí</option>
               <option value="beplan">Beplan</option>
@@ -119,7 +119,7 @@ export function TeamManagementPanel({
 
       {/* Invite section */}
       <div className="border-b border-slate-700/60 bg-[#16192b] px-7 py-7 text-white">
-        <p className="mb-4 text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400">
+        <p className="mb-4 text-[10px] font-extrabold uppercase tracking-[0.2em] text-[color:var(--wp-text-tertiary)]">
           Pozvat nového člena
         </p>
         <form
@@ -158,7 +158,7 @@ export function TeamManagementPanel({
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
             placeholder="email@kolegy.cz"
-            className="h-10 min-w-[200px] flex-1 rounded-[12px] border border-white/10 bg-white/5 px-4 text-sm font-medium text-white placeholder:text-slate-500 focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/10"
+            className="h-10 min-w-[200px] flex-1 rounded-[12px] border border-white/10 bg-white/5 px-4 text-sm font-medium text-white placeholder:text-[color:var(--wp-text-secondary)] focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/10"
             required
           />
           <CustomDropdown
@@ -176,7 +176,7 @@ export function TeamManagementPanel({
           <button
             type="submit"
             disabled={inviteSending || !inviteEmail.trim()}
-            className="h-10 rounded-[12px] bg-white px-5 text-sm font-bold text-[#16192b] transition hover:bg-slate-100 disabled:opacity-50"
+            className="h-10 rounded-[12px] bg-white px-5 text-sm font-bold text-[#16192b] transition hover:bg-[color:var(--wp-surface-muted)] disabled:opacity-50"
           >
             {inviteSending ? "Odesílám…" : "Pozvat"}
           </button>
@@ -187,24 +187,24 @@ export function TeamManagementPanel({
       <div className="overflow-x-auto">
         {teamMembers.length === 0 ? (
           <div className="px-7 py-10 text-center">
-            <Users className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-            <p className="text-sm font-bold text-slate-700">Zatím žádní další členové.</p>
-            <p className="mt-1 text-xs text-slate-400">Pozvěte prvního člena formulářem výše.</p>
+            <Users className="mx-auto mb-3 h-10 w-10 text-[color:var(--wp-text-tertiary)]" />
+            <p className="text-sm font-bold text-[color:var(--wp-text)]">Zatím žádní další členové.</p>
+            <p className="mt-1 text-xs text-[color:var(--wp-text-tertiary)]">Pozvěte prvního člena formulářem výše.</p>
           </div>
         ) : (
           <table className="w-full min-w-[500px] text-left">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/80">
-                <th className="px-7 py-3.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
+              <tr className="border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]/80">
+                <th className="px-7 py-3.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-tertiary)]">
                   Uživatel
                 </th>
-                <th className="px-4 py-3.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
+                <th className="px-4 py-3.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-tertiary)]">
                   Role
                 </th>
-                <th className="hidden px-4 py-3.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400 md:table-cell">
+                <th className="hidden px-4 py-3.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-tertiary)] md:table-cell">
                   Připojení
                 </th>
-                <th className="px-7 py-3.5 text-right text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
+                <th className="px-7 py-3.5 text-right text-[10px] font-extrabold uppercase tracking-[0.18em] text-[color:var(--wp-text-tertiary)]">
                   Akce
                 </th>
               </tr>
@@ -222,15 +222,15 @@ export function TeamManagementPanel({
                         .toUpperCase()
                     : (displayEmail.slice(0, 2).toUpperCase() || "?");
                 return (
-                  <tr key={m.membershipId} className="border-b border-slate-100/80 transition hover:bg-slate-50/60">
+                  <tr key={m.membershipId} className="border-b border-[color:var(--wp-surface-card-border)]/80 transition hover:bg-[color:var(--wp-main-scroll-bg)]/60">
                     <td className="px-7 py-5">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[#16192b] text-sm font-black text-white">
                           {initials}
                         </div>
                         <div>
-                          <div className="text-[14px] font-extrabold text-slate-950">{displayName}</div>
-                          <div className="mt-0.5 text-[11px] font-medium text-slate-400">{displayEmail}</div>
+                          <div className="text-[14px] font-extrabold text-[color:var(--wp-text)]">{displayName}</div>
+                          <div className="mt-0.5 text-[11px] font-medium text-[color:var(--wp-text-tertiary)]">{displayEmail}</div>
                         </div>
                       </div>
                       {canManageTeamCareer ? (
@@ -253,18 +253,18 @@ export function TeamManagementPanel({
                         className={`rounded-[10px] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] ${
                           m.roleName === "Admin"
                             ? "bg-[#16192b] text-white"
-                            : "border border-slate-200 bg-slate-50 text-slate-600"
+                            : "border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-secondary)]"
                         }`}
                       >
                         {m.roleName === "Admin" ? "Vlastník" : m.roleName}
                       </span>
                     </td>
-                    <td className="hidden px-4 py-5 text-sm font-semibold text-slate-500 md:table-cell">
+                    <td className="hidden px-4 py-5 text-sm font-semibold text-[color:var(--wp-text-secondary)] md:table-cell">
                       {new Date(m.joinedAt).toLocaleDateString("cs-CZ")}
                     </td>
                     <td className="px-7 py-5 text-right">
                       {isCurrentUser ? (
-                        <span className="text-xs text-slate-300">—</span>
+                        <span className="text-xs text-[color:var(--wp-text-tertiary)]">—</span>
                       ) : (
                         <button
                           type="button"

@@ -116,7 +116,7 @@ export function ClientDocumentUpload({ onSuccess }: ClientDocumentUploadProps) {
         className={`border-2 border-dashed rounded-[24px] p-8 sm:p-10 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
           isDragging
             ? "border-indigo-400 bg-indigo-50 text-indigo-700"
-            : "border-slate-200 bg-slate-50/60 text-slate-500 hover:border-indigo-300 hover:bg-indigo-50/40"
+            : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]/60 text-[color:var(--wp-text-secondary)] hover:border-indigo-300 hover:bg-indigo-50/40"
         }`}
       >
         <input
@@ -132,7 +132,7 @@ export function ClientDocumentUpload({ onSuccess }: ClientDocumentUploadProps) {
       </label>
 
       {progress > 0 && (
-        <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+        <div className="w-full h-2 rounded-full bg-[color:var(--wp-surface-muted)] overflow-hidden">
           <div
             className="h-full bg-indigo-500 transition-all duration-150"
             style={{ width: `${progress}%` }}

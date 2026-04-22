@@ -73,7 +73,7 @@ const ACCENT_ICON: Record<Accent, string> = {
   violet: "bg-violet-50 text-violet-600 border-violet-100/50 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/50",
   amber: "bg-amber-50 text-amber-700 border-amber-100/50 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50",
   rose: "bg-rose-50 text-rose-600 border-rose-100/50 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50",
-  slate: "bg-slate-50 text-slate-600 border-slate-200/50 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-600/50",
+  slate: "bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-secondary)] border-[color:var(--wp-surface-card-border)]/50 dark:bg-slate-800/50 dark:text-[color:var(--wp-text-tertiary)] dark:border-slate-600/50",
 };
 
 const ACCENT_SUB: Record<Accent, string> = {
@@ -82,7 +82,7 @@ const ACCENT_SUB: Record<Accent, string> = {
   violet: "text-violet-600 dark:text-violet-400",
   amber: "text-amber-700 dark:text-amber-400",
   rose: "text-rose-600 dark:text-rose-400",
-  slate: "text-slate-600 dark:text-slate-400",
+  slate: "text-[color:var(--wp-text-secondary)] dark:text-[color:var(--wp-text-tertiary)]",
 };
 
 type Props = {

@@ -82,7 +82,7 @@ function segmentIconColors(segment: string | undefined): string {
       return "bg-blue-100 text-blue-700 border-blue-200";
     case "AUTO_PR":
     case "AUTO_HAV":
-      return "bg-slate-100 text-slate-700 border-slate-200";
+      return "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text)] border-[color:var(--wp-surface-card-border)]";
     case "HYPO":
     case "UVER":
       return "bg-rose-100 text-rose-700 border-rose-200";
@@ -203,7 +203,7 @@ function ContractDetailCard({
     portfolioStatusLabel === "Aktivní"
       ? "bg-emerald-50 text-emerald-700 border-emerald-100"
       : portfolioStatusLabel === "Ukončené"
-        ? "bg-slate-100 text-slate-500 border-slate-200"
+        ? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] border-[color:var(--wp-surface-card-border)]"
         : "bg-amber-50 text-amber-700 border-amber-100";
 
   // Logo instituce
@@ -791,7 +791,7 @@ export function ContactContractsOverview({
 
   return (
     <div
-      className={`bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm ${
+      className={`bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm ${
         contractMenuStack > 0 ? "relative z-50" : ""
       }`}
     >

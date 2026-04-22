@@ -78,35 +78,35 @@ export function AiSupportButton({ anchorClassName = "bottom-5 right-5" }: { anch
         >
           <span className="bg-white rounded-full px-5 min-h-[44px] py-2.5 flex items-center justify-center gap-2">
             <Sparkles size={16} className="text-purple-500" />
-            <span className="font-black text-slate-800 text-sm tracking-wide">Nápověda k portálu</span>
+            <span className="font-black text-[color:var(--wp-text)] text-sm tracking-wide">Nápověda k portálu</span>
           </span>
         </button>
       ) : (
-        <div className="w-[360px] max-w-[calc(100vw-24px)] bg-white border border-slate-200 rounded-3xl shadow-2xl p-4 client-scale-in">
+        <div className="w-[360px] max-w-[calc(100vw-24px)] bg-white border border-[color:var(--wp-surface-card-border)] rounded-3xl shadow-2xl p-4 client-scale-in">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Sparkles size={16} className="text-purple-500" />
-              <h3 className="font-black text-slate-900 text-sm">Nápověda k portálu</h3>
+              <h3 className="font-black text-[color:var(--wp-text)] text-sm">Nápověda k portálu</h3>
             </div>
             <button
               onClick={() => setOpen(false)}
-              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg hover:bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-secondary)]"
               aria-label="Zavřít panel nápovědy"
             >
               <X size={15} />
             </button>
           </div>
-          <p className="text-[11px] leading-snug text-slate-600 border-l-2 border-indigo-300 pl-2.5 mb-3">
+          <p className="text-[11px] leading-snug text-[color:var(--wp-text-secondary)] border-l-2 border-indigo-300 pl-2.5 mb-3">
             Odpovědi jsou pouze informativní a týkají se ovládání portálu. Nejde o finanční, investiční ani pojistnou radu —
             ty řeší výhradně váš poradce.
           </p>
-          <div className="max-h-[260px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2 mb-3">
+          <div className="max-h-[260px] overflow-y-auto rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] p-3 space-y-2 mb-3">
             {chat.map((item, idx) => (
               <div
                 key={`${item.role}-${idx}`}
                 className={`rounded-lg px-3 py-2 text-sm ${
                   item.role === "assistant"
-                    ? "bg-white text-slate-700 border border-slate-200"
+                    ? "bg-white text-[color:var(--wp-text)] border border-[color:var(--wp-surface-card-border)]"
                     : "bg-indigo-600 text-white ml-6"
                 }`}
               >
@@ -120,7 +120,7 @@ export function AiSupportButton({ anchorClassName = "bottom-5 right-5" }: { anch
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Dotaz k portálu…"
-              className="flex-1 min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm"
+              className="flex-1 min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
             />
             <button
               type="button"
@@ -137,7 +137,7 @@ export function AiSupportButton({ anchorClassName = "bottom-5 right-5" }: { anch
               <Link
                 key={item.id}
                 href={item.href}
-                className="min-h-[44px] rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                className="min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 py-2 text-sm font-semibold text-[color:var(--wp-text)] hover:bg-[color:var(--wp-main-scroll-bg)]"
               >
                 {item.label}
               </Link>

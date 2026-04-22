@@ -64,6 +64,26 @@ const eslintConfig = [
       "@next/next/no-html-link-for-pages": "warn",
     },
   },
+  {
+    // Design system guardrails — see docs/DESIGN_SYSTEM.md
+    files: ["src/app/portal/**/*.{tsx,ts}", "src/app/client/**/*.{tsx,ts}"],
+    rules: {
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector:
+            "Literal[value=/\\b(?:bg|text|border|hover:bg|hover:text|hover:border)-slate-(?:50|100|200|300|400|500|600|700)(?:\\b|\\/)/]",
+          message:
+            "Use --wp-* tokens instead of slate-* (see docs/DESIGN_SYSTEM.md). Dark chrome (slate-800/900) is allowed.",
+        },
+        {
+          selector: "Literal[value=/#[0-9a-fA-F]{6}(?![0-9a-fA-F])/]",
+          message:
+            "Hex colors are not allowed in portal/client className strings. Use var(--wp-*) tokens.",
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;

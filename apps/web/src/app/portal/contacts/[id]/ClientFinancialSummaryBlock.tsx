@@ -81,7 +81,7 @@ export function ClientFinancialSummaryBlock({
 
   if (loading) {
     return (
-      <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+      <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
           <h2 className="text-lg font-black text-[color:var(--wp-text)]">Finanční souhrn</h2>
         </div>
@@ -94,7 +94,7 @@ export function ClientFinancialSummaryBlock({
 
   if (error || !view) {
     return (
-      <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+      <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
           <h2 className="text-lg font-black text-[color:var(--wp-text)]">Finanční souhrn</h2>
         </div>
@@ -110,7 +110,7 @@ export function ClientFinancialSummaryBlock({
 
   if (view.status === "missing") {
     return (
-      <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+      <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
           <h2 className="text-lg font-black text-[color:var(--wp-text)]">Finanční souhrn</h2>
         </div>
@@ -135,7 +135,7 @@ export function ClientFinancialSummaryBlock({
   }
 
   return (
-    <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+    <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
       <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-black text-[color:var(--wp-text)]">Finanční souhrn</h2>

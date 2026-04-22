@@ -18,14 +18,14 @@ export function DocumentPreviewToggle({ documentId }: { documentId: string }) {
         {open ? "Skrýt náhled" : "Zobrazit náhled"}
       </button>
       {open && (
-        <div className={`mt-2 rounded-xl border border-slate-200 overflow-hidden ${expanded ? "fixed inset-4 z-50 shadow-2xl bg-white" : ""}`}>
+        <div className={`mt-2 rounded-xl border border-[color:var(--wp-surface-card-border)] overflow-hidden ${expanded ? "fixed inset-4 z-50 shadow-2xl bg-white" : ""}`}>
           {expanded && (
-            <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200">
-              <span className="text-xs font-bold text-slate-600">Náhled dokumentu</span>
+            <div className="flex items-center justify-between px-3 py-2 bg-[color:var(--wp-main-scroll-bg)] border-b border-[color:var(--wp-surface-card-border)]">
+              <span className="text-xs font-bold text-[color:var(--wp-text-secondary)]">Náhled dokumentu</span>
               <button
                 type="button"
                 onClick={() => setExpanded(false)}
-                className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] transition-colors"
                 aria-label="Zavřít rozšířený náhled"
               >
                 <Minimize2 size={14} />
@@ -37,7 +37,7 @@ export function DocumentPreviewToggle({ documentId }: { documentId: string }) {
               <button
                 type="button"
                 onClick={() => setExpanded(true)}
-                className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-white/90 border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 transition-colors shadow-sm"
+                className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-white/90 border border-[color:var(--wp-surface-card-border)] hover:bg-indigo-50 text-[color:var(--wp-text-secondary)] hover:text-indigo-700 transition-colors shadow-sm"
                 aria-label="Rozbalit náhled"
               >
                 <Maximize2 size={14} />

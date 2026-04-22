@@ -47,6 +47,7 @@ import {
 import { CAMPAIGN_TEMPLATES, findTemplate } from "@/lib/email/campaign-templates";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/components/ConfirmDialog";
+import { PortalPageShell } from "@/app/components/layout/PortalPageShell";
 import { formatInTimeZone } from "date-fns-tz";
 
 const PRAGUE = "Europe/Prague";
@@ -148,9 +149,9 @@ export function EmailCampaignsClient({ initialRows, initialSegments, fromName }:
   }, [initialSegments]);
 
   const inputClass =
-    "w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all text-slate-800 placeholder:text-slate-400";
+    "w-full px-4 py-3 bg-[color:var(--wp-main-scroll-bg)] border border-[color:var(--wp-surface-card-border)] rounded-xl text-sm font-bold outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all text-[color:var(--wp-text)] placeholder:text-[color:var(--wp-text-tertiary)]";
   const labelClass =
-    "block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1";
+    "block text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2 ml-1";
 
   const loadTemplate = useCallback((templateId: string) => {
     const t = findTemplate(templateId);
@@ -418,7 +419,7 @@ Odeslání nelze vrátit zpět.`,
 
   const TemplateGallery = (
     <div>
-      <h2 className="mb-3 ml-1 text-xs font-black uppercase tracking-widest text-slate-400">
+      <h2 className="mb-3 ml-1 text-xs font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
         Rychlý start (šablony)
       </h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
@@ -433,7 +434,7 @@ Odeslání nelze vrátit zpět.`,
               className={`group rounded-2xl border p-4 text-left transition-all duration-200 ${
                 isActive
                   ? "border-indigo-500 bg-white shadow-md ring-2 ring-indigo-50"
-                  : "border-slate-200 bg-slate-50 hover:border-indigo-200 hover:bg-white hover:shadow-sm"
+                  : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] hover:border-indigo-200 hover:bg-white hover:shadow-sm"
               }`}
             >
               <div
@@ -443,12 +444,12 @@ Odeslání nelze vrátit zpět.`,
               </div>
               <h3
                 className={`text-xs font-bold leading-tight ${
-                  isActive ? "text-indigo-700" : "text-slate-800"
+                  isActive ? "text-indigo-700" : "text-[color:var(--wp-text)]"
                 }`}
               >
                 {t.name}
               </h3>
-              <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">
                 {t.style}
               </p>
             </button>
@@ -459,16 +460,16 @@ Odeslání nelze vrátit zpět.`,
   );
 
   const EditorBlock = (
-    <div className="space-y-5 rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm md:p-7">
-      <div className="flex items-center justify-between border-b border-slate-50 pb-4">
-        <h2 className="text-base font-black text-slate-900 md:text-lg">
+    <div className="space-y-5 rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-white p-5 shadow-sm md:p-7">
+      <div className="flex items-center justify-between border-b border-[color:var(--wp-surface-card-border)] pb-4">
+        <h2 className="text-base font-black text-[color:var(--wp-text)] md:text-lg">
           {form.draftId ? "Úprava konceptu" : "Nový koncept"}
         </h2>
         {form.draftId && (
           <button
             type="button"
             onClick={resetForm}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
+            className="rounded-lg border border-[color:var(--wp-surface-card-border)] bg-white px-3 py-1.5 text-xs font-bold text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-main-scroll-bg)]"
           >
             Nový
           </button>
@@ -513,7 +514,7 @@ Odeslání nelze vrátit zpět.`,
             </select>
             <ChevronDown
               size={16}
-              className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+              className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[color:var(--wp-text-tertiary)]"
             />
           </div>
         </div>
@@ -536,14 +537,14 @@ Odeslání nelze vrátit zpět.`,
       <div>
         <div className="mb-2 flex items-center justify-between gap-2">
           <label className={labelClass + " !mb-0"}>Obsah e-mailu</label>
-          <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-[11px] font-bold uppercase tracking-wider">
+          <div className="inline-flex rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] p-0.5 text-[11px] font-bold uppercase tracking-wider">
             <button
               type="button"
               onClick={() => setEditorMode("visual")}
               className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors ${
                 editorMode === "visual"
                   ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
+                  : "text-[color:var(--wp-text-secondary)] hover:text-[color:var(--wp-text)]"
               }`}
               aria-pressed={editorMode === "visual"}
             >
@@ -555,7 +556,7 @@ Odeslání nelze vrátit zpět.`,
               className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors ${
                 editorMode === "source"
                   ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
+                  : "text-[color:var(--wp-text-secondary)] hover:text-[color:var(--wp-text)]"
               }`}
               aria-pressed={editorMode === "source"}
             >
@@ -563,8 +564,8 @@ Odeslání nelze vrátit zpět.`,
             </button>
           </div>
         </div>
-        <div className="overflow-hidden rounded-xl border border-slate-200 transition-all focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
-          <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50 px-3 py-2">
+        <div className="overflow-hidden rounded-xl border border-[color:var(--wp-surface-card-border)] transition-all focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
+          <div className="flex flex-wrap items-center gap-1 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] px-3 py-2">
             <ToolbarBtn
               onClick={() =>
                 editorMode === "visual"
@@ -585,7 +586,7 @@ Odeslání nelze vrátit zpět.`,
             >
               <Italic size={16} />
             </ToolbarBtn>
-            <div className="mx-1 h-5 w-px bg-slate-300" />
+            <div className="mx-1 h-5 w-px bg-[color:var(--wp-surface-card-border)]" />
             <ToolbarBtn
               onClick={() =>
                 editorMode === "visual"
@@ -606,7 +607,7 @@ Odeslání nelze vrátit zpět.`,
             >
               <ListOrdered size={16} />
             </ToolbarBtn>
-            <div className="mx-1 h-5 w-px bg-slate-300" />
+            <div className="mx-1 h-5 w-px bg-[color:var(--wp-surface-card-border)]" />
             <ToolbarBtn onClick={insertLink} label="Odkaz">
               <Link2 size={16} />
             </ToolbarBtn>
@@ -631,7 +632,7 @@ Odeslání nelze vrátit zpět.`,
                   bodyHtml: (e.currentTarget as HTMLDivElement).innerHTML,
                 }))
               }
-              className="block min-h-[240px] w-full resize-y overflow-auto bg-white p-4 text-sm leading-relaxed text-slate-800 outline-none [&_a]:text-indigo-600 [&_a]:underline [&_img]:max-w-full [&_img]:rounded-md [&_ol]:ml-5 [&_ol]:list-decimal [&_ul]:ml-5 [&_ul]:list-disc"
+              className="block min-h-[240px] w-full resize-y overflow-auto bg-white p-4 text-sm leading-relaxed text-[color:var(--wp-text)] outline-none [&_a]:text-indigo-600 [&_a]:underline [&_img]:max-w-full [&_img]:rounded-md [&_ol]:ml-5 [&_ol]:list-decimal [&_ul]:ml-5 [&_ul]:list-disc"
               data-placeholder="Začněte psát obsah e-mailu..."
             />
           ) : (
@@ -639,11 +640,11 @@ Odeslání nelze vrátit zpět.`,
               ref={textareaRef}
               value={form.bodyHtml}
               onChange={(e) => handleField("bodyHtml", e.target.value)}
-              className="block min-h-[240px] w-full resize-y bg-white p-4 font-mono text-xs leading-relaxed text-slate-800 outline-none md:text-[13px]"
+              className="block min-h-[240px] w-full resize-y bg-white p-4 font-mono text-xs leading-relaxed text-[color:var(--wp-text)] outline-none md:text-[13px]"
               placeholder="Začněte psát obsah e-mailu..."
             />
           )}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-indigo-50/50 px-3 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[color:var(--wp-surface-card-border)] bg-indigo-50/50 px-3 py-2">
             <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">
               Vložit proměnnou
             </span>
@@ -658,13 +659,13 @@ Odeslání nelze vrátit zpět.`,
             </div>
           </div>
         </div>
-        <p className="mt-2 ml-1 flex items-start gap-1.5 text-[11px] font-medium text-slate-500">
+        <p className="mt-2 ml-1 flex items-start gap-1.5 text-[11px] font-medium text-[color:var(--wp-text-secondary)]">
           <Info size={12} className="mt-0.5 shrink-0 text-indigo-400" />
           {editorMode === "visual"
             ? "Pište jako ve Wordu – formátování se uloží jako HTML."
             : "Pole podporuje HTML."}{" "}
-          Proměnné <code className="mx-1 rounded bg-slate-100 px-1 font-mono text-[10px]">{"{{jmeno}}"}</code>
-          a <code className="mx-1 rounded bg-slate-100 px-1 font-mono text-[10px]">{"{{cele_jmeno}}"}</code> se při odeslání nahradí.
+          Proměnné <code className="mx-1 rounded bg-[color:var(--wp-surface-muted)] px-1 font-mono text-[10px]">{"{{jmeno}}"}</code>
+          a <code className="mx-1 rounded bg-[color:var(--wp-surface-muted)] px-1 font-mono text-[10px]">{"{{cele_jmeno}}"}</code> se při odeslání nahradí.
         </p>
       </div>
 
@@ -673,7 +674,7 @@ Odeslání nelze vrátit zpět.`,
           type="button"
           onClick={saveDraft}
           disabled={pending}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-5 py-2.5 text-sm font-bold text-[color:var(--wp-text)] shadow-sm transition-all hover:bg-[color:var(--wp-main-scroll-bg)] disabled:opacity-50"
         >
           {pending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
           {form.draftId ? "Uložit změny" : "Uložit jako koncept"}
@@ -683,7 +684,7 @@ Odeslání nelze vrátit zpět.`,
             type="button"
             onClick={sendTest}
             disabled={pending}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700 transition-all hover:bg-slate-200 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-[color:var(--wp-surface-muted)] px-4 py-2.5 text-sm font-bold text-[color:var(--wp-text)] transition-all hover:bg-[color:var(--wp-surface-muted)] disabled:opacity-50"
           >
             <Eye size={16} /> Odeslat test
           </button>
@@ -691,7 +692,7 @@ Odeslání nelze vrátit zpět.`,
             type="button"
             onClick={sendCampaign}
             disabled={pending}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#1a1c2e] px-5 py-2.5 text-sm font-black tracking-wide text-white shadow-lg shadow-indigo-900/20 transition-all hover:bg-[#2a2d4a] active:scale-95 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-[color:var(--wp-primary)] px-5 py-2.5 text-sm font-black tracking-wide text-white shadow-lg shadow-indigo-900/20 transition-all hover:bg-[color:var(--wp-primary-hover)] active:scale-95 disabled:opacity-60"
           >
             {pending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
             Odeslat kampaň
@@ -704,17 +705,17 @@ Odeslání nelze vrátit zpět.`,
   const PreviewBlock = (
     <div className="space-y-4">
       <div className="flex items-center justify-between px-1">
-        <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+        <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
           <Eye size={16} /> Živý náhled e-mailu
         </h3>
-        <div className="flex rounded-lg bg-slate-200/60 p-1">
+        <div className="flex rounded-lg bg-[color:var(--wp-surface-muted)] p-1">
           <button
             type="button"
             onClick={() => setPreviewDevice("desktop")}
             className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-bold transition-colors ${
               previewDevice === "desktop"
-                ? "bg-white text-slate-700 shadow-sm"
-                : "text-slate-500 hover:text-slate-700"
+                ? "bg-white text-[color:var(--wp-text)] shadow-sm"
+                : "text-[color:var(--wp-text-secondary)] hover:text-[color:var(--wp-text)]"
             }`}
           >
             <Monitor size={12} /> Desktop
@@ -724,8 +725,8 @@ Odeslání nelze vrátit zpět.`,
             onClick={() => setPreviewDevice("mobile")}
             className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-bold transition-colors ${
               previewDevice === "mobile"
-                ? "bg-white text-slate-700 shadow-sm"
-                : "text-slate-500 hover:text-slate-700"
+                ? "bg-white text-[color:var(--wp-text)] shadow-sm"
+                : "text-[color:var(--wp-text-secondary)] hover:text-[color:var(--wp-text)]"
             }`}
           >
             <Smartphone size={12} /> Mobil
@@ -733,28 +734,28 @@ Odeslání nelze vrátit zpět.`,
         </div>
       </div>
 
-      <div className="flex h-[620px] flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
-        <div className="shrink-0 space-y-3 border-b border-slate-200 bg-slate-50 p-5">
+      <div className="flex h-[620px] flex-col overflow-hidden rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-white shadow-xl shadow-[color:var(--wp-surface-card-border)]/50">
+        <div className="shrink-0 space-y-3 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] p-5">
           <div className="flex items-center gap-4 text-sm">
-            <span className="w-12 shrink-0 font-bold text-slate-400">Od:</span>
-            <span className="truncate font-bold text-slate-800">{fromLabel}</span>
+            <span className="w-12 shrink-0 font-bold text-[color:var(--wp-text-tertiary)]">Od:</span>
+            <span className="truncate font-bold text-[color:var(--wp-text)]">{fromLabel}</span>
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <span className="w-12 shrink-0 font-bold text-slate-400">Komu:</span>
-            <span className="truncate rounded-md bg-slate-200 px-2 py-0.5 font-bold text-slate-800">
+            <span className="w-12 shrink-0 font-bold text-[color:var(--wp-text-tertiary)]">Komu:</span>
+            <span className="truncate rounded-md bg-[color:var(--wp-surface-muted)] px-2 py-0.5 font-bold text-[color:var(--wp-text)]">
               jan.novak@email.cz
             </span>
           </div>
-          <div className="flex items-start gap-4 border-t border-slate-200/60 pt-3 text-sm">
-            <span className="mt-0.5 w-12 shrink-0 font-bold text-slate-400">Předmět:</span>
-            <span className="font-bold text-slate-900">
+          <div className="flex items-start gap-4 border-t border-[color:var(--wp-surface-card-border)]/60 pt-3 text-sm">
+            <span className="mt-0.5 w-12 shrink-0 font-bold text-[color:var(--wp-text-tertiary)]">Předmět:</span>
+            <span className="font-bold text-[color:var(--wp-text)]">
               {previewSubject || (
-                <span className="font-medium italic text-slate-300">Bez předmětu</span>
+                <span className="font-medium italic text-[color:var(--wp-text-tertiary)]">Bez předmětu</span>
               )}
             </span>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto bg-slate-100 p-4">
+        <div className="flex-1 overflow-y-auto bg-[color:var(--wp-surface-muted)] p-4">
           <div
             className={`mx-auto transition-all ${
               previewDevice === "mobile" ? "max-w-[320px]" : "max-w-[600px]"
@@ -766,7 +767,7 @@ Odeslání nelze vrátit zpět.`,
                 dangerouslySetInnerHTML={{ __html: previewBody }}
               />
             ) : (
-              <div className="rounded-lg bg-white p-6 text-center text-sm italic text-slate-300">
+              <div className="rounded-lg bg-white p-6 text-center text-sm italic text-[color:var(--wp-text-tertiary)]">
                 Zde se zobrazí obsah vašeho e-mailu…
               </div>
             )}
@@ -777,31 +778,31 @@ Odeslání nelze vrátit zpět.`,
   );
 
   const HistoryDesktop = (
-    <div className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-white shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50">
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <tr className="border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]">
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
                 Název kampaně
               </th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
                 Předmět
               </th>
-              <th className="px-5 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <th className="px-5 py-4 text-center text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
                 Odesláno
               </th>
-              <th className="px-5 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <th className="px-5 py-4 text-center text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
                 {/* Nový sloupec — failedCount byl dostupný v datech, ale na desktopu se nikde nezobrazoval. */}
                 Chyby
               </th>
-              <th className="px-5 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <th className="px-5 py-4 text-center text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
                 Výkon
               </th>
-              <th className="px-5 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <th className="px-5 py-4 text-right text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
                 Status
               </th>
-              <th className="px-5 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <th className="px-5 py-4 text-right text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
                 Akce
               </th>
             </tr>
@@ -809,7 +810,7 @@ Odeslání nelze vrátit zpět.`,
           <tbody>
             {initialRows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-5 py-12 text-center text-sm text-slate-400">
+                <td colSpan={7} className="px-5 py-12 text-center text-sm text-[color:var(--wp-text-tertiary)]">
                   Zatím žádný koncept ani odeslaná kampaň.
                 </td>
               </tr>
@@ -817,20 +818,20 @@ Odeslání nelze vrátit zpět.`,
               initialRows.map((row) => (
                 <tr
                   key={row.id}
-                  className="group border-b border-slate-50 transition-colors last:border-0 hover:bg-slate-50/80"
+                  className="group border-b border-[color:var(--wp-surface-card-border)] transition-colors last:border-0 hover:bg-[color:var(--wp-main-scroll-bg)]/80"
                 >
                   <td className="px-5 py-4">
-                    <div className="text-[15px] font-bold text-slate-900 transition-colors group-hover:text-indigo-600">
+                    <div className="text-[15px] font-bold text-[color:var(--wp-text)] transition-colors group-hover:text-indigo-600">
                       {row.name}
                     </div>
-                    <div className="text-xs font-bold text-slate-500">
+                    <div className="text-xs font-bold text-[color:var(--wp-text-secondary)]">
                       {formatPragueDate(row.createdAt)}
                     </div>
                   </td>
-                  <td className="max-w-[260px] truncate px-5 py-4 text-sm font-medium text-slate-600">
+                  <td className="max-w-[260px] truncate px-5 py-4 text-sm font-medium text-[color:var(--wp-text-secondary)]">
                     {row.subject}
                   </td>
-                  <td className="px-5 py-4 text-center text-sm font-bold text-slate-600">
+                  <td className="px-5 py-4 text-center text-sm font-bold text-[color:var(--wp-text-secondary)]">
                     {row.status === "sent" || row.status === "sending"
                       ? `${row.sentCount} příjemců`
                       : "—"}
@@ -848,17 +849,17 @@ Odeslání nelze vrátit zpět.`,
                         <span className="text-xs font-bold text-emerald-600">0</span>
                       )
                     ) : (
-                      <span className="text-xs font-bold text-slate-400">—</span>
+                      <span className="text-xs font-bold text-[color:var(--wp-text-tertiary)]">—</span>
                     )}
                   </td>
                   <td className="px-5 py-4 text-center">
                     {row.status === "sent" ? (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500">
-                        <MousePointerClick size={12} className="text-slate-400" />
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[color:var(--wp-text-secondary)]">
+                        <MousePointerClick size={12} className="text-[color:var(--wp-text-tertiary)]" />
                         Metriky nejsou sledovány
                       </span>
                     ) : (
-                      <span className="text-xs font-bold text-slate-400">—</span>
+                      <span className="text-xs font-bold text-[color:var(--wp-text-tertiary)]">—</span>
                     )}
                   </td>
                   <td className="px-5 py-4 text-right">
@@ -878,7 +879,7 @@ Odeslání nelze vrátit zpět.`,
                           <button
                             type="button"
                             onClick={() => deleteDraft(row)}
-                            className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500 transition-colors hover:bg-slate-50 hover:text-rose-600"
+                            className="inline-flex items-center rounded-lg border border-[color:var(--wp-surface-card-border)] bg-white p-1.5 text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-main-scroll-bg)] hover:text-rose-600"
                             aria-label="Smazat koncept"
                             title="Smazat koncept"
                           >
@@ -900,36 +901,36 @@ Odeslání nelze vrátit zpět.`,
   const HistoryMobile = (
     <div className="space-y-3">
       {initialRows.length === 0 ? (
-        <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center text-sm text-slate-400">
+        <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-white p-8 text-center text-sm text-[color:var(--wp-text-tertiary)]">
           Zatím žádný koncept ani odeslaná kampaň.
         </div>
       ) : (
         initialRows.map((row) => (
           <div
             key={row.id}
-            className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+            className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-white p-4 shadow-sm"
           >
             <div className="absolute right-0 top-0">
               <StatusBadgeCorner status={row.status} />
             </div>
             <div className="pr-20">
-              <h3 className="mb-1 text-sm font-bold leading-tight text-slate-900">{row.name}</h3>
-              <p className="text-[10px] font-bold text-slate-400">
+              <h3 className="mb-1 text-sm font-bold leading-tight text-[color:var(--wp-text)]">{row.name}</h3>
+              <p className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)]">
                 {formatPragueDateTime(row.createdAt)}
               </p>
-              <p className="mt-1 line-clamp-2 text-xs font-medium text-slate-600">{row.subject}</p>
+              <p className="mt-1 line-clamp-2 text-xs font-medium text-[color:var(--wp-text-secondary)]">{row.subject}</p>
             </div>
 
             {(row.status === "sent" || row.status === "sending") && (
-              <div className="mt-1 grid grid-cols-2 gap-2 rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+              <div className="mt-1 grid grid-cols-2 gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] p-3 text-center">
                 <div>
-                  <span className="mb-1 block text-[9px] font-black uppercase tracking-widest text-slate-400">
+                  <span className="mb-1 block text-[9px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
                     Odesláno
                   </span>
-                  <span className="text-sm font-black text-slate-800">{row.sentCount}</span>
+                  <span className="text-sm font-black text-[color:var(--wp-text)]">{row.sentCount}</span>
                 </div>
                 <div>
-                  <span className="mb-1 block text-[9px] font-black uppercase tracking-widest text-slate-400">
+                  <span className="mb-1 block text-[9px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
                     Chyby
                   </span>
                   <span className="text-sm font-black text-rose-500">{row.failedCount}</span>
@@ -949,7 +950,7 @@ Odeslání nelze vrátit zpět.`,
                 <button
                   type="button"
                   onClick={() => deleteDraft(row)}
-                  className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-500"
+                  className="inline-flex items-center justify-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white p-2 text-[color:var(--wp-text-secondary)]"
                   aria-label="Smazat koncept"
                 >
                   <Trash2 size={14} />
@@ -965,12 +966,17 @@ Odeslání nelze vrátit zpět.`,
   // --- Layout ---
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] pb-24 text-slate-800 md:pb-12">
+    <PortalPageShell
+      maxWidth="full"
+      flushTop
+      outerClassName="pb-24 md:pb-12 text-[color:var(--wp-text)]"
+      innerClassName="!max-w-[1600px] !px-0 !pt-0"
+    >
       {/* Mobile header + tabs */}
-      <div className="sticky top-0 z-30 border-b border-slate-100 bg-white/90 backdrop-blur-md md:hidden">
+      <div className="sticky top-0 z-30 border-b border-[color:var(--wp-surface-card-border)] bg-white/90 backdrop-blur-md md:hidden">
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <div>
-            <h1 className="text-lg font-black tracking-tight text-slate-900">
+            <h1 className="text-lg font-black tracking-tight text-[color:var(--wp-text)]">
               E-mail kampaně
             </h1>
             <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-600">
@@ -985,7 +991,7 @@ Odeslání nelze vrátit zpět.`,
               type="button"
               onClick={() => setMobileView(v)}
               className={`relative flex-1 py-3 text-xs font-black uppercase tracking-widest transition-colors ${
-                mobileView === v ? "text-indigo-600" : "text-slate-400"
+                mobileView === v ? "text-indigo-600" : "text-[color:var(--wp-text-tertiary)]"
               }`}
             >
               {v === "editor" ? "Editor" : v === "preview" ? "Náhled" : "Historie"}
@@ -997,15 +1003,15 @@ Odeslání nelze vrátit zpět.`,
         </div>
       </div>
 
-      <main className="mx-auto max-w-[1600px] space-y-6 p-4 md:space-y-8 md:p-8">
+      <div className="space-y-6 p-4 md:space-y-8 md:p-8">
         {/* Desktop header */}
         <div className="hidden items-end justify-between gap-6 md:flex">
           <div>
-            <h1 className="mb-2 flex items-center gap-3 text-3xl font-black tracking-tight text-slate-900">
+            <h1 className="mb-2 flex items-center gap-3 text-3xl font-black tracking-tight text-[color:var(--wp-text)]">
               <Mail className="text-indigo-500" size={32} />
               E-mailové kampaně
             </h1>
-            <p className="max-w-xl text-sm font-medium text-slate-500">
+            <p className="max-w-xl text-sm font-medium text-[color:var(--wp-text-secondary)]">
               Hromadné a personalizované oslovení vašich klientů. Vytvořte kampaň od nuly
               nebo použijte předpřipravenou šablonu.
             </p>
@@ -1039,24 +1045,24 @@ Odeslání nelze vrátit zpět.`,
         </div>
 
         {/* Desktop history */}
-        <div className="hidden border-t border-slate-200 pt-10 md:block">
-          <h2 className="mb-6 flex items-center gap-3 text-2xl font-black tracking-tight text-slate-900">
+        <div className="hidden border-t border-[color:var(--wp-surface-card-border)] pt-10 md:block">
+          <h2 className="mb-6 flex items-center gap-3 text-2xl font-black tracking-tight text-[color:var(--wp-text)]">
             <Clock className="text-indigo-500" size={24} />
             Poslední kampaně
           </h2>
           {HistoryDesktop}
         </div>
-      </main>
+      </div>
 
       {/* Mobile fixed action bar */}
       {(mobileView === "editor" || mobileView === "preview") && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-100 bg-white/95 p-3 pb-[max(env(safe-area-inset-bottom),12px)] shadow-[0_-10px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl md:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[color:var(--wp-surface-card-border)] bg-white/95 p-3 pb-[max(env(safe-area-inset-bottom),12px)] shadow-[0_-10px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl md:hidden">
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={saveDraft}
               disabled={pending}
-              className="inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-slate-700 shadow-sm active:scale-95 disabled:opacity-50"
+              className="inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-white px-4 text-[color:var(--wp-text)] shadow-sm active:scale-95 disabled:opacity-50"
               aria-label="Uložit koncept"
             >
               {pending ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
@@ -1065,7 +1071,7 @@ Odeslání nelze vrátit zpět.`,
               type="button"
               onClick={sendTest}
               disabled={pending}
-              className="inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-2xl bg-slate-100 px-4 text-xs font-bold text-slate-700 active:scale-95 disabled:opacity-50"
+              className="inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-2xl bg-[color:var(--wp-surface-muted)] px-4 text-xs font-bold text-[color:var(--wp-text)] active:scale-95 disabled:opacity-50"
             >
               <Eye size={16} />
             </button>
@@ -1073,7 +1079,7 @@ Odeslání nelze vrátit zpět.`,
               type="button"
               onClick={sendCampaign}
               disabled={pending}
-              className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-2xl bg-[#1a1c2e] text-sm font-black tracking-wide text-white shadow-lg shadow-slate-900/20 active:scale-95 disabled:opacity-60"
+              className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-2xl bg-[color:var(--wp-primary)] text-sm font-black tracking-wide text-white shadow-lg shadow-black/20 active:scale-95 disabled:opacity-60"
             >
               {pending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
               Odeslat
@@ -1081,7 +1087,7 @@ Odeslání nelze vrátit zpět.`,
           </div>
         </div>
       )}
-    </div>
+    </PortalPageShell>
   );
 }
 
@@ -1100,7 +1106,7 @@ function ToolbarBtn({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-800"
+      className="rounded-lg p-2 text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-muted)] hover:text-[color:var(--wp-text)]"
     >
       {children}
     </button>
@@ -1161,7 +1167,7 @@ function StatusBadgeCorner({ status }: { status: string }) {
     sending: "bg-blue-100 text-blue-700",
     failed: "bg-rose-100 text-rose-700",
   };
-  const cls = styles[status] ?? "bg-slate-100 text-slate-700";
+  const cls = styles[status] ?? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text)]";
   return (
     <span
       className={`rounded-bl-lg px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${cls}`}

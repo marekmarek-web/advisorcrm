@@ -131,7 +131,7 @@ export function MessageComposer({
           </div>
         ) : null}
 
-        <div className="rounded-[28px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-2 shadow-sm">
+        <div className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-2 shadow-sm">
           <div className="flex items-end gap-2">
             <input
               type="file"

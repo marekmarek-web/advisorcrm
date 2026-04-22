@@ -47,10 +47,10 @@ export default async function ClientRequestsPage() {
     <div className="space-y-8 client-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-display font-black text-slate-900 tracking-tight">
+          <h2 className="text-3xl font-display font-black text-[color:var(--wp-text)] tracking-tight">
             Požadavky
           </h2>
-          <p className="text-sm font-medium text-slate-500 mt-1">
+          <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] mt-1">
             Vaše požadavky na poradce a podklady, které poradce potřebuje od vás.
           </p>
         </div>
@@ -58,12 +58,12 @@ export default async function ClientRequestsPage() {
       </div>
 
       {!hasAnything ? (
-        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center space-y-3">
-          <div className="mx-auto w-12 h-12 rounded-2xl bg-slate-100 grid place-items-center text-slate-400">
+        <div className="bg-white rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm p-10 text-center space-y-3">
+          <div className="mx-auto w-12 h-12 rounded-2xl bg-[color:var(--wp-surface-muted)] grid place-items-center text-[color:var(--wp-text-tertiary)]">
             <Bell size={22} />
           </div>
-          <p className="text-slate-700 font-semibold">Zatím žádné požadavky</p>
-          <p className="text-slate-500 text-sm max-w-md mx-auto">
+          <p className="text-[color:var(--wp-text)] font-semibold">Zatím žádné požadavky</p>
+          <p className="text-[color:var(--wp-text-secondary)] text-sm max-w-md mx-auto">
             Vytvořte nový požadavek, nebo počkejte na první podnět od poradce.
           </p>
         </div>
@@ -84,8 +84,8 @@ export default async function ClientRequestsPage() {
                     <ClipboardList size={22} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-lg font-black text-slate-900">Požadavky od poradce</h3>
-                    <p className="text-sm text-slate-500">
+                    <h3 className="text-lg font-black text-[color:var(--wp-text)]">Požadavky od poradce</h3>
+                    <p className="text-sm text-[color:var(--wp-text-secondary)]">
                       {openMaterialRequests.length > 0
                         ? `${openMaterialRequests.length} otevřených podkladů čeká na vaši reakci.`
                         : `${materialRequestsList.length} dokončených požadavků ve vašem archivu.`}
@@ -97,7 +97,7 @@ export default async function ClientRequestsPage() {
                         {openMaterialRequests.length}
                       </span>
                     )}
-                    <ChevronRight size={18} className="text-slate-400" />
+                    <ChevronRight size={18} className="text-[color:var(--wp-text-tertiary)]" />
                   </div>
                 </div>
               </Link>
@@ -112,8 +112,8 @@ export default async function ClientRequestsPage() {
                   <Clock size={18} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-slate-900">Moje požadavky</h3>
-                  <p className="text-xs text-slate-500">Požadavky, které jste odeslali poradci</p>
+                  <h3 className="text-lg font-black text-[color:var(--wp-text)]">Moje požadavky</h3>
+                  <p className="text-xs text-[color:var(--wp-text-secondary)]">Požadavky, které jste odeslali poradci</p>
                 </div>
               </div>
 
@@ -131,12 +131,12 @@ export default async function ClientRequestsPage() {
                         <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 block mb-0.5">
                           {r.statusLabel}
                         </span>
-                        <h4 className="font-bold text-slate-900">{r.title}</h4>
-                        <p className="text-sm font-medium text-slate-500 mt-0.5">{r.caseTypeLabel}</p>
+                        <h4 className="font-bold text-[color:var(--wp-text)]">{r.title}</h4>
+                        <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] mt-0.5">{r.caseTypeLabel}</p>
                         {r.description && (
-                          <p className="text-sm text-slate-500 mt-1 line-clamp-2">{r.description}</p>
+                          <p className="text-sm text-[color:var(--wp-text-secondary)] mt-1 line-clamp-2">{r.description}</p>
                         )}
-                        <p className="text-xs text-slate-400 mt-1">
+                        <p className="text-xs text-[color:var(--wp-text-tertiary)] mt-1">
                           Aktualizováno {new Date(r.updatedAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "short", year: "numeric" })}
                         </p>
                       </div>
@@ -148,19 +148,19 @@ export default async function ClientRequestsPage() {
                 {cancelledRequests.map((r) => (
                   <div
                     key={r.id}
-                    className="bg-white p-5 rounded-[24px] border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5 opacity-75"
+                    className="bg-white p-5 rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5 opacity-75"
                   >
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 bg-slate-100 text-slate-500 rounded-xl grid place-items-center border border-slate-200 shrink-0">
+                      <div className="w-10 h-10 bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] rounded-xl grid place-items-center border border-[color:var(--wp-surface-card-border)] shrink-0">
                         <Ban size={18} />
                       </div>
                       <div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-0.5">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] block mb-0.5">
                           {r.statusLabel}
                         </span>
-                        <h4 className="font-bold text-slate-900">{r.title}</h4>
-                        <p className="text-sm font-medium text-slate-500 mt-0.5">{r.caseTypeLabel}</p>
-                        <p className="text-xs text-slate-400 mt-1">
+                        <h4 className="font-bold text-[color:var(--wp-text)]">{r.title}</h4>
+                        <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] mt-0.5">{r.caseTypeLabel}</p>
+                        <p className="text-xs text-[color:var(--wp-text-tertiary)] mt-1">
                           Zrušeno {new Date(r.updatedAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "short", year: "numeric" })}
                         </p>
                       </div>
@@ -171,7 +171,7 @@ export default async function ClientRequestsPage() {
                 {completedRequests.map((r) => (
                   <div
                     key={r.id}
-                    className="bg-white p-5 rounded-[24px] border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5 opacity-75"
+                    className="bg-white p-5 rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5 opacity-75"
                   >
                     <div className="flex items-start gap-4">
                       <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl grid place-items-center border border-emerald-100 shrink-0">
@@ -181,9 +181,9 @@ export default async function ClientRequestsPage() {
                         <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 block mb-0.5">
                           {r.statusLabel}
                         </span>
-                        <h4 className="font-bold text-slate-900">{r.title}</h4>
-                        <p className="text-sm font-medium text-slate-500 mt-0.5">{r.caseTypeLabel}</p>
-                        <p className="text-xs text-slate-400 mt-1">
+                        <h4 className="font-bold text-[color:var(--wp-text)]">{r.title}</h4>
+                        <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] mt-0.5">{r.caseTypeLabel}</p>
+                        <p className="text-xs text-[color:var(--wp-text-tertiary)] mt-1">
                           Dokončeno {new Date(r.updatedAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "short", year: "numeric" })}
                         </p>
                       </div>

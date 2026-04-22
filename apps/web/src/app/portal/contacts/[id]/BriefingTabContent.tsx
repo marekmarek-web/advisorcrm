@@ -96,7 +96,7 @@ export function BriefingTabContent({ contactId }: Props) {
   return (
     <div className="space-y-8">
       {/* AI briefing (OpenAI prompt) – Připrav briefing */}
-      <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+      <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-lg font-black text-[color:var(--wp-text)] flex items-center gap-2">
@@ -140,14 +140,14 @@ export function BriefingTabContent({ contactId }: Props) {
         </div>
       </div>
 
-      <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+      <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
         <div className="p-6">
           <PreMeetingBriefPanel contactId={contactId} eventId={eventId} />
         </div>
       </div>
 
       {/* AI follow-up (OpenAI prompt) – Vygenerovat follow-up */}
-      <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+      <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
           <h2 className="text-lg font-black text-[color:var(--wp-text)] flex items-center gap-2">
             <FileText size={20} className="text-indigo-500" />
@@ -174,7 +174,7 @@ export function BriefingTabContent({ contactId }: Props) {
         </div>
       </div>
 
-      <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+      <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
           <h2 className="text-lg font-black text-[color:var(--wp-text)]">Po schůzce</h2>
           <p className="text-sm text-[color:var(--wp-text-secondary)] mt-0.5">Informativní shrnutí a návrh interních kroků ze zápisků — pro práci poradce.</p>

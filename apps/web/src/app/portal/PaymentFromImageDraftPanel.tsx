@@ -141,9 +141,9 @@ export function PaymentFromImageDraftPanel({ draft, contactId, saving, onConfirm
       )}
 
       {!contactId && (
-        <div className="rounded-xl bg-slate-100 border border-slate-200 px-3 py-2">
-          <p className="text-[11px] text-slate-700 font-bold">Přejděte na detail klienta</p>
-          <p className="text-[11px] text-slate-500">
+        <div className="rounded-xl bg-[color:var(--wp-surface-muted)] border border-[color:var(--wp-surface-card-border)] px-3 py-2">
+          <p className="text-[11px] text-[color:var(--wp-text)] font-bold">Přejděte na detail klienta</p>
+          <p className="text-[11px] text-[color:var(--wp-text-secondary)]">
             Platební instrukci nelze uložit bez vybraného klienta. Otevřete detail klienta a zkuste znovu.
           </p>
         </div>
@@ -315,10 +315,10 @@ export function PaymentFromImageDraftPanel({ draft, contactId, saving, onConfirm
       <label
         className={`flex items-start gap-2 rounded-xl border px-3 py-2 cursor-pointer select-none ${
           draft.needsHumanReview
-            ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed"
+            ? "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] opacity-60 cursor-not-allowed"
             : shareWithClient
               ? "border-emerald-300 bg-emerald-50"
-              : "border-slate-200 bg-white hover:border-slate-300"
+              : "border-[color:var(--wp-surface-card-border)] bg-white hover:border-[color:var(--wp-surface-card-border)]"
         }`}
       >
         <input
@@ -329,10 +329,10 @@ export function PaymentFromImageDraftPanel({ draft, contactId, saving, onConfirm
           onChange={(e) => setShareWithClient(e.target.checked)}
         />
         <div className="flex flex-col gap-0.5">
-          <span className="text-[11px] font-bold text-slate-800">
+          <span className="text-[11px] font-bold text-[color:var(--wp-text)]">
             Sdílet s klientem v klientském portálu
           </span>
-          <span className="text-[10px] text-slate-500 leading-snug">
+          <span className="text-[10px] text-[color:var(--wp-text-secondary)] leading-snug">
             {draft.needsHumanReview
               ? "AI není dost jistá — nelze sdílet dokud hodnoty nepotvrdíte."
               : "Ponechte vypnuté, dokud nejste s údaji spokojeni. Později lze přepnout u platby."}

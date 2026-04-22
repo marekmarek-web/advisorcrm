@@ -69,7 +69,7 @@ function categoryColors(cat: PaymentSegmentCategory): { icon: string; label: str
     case "pojisteni_majetku":
       return { icon: "bg-orange-50 text-orange-500", label: "text-orange-600" };
     case "pojisteni_vozidel":
-      return { icon: "bg-slate-100 text-slate-600", label: "text-slate-600" };
+      return { icon: "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]", label: "text-[color:var(--wp-text-secondary)]" };
     default:
       return { icon: "bg-indigo-50 text-indigo-600", label: "text-indigo-700" };
   }
@@ -115,7 +115,7 @@ function CopyMiniButton({ text, label }: { text: string; label: string }) {
       className={`shrink-0 min-h-[44px] min-w-[64px] rounded-lg border px-2.5 text-xs font-black uppercase tracking-wider transition-colors touch-manipulation ${
         state === "error"
           ? "border-rose-200 bg-rose-50 text-rose-700"
-          : "border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
+          : "border-[color:var(--wp-surface-card-border)] bg-white text-[color:var(--wp-text-secondary)] hover:border-indigo-200 hover:text-indigo-700"
       }`}
       title={state === "error" ? "Prohlížeč nepovolil kopírování — označte hodnotu a zkopírujte ručně." : undefined}
     >
@@ -165,8 +165,8 @@ export function ClientPaymentsView({
     <div className="space-y-6 sm:space-y-8 client-fade-in min-w-0 w-full">
       {!embeddedInMobileShell ? (
         <div>
-          <h2 className="text-2xl sm:text-3xl font-display font-black text-slate-900 tracking-tight">Platby a příkazy</h2>
-          <p className="text-sm font-medium text-slate-500 mt-2 max-w-2xl">
+          <h2 className="text-2xl sm:text-3xl font-display font-black text-[color:var(--wp-text)] tracking-tight">Platby a příkazy</h2>
+          <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] mt-2 max-w-2xl">
             Přehled platebních údajů napojených na smlouvy, které máte v portálu zveřejněné od poradce.
           </p>
         </div>
@@ -174,16 +174,16 @@ export function ClientPaymentsView({
 
       {viewKind === "load_failed" ? (
         <div className="bg-white rounded-[24px] border border-rose-100 shadow-sm p-8 sm:p-10 text-center space-y-3">
-          <p className="text-slate-800 font-semibold">Platební údaje se nepodařilo načíst</p>
-          <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed">
+          <p className="text-[color:var(--wp-text)] font-semibold">Platební údaje se nepodařilo načíst</p>
+          <p className="text-[color:var(--wp-text-secondary)] text-sm max-w-md mx-auto leading-relaxed">
             Zkuste stránku načíst znovu. Pokud problém přetrvává, napište svému poradci — údaje v evidenci se tím
             nemění.
           </p>
         </div>
       ) : viewKind === "empty" ? (
-        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-8 sm:p-10 text-center space-y-3">
-          <p className="text-slate-600 font-semibold">Žádné platební údaje nejsou v portálu k dispozici</p>
-          <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed">
+        <div className="bg-white rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm p-8 sm:p-10 text-center space-y-3">
+          <p className="text-[color:var(--wp-text-secondary)] font-semibold">Žádné platební údaje nejsou v portálu k dispozici</p>
+          <p className="text-[color:var(--wp-text-secondary)] text-sm max-w-md mx-auto leading-relaxed">
             Jakmile poradce zveřejní platby u vašich smluv v klientské zóně, nebo doplní údaje z katalogu institucí,
             zobrazí se zde účet, částka, variabilní symbol a další pole podle toho, co je ve smlouvě k dispozici.
           </p>
@@ -216,9 +216,9 @@ export function ClientPaymentsView({
               return (
                 <article
                   key={rowKey}
-                  className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-all group"
+                  className="bg-white rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-all group"
                 >
-                  <div className="p-5 border-b border-slate-50 flex items-start gap-4">
+                  <div className="p-5 border-b border-[color:var(--wp-surface-card-border)] flex items-start gap-4">
                     {logoOrIcon ? (
                       <Image
                         src={logoOrIcon.src}
@@ -246,11 +246,11 @@ export function ClientPaymentsView({
                           {paymentContractStatusBadgeLabel(instruction.linkedContractPortfolioStatus)}
                         </StatusPill>
                       </div>
-                      <h3 className="font-bold text-slate-900 text-[15px] leading-snug mt-1 line-clamp-2">
+                      <h3 className="font-bold text-[color:var(--wp-text)] text-[15px] leading-snug mt-1 line-clamp-2">
                         {instruction.productName || segmentLabel(instruction.segment)}
                       </h3>
                       {institution ? (
-                        <p className="text-xs font-medium text-slate-500 truncate mt-0.5">{institution}</p>
+                        <p className="text-xs font-medium text-[color:var(--wp-text-secondary)] truncate mt-0.5">{institution}</p>
                       ) : null}
                       {pill ? (
                         <Badge tone="amber" size="xs" variant="tag" className="mt-1.5">
@@ -260,11 +260,11 @@ export function ClientPaymentsView({
                     </div>
                   </div>
 
-                  <div className="p-5 flex-1 flex flex-col gap-4 text-sm bg-slate-50/30">
+                  <div className="p-5 flex-1 flex flex-col gap-4 text-sm bg-[color:var(--wp-main-scroll-bg)]/30">
                     <div className="flex items-end justify-between gap-2">
                       <div>
-                        <span className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Částka k úhradě</span>
-                        <span className="text-2xl font-black text-slate-900">{formatPortalPrimaryAmountLine(instruction)}</span>
+                        <span className="block text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-0.5">Částka k úhradě</span>
+                        <span className="text-2xl font-black text-[color:var(--wp-text)]">{formatPortalPrimaryAmountLine(instruction)}</span>
                       </div>
                       {freqRow ? (
                         <Badge tone="neutral" size="xs" variant="count" className="shrink-0 bg-white">
@@ -275,45 +275,45 @@ export function ClientPaymentsView({
 
                     <div className="space-y-2 mt-2">
                       {acct ? (
-                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-[color:var(--wp-surface-card-border)]">
                           <div className="min-w-0 flex-1">
-                            <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                            <span className="block text-[9px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-0.5">
                               {acctLabel}
                             </span>
-                            <span className="font-mono text-slate-800 font-bold text-sm break-all">{acct}</span>
+                            <span className="font-mono text-[color:var(--wp-text)] font-bold text-sm break-all">{acct}</span>
                           </div>
                           <CopyMiniButton text={acct.replace(/\s+/g, "")} label="Kopírovat" />
                         </div>
                       ) : null}
                       {vs ? (
-                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-[color:var(--wp-surface-card-border)]">
                           <div className="min-w-0 flex-1">
-                            <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                            <span className="block text-[9px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-0.5">
                               Variabilní symbol
                             </span>
-                            <span className="font-bold text-slate-800 text-sm font-mono">{vs}</span>
+                            <span className="font-bold text-[color:var(--wp-text)] text-sm font-mono">{vs}</span>
                           </div>
                           <CopyMiniButton text={vs} label="Kopírovat" />
                         </div>
                       ) : null}
                       {instruction.specificSymbol ? (
-                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-[color:var(--wp-surface-card-border)]">
                           <div className="min-w-0 flex-1">
-                            <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                            <span className="block text-[9px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-0.5">
                               Specifický symbol
                             </span>
-                            <span className="font-bold text-slate-800 text-sm font-mono">{instruction.specificSymbol}</span>
+                            <span className="font-bold text-[color:var(--wp-text)] text-sm font-mono">{instruction.specificSymbol}</span>
                           </div>
                           <CopyMiniButton text={instruction.specificSymbol} label="Kopírovat" />
                         </div>
                       ) : null}
                       {instruction.constantSymbol ? (
-                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-[color:var(--wp-surface-card-border)]">
                           <div className="min-w-0 flex-1">
-                            <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                            <span className="block text-[9px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-0.5">
                               Konstantní symbol
                             </span>
-                            <span className="font-bold text-slate-800 text-sm font-mono">{instruction.constantSymbol}</span>
+                            <span className="font-bold text-[color:var(--wp-text)] text-sm font-mono">{instruction.constantSymbol}</span>
                           </div>
                           <CopyMiniButton text={instruction.constantSymbol} label="Kopírovat" />
                         </div>
@@ -321,14 +321,14 @@ export function ClientPaymentsView({
                     </div>
 
                     {instruction.note ? (
-                      <p className="text-xs text-slate-500 leading-relaxed border-t border-slate-100 pt-3">{instruction.note}</p>
+                      <p className="text-xs text-[color:var(--wp-text-secondary)] leading-relaxed border-t border-[color:var(--wp-surface-card-border)] pt-3">{instruction.note}</p>
                     ) : null}
 
                     {qrEligible ? (
                       <button
                         type="button"
                         onClick={() => setSelectedIndex(index)}
-                        className="mt-auto w-full min-h-[48px] rounded-xl bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200 text-xs font-black uppercase tracking-widest transition-all inline-flex items-center justify-center gap-2 touch-manipulation active:scale-[0.98]"
+                        className="mt-auto w-full min-h-[48px] rounded-xl bg-[color:var(--wp-surface-muted)] hover:bg-indigo-50 text-[color:var(--wp-text)] hover:text-indigo-700 border border-[color:var(--wp-surface-card-border)] text-xs font-black uppercase tracking-widest transition-all inline-flex items-center justify-center gap-2 touch-manipulation active:scale-[0.98]"
                       >
                         <QrCode size={16} />
                         Zobrazit QR kód

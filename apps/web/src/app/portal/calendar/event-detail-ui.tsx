@@ -113,21 +113,21 @@ export function EventDetailInfoBlock({
       className={cx(
         "flex items-start gap-3 rounded-2xl border p-3.5",
         subdued
-          ? "border-transparent bg-slate-50/60"
-          : "border-slate-100 bg-slate-50",
+          ? "border-transparent bg-[color:var(--wp-main-scroll-bg)]/60"
+          : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]",
       )}
     >
       <div
         className={cx(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl",
-          subdued ? "bg-slate-100 text-slate-400" : "bg-slate-100 text-slate-700",
+          subdued ? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-tertiary)]" : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text)]",
         )}
         style={accentStyle}
       >
         <Icon size={16} />
       </div>
       <div className="min-w-0">
-        <p className="mb-0.5 text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+        <p className="mb-0.5 text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">{label}</p>
         {children}
       </div>
     </div>

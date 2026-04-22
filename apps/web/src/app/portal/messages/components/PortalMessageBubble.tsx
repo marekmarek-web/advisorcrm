@@ -47,7 +47,7 @@ export function PortalMessageBubble({
           </button>
         ) : null}
         <div
-          className={`rounded-[24px] px-4 py-3.5 text-[15px] leading-7 shadow-sm ${
+          className={`rounded-[var(--wp-radius-card)] px-4 py-3.5 text-[15px] leading-7 shadow-sm ${
             isOwn
               ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white"
               : "border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text)]"

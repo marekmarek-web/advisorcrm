@@ -114,10 +114,10 @@ export function ClientDashboardLayout({
     <div className="space-y-8 client-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div>
-          <h2 className="text-3xl md:text-4xl font-display font-black text-slate-900 tracking-tight mb-2">
+          <h2 className="text-3xl md:text-4xl font-display font-black text-[color:var(--wp-text)] tracking-tight mb-2">
             Dobrý den, {firstName}
           </h2>
-          <p className="text-slate-500 font-medium">
+          <p className="text-[color:var(--wp-text-secondary)] font-medium">
             Vítejte ve svém osobním finančním portálu.
           </p>
         </div>
@@ -136,8 +136,8 @@ export function ClientDashboardLayout({
 
       {contractsCount === 0 && (
         <div className="rounded-[24px] border border-indigo-100 bg-indigo-50/90 p-6 sm:p-8 shadow-sm">
-          <h3 className="text-lg font-black text-slate-900 mb-2">Vítejte v klientské zóně</h3>
-          <p className="text-sm text-slate-600 font-medium leading-relaxed max-w-2xl">
+          <h3 className="text-lg font-black text-[color:var(--wp-text)] mb-2">Vítejte v klientské zóně</h3>
+          <p className="text-sm text-[color:var(--wp-text-secondary)] font-medium leading-relaxed max-w-2xl">
             Váš poradce zatím nepřidal žádné smlouvy do portfolia. Jakmile je zaznamená, uvidíte je v
             sekci Moje portfolio.
           </p>
@@ -151,17 +151,17 @@ export function ClientDashboardLayout({
       )}
 
       {financialSummary && (
-        <div className="bg-white rounded-[24px] p-6 sm:p-8 border border-slate-100 shadow-sm">
+        <div className="bg-white rounded-[24px] p-6 sm:p-8 border border-[color:var(--wp-surface-card-border)] shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-600">
                 <Wallet size={22} />
               </div>
               <div>
-                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">
+                <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
                   Finanční přehled
                 </h3>
-                <p className="text-xs font-bold text-slate-500 mt-0.5">
+                <p className="text-xs font-bold text-[color:var(--wp-text-secondary)] mt-0.5">
                   {financialSummary.scope === "household" && financialSummary.householdName
                     ? `Domácnost: ${financialSummary.householdName}`
                     : "Z poslední finanční analýzy"}
@@ -180,10 +180,10 @@ export function ClientDashboardLayout({
           </div>
 
           <div className="mb-6">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1">
               Čisté jmění
             </p>
-            <p className="text-3xl font-display font-black text-slate-900">
+            <p className="text-3xl font-display font-black text-[color:var(--wp-text)]">
               {formatMoney(financialSummary.netWorth)}
             </p>
           </div>
@@ -200,15 +200,15 @@ export function ClientDashboardLayout({
                 emphasize: true,
               },
             ].map((row) => (
-              <div key={row.label} className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
-                <span className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+              <div key={row.label} className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]/50 p-4">
+                <span className="block text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1">
                   {row.label}
                 </span>
                 <span
                   className={`text-sm font-black tabular-nums ${
                     row.emphasize && financialSummary.surplus < 0
                       ? "text-rose-600"
-                      : "text-slate-900"
+                      : "text-[color:var(--wp-text)]"
                   }`}
                 >
                   {formatMoney(row.value)}
@@ -218,20 +218,20 @@ export function ClientDashboardLayout({
           </div>
 
           {financialSummary.goalsCount > 0 && (
-            <p className="mt-4 text-xs font-bold text-slate-500">
+            <p className="mt-4 text-xs font-bold text-[color:var(--wp-text-secondary)]">
               Cíle v analýze: {financialSummary.goalsCount}
             </p>
           )}
 
           {financialSummary.priorities.length > 0 && (
-            <p className="mt-2 text-sm text-slate-600">
-              <span className="font-black text-slate-800">Priority: </span>
+            <p className="mt-2 text-sm text-[color:var(--wp-text-secondary)]">
+              <span className="font-black text-[color:var(--wp-text)]">Priority: </span>
               {financialSummary.priorities.join(" · ")}
             </p>
           )}
 
           {financialSummary.gaps.length > 0 && (
-            <ul className="mt-3 text-xs text-slate-500 font-medium space-y-1 list-disc list-inside">
+            <ul className="mt-3 text-xs text-[color:var(--wp-text-secondary)] font-medium space-y-1 list-disc list-inside">
               {financialSummary.gaps.map((g) => (
                 <li key={g}>{g}</li>
               ))}
@@ -242,8 +242,8 @@ export function ClientDashboardLayout({
 
       {advisorMaterialRequests.length > 0 && (
         <div className="rounded-[24px] border border-amber-200 bg-amber-50/90 p-6 shadow-sm">
-          <h3 className="text-lg font-black text-slate-900 mb-2">Požadavky od poradce</h3>
-          <p className="text-sm text-slate-600 mb-4">
+          <h3 className="text-lg font-black text-[color:var(--wp-text)] mb-2">Požadavky od poradce</h3>
+          <p className="text-sm text-[color:var(--wp-text-secondary)] mb-4">
             Máte nové úkoly — nahrajte podklady nebo odpovězte přímo v detailu.
           </p>
           <ul className="space-y-2">
@@ -251,10 +251,10 @@ export function ClientDashboardLayout({
               <li key={r.id}>
                 <Link
                   href={`/client/pozadavky-poradce/${r.id}`}
-                  className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl bg-white border border-amber-100 px-4 py-2 text-sm font-bold text-slate-900 hover:bg-amber-100/50"
+                  className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl bg-white border border-amber-100 px-4 py-2 text-sm font-bold text-[color:var(--wp-text)] hover:bg-amber-100/50"
                 >
                   <span className="line-clamp-2">{r.title}</span>
-                  <span className="text-xs text-slate-500 shrink-0">
+                  <span className="text-xs text-[color:var(--wp-text-secondary)] shrink-0">
                     {r.categoryLabel}
                   </span>
                 </Link>
@@ -287,7 +287,7 @@ export function ClientDashboardLayout({
 
       {/* 5E: Quick stats link to portfolio detail */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Link href="/client/portfolio" className="group bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all">
+        <Link href="/client/portfolio" className="group bg-white rounded-[24px] p-6 border border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-md hover:border-indigo-200 transition-all">
           <div className="flex items-center justify-between gap-2 mb-2 text-indigo-600">
             <div className="flex items-center gap-2">
               <PieChart size={16} />
@@ -297,11 +297,11 @@ export function ClientDashboardLayout({
             </div>
             <ArrowRight size={13} className="opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
-          <div className="text-3xl font-display font-black text-slate-900">
+          <div className="text-3xl font-display font-black text-[color:var(--wp-text)]">
             {quickStatsLoadFailed ? "—" : formatMoney(quickStats.assetsUnderManagement)}
           </div>
         </Link>
-        <Link href="/client/portfolio" className="group bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all">
+        <Link href="/client/portfolio" className="group bg-white rounded-[24px] p-6 border border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-md hover:border-emerald-200 transition-all">
           <div className="flex items-center justify-between gap-2 mb-2 text-emerald-600">
             <div className="flex items-center gap-2">
               <TrendingUp size={16} />
@@ -311,11 +311,11 @@ export function ClientDashboardLayout({
             </div>
             <ArrowRight size={13} className="opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
-          <div className="text-3xl font-display font-black text-slate-900">
+          <div className="text-3xl font-display font-black text-[color:var(--wp-text)]">
             {quickStatsLoadFailed ? "—" : formatMoney(quickStats.monthlyInvestments)}
           </div>
         </Link>
-        <Link href="/client/portfolio" className="group bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all">
+        <Link href="/client/portfolio" className="group bg-white rounded-[24px] p-6 border border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-md hover:border-amber-200 transition-all">
           <div className="flex items-center justify-between gap-2 mb-2 text-amber-500">
             <div className="flex items-center gap-2">
               <Shield size={16} />
@@ -325,10 +325,10 @@ export function ClientDashboardLayout({
             </div>
             <ArrowRight size={13} className="opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
-          <div className="text-3xl font-display font-black text-slate-900">
+          <div className="text-3xl font-display font-black text-[color:var(--wp-text)]">
             {quickStatsLoadFailed ? "—" : formatMoney(quickStats.monthlyInsurancePremiums)}
           </div>
-          <p className="text-xs text-slate-500 mt-2 font-medium">
+          <p className="text-xs text-[color:var(--wp-text-secondary)] mt-2 font-medium">
             {quickStatsLoadFailed
               ? "Aktivních položek v přehledu: —"
               : `Aktivních položek v přehledu: ${quickStats.activeContractCount}`}
@@ -386,7 +386,7 @@ export function ClientDashboardLayout({
           </div>
         </div>
 
-        <div className="bg-white rounded-[24px] border border-slate-100 p-8 shadow-sm grid grid-cols-2 gap-4">
+        <div className="bg-white rounded-[24px] border border-[color:var(--wp-surface-card-border)] p-8 shadow-sm grid grid-cols-2 gap-4">
           {[
             {
               href: "/client/portfolio",
@@ -424,25 +424,25 @@ export function ClientDashboardLayout({
             <Link
               key={item.href}
               href={item.href}
-              className="p-5 rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[132px]"
+              className="p-5 rounded-2xl border border-[color:var(--wp-surface-card-border)] hover:border-indigo-200 hover:shadow-md transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[132px]"
             >
               <div
                 className={`w-12 h-12 rounded-xl flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform`}
               >
                 <item.icon size={24} />
               </div>
-              <span className="font-bold text-sm text-slate-700">{item.label}</span>
-              <span className="text-xs text-slate-400 font-bold">{item.value}</span>
+              <span className="font-bold text-sm text-[color:var(--wp-text)]">{item.label}</span>
+              <span className="text-xs text-[color:var(--wp-text-tertiary)] font-bold">{item.value}</span>
             </Link>
           ))}
         </div>
       </div>
 
-      <div className="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm">
-        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-2">
+      <div className="bg-white rounded-[24px] p-6 border border-[color:var(--wp-surface-card-border)] shadow-sm">
+        <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2">
           E-mailová oznámení
         </h3>
-        <p className="text-sm text-slate-600 mb-2">
+        <p className="text-sm text-[color:var(--wp-text-secondary)] mb-2">
           {isUnsubscribed
             ? "E-mailové notifikace jsou aktuálně vypnuté."
             : "Dostáváte servisní upozornění, nové dokumenty a změny ve vašich požadavcích."}

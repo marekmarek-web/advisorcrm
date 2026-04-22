@@ -132,7 +132,7 @@ export function ConversationContextPanel({
   return (
     <Root
       className={clsx(
-        "flex min-h-0 flex-col gap-4 overflow-y-auto rounded-[28px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-sm",
+        "flex min-h-0 flex-col gap-4 overflow-y-auto rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-sm",
         asDiv && "overflow-visible rounded-none border-0 bg-transparent p-0 shadow-none",
         className,
       )}

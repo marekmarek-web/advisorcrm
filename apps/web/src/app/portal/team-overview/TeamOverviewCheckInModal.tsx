@@ -63,35 +63,35 @@ export function TeamOverviewCheckInModal({
           type="button"
           onClick={onClose}
           disabled={pending}
-          className="absolute right-6 top-6 rounded-full bg-slate-100 p-2 hover:bg-slate-200 disabled:opacity-50"
+          className="absolute right-6 top-6 rounded-full bg-[color:var(--wp-surface-muted)] p-2 hover:bg-[color:var(--wp-surface-muted)] disabled:opacity-50"
           aria-label="Zavřít"
         >
           <X className="h-5 w-5" />
         </button>
-        <div className="border-b border-slate-100 p-8">
-          <h2 className="text-2xl font-black text-slate-900">Záznam ze schůzky (Check-in)</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">S členem: {memberName}</p>
+        <div className="border-b border-[color:var(--wp-surface-card-border)] p-8">
+          <h2 className="text-2xl font-black text-[color:var(--wp-text)]">Záznam ze schůzky (Check-in)</h2>
+          <p className="mt-1 text-sm font-medium text-[color:var(--wp-text-secondary)]">S členem: {memberName}</p>
         </div>
-        <div className="space-y-6 bg-slate-50/50 p-8">
+        <div className="space-y-6 bg-[color:var(--wp-main-scroll-bg)]/50 p-8">
           <div>
-            <label className="mb-2 block text-[11px] font-extrabold uppercase tracking-widest text-slate-500">
+            <label className="mb-2 block text-[11px] font-extrabold uppercase tracking-widest text-[color:var(--wp-text-secondary)]">
               Hodnocení uplynulého období
             </label>
             <textarea
               value={review}
               onChange={(e) => setReview(e.target.value)}
-              className="min-h-[100px] w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none ring-slate-900/5 focus:ring-2"
+              className="min-h-[100px] w-full rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-white p-4 text-sm outline-none ring-slate-900/5 focus:ring-2"
               placeholder="Témata, výkon, signály…"
             />
           </div>
           <div>
-            <label className="mb-2 block text-[11px] font-extrabold uppercase tracking-widest text-slate-500">
+            <label className="mb-2 block text-[11px] font-extrabold uppercase tracking-widest text-[color:var(--wp-text-secondary)]">
               Akční kroky na další období
             </label>
             <textarea
               value={actions}
               onChange={(e) => setActions(e.target.value)}
-              className="min-h-[100px] w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none ring-slate-900/5 focus:ring-2"
+              className="min-h-[100px] w-full rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-white p-4 text-sm outline-none ring-slate-900/5 focus:ring-2"
               placeholder="Dohody, termíny…"
             />
           </div>

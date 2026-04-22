@@ -14,18 +14,18 @@ export default async function ClientDocumentsPage() {
   return (
     <div className="space-y-6 client-fade-in">
       <div>
-        <h2 className="text-3xl font-display font-black text-slate-900 tracking-tight">
+        <h2 className="text-3xl font-display font-black text-[color:var(--wp-text)] tracking-tight">
           Trezor dokumentů
         </h2>
-        <p className="text-sm font-medium text-slate-500 mt-2">
+        <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] mt-2">
           Bezpečné sdílení dokumentů mezi vámi a poradcem.
         </p>
       </div>
 
-      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="px-6 sm:px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30 rounded-t-[24px]">
-          <h3 className="text-xl font-black text-slate-900">Správce souborů</h3>
-          <span className="text-xs font-black uppercase tracking-widest text-slate-400">
+      <div className="bg-white rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+        <div className="px-6 sm:px-8 py-6 border-b border-[color:var(--wp-surface-card-border)] flex items-center justify-between bg-[color:var(--wp-main-scroll-bg)]/30 rounded-t-[24px]">
+          <h3 className="text-xl font-black text-[color:var(--wp-text)]">Správce souborů</h3>
+          <span className="text-xs font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
             {documentsList.length} dokumentů
           </span>
         </div>
@@ -54,14 +54,14 @@ export default async function ClientDocumentsPage() {
                 return (
                   <div
                     key={document.id}
-                    className="flex items-center gap-4 p-4 border border-slate-100 rounded-2xl hover:bg-slate-50 transition-colors"
+                    className="flex items-center gap-4 p-4 border border-[color:var(--wp-surface-card-border)] rounded-2xl hover:bg-[color:var(--wp-main-scroll-bg)] transition-colors"
                   >
                     <div className="p-3 bg-rose-50 text-rose-500 rounded-xl">
                       <File size={20} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-sm text-slate-800 truncate">{document.name}</h4>
-                      <p className="text-xs font-bold text-slate-400">
+                      <h4 className="font-bold text-sm text-[color:var(--wp-text)] truncate">{document.name}</h4>
+                      <p className="text-xs font-bold text-[color:var(--wp-text-tertiary)]">
                         {new Date(document.createdAt).toLocaleDateString("cs-CZ")}
                       </p>
                       {document.tags && document.tags.length > 0 && (() => {
@@ -93,7 +93,7 @@ export default async function ClientDocumentsPage() {
                     </div>
                     <a
                       href={`/api/documents/${document.id}/download`}
-                      className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
+                      className="p-2 text-[color:var(--wp-text-tertiary)] hover:text-indigo-600 transition-colors"
                       aria-label={`Stáhnout ${document.name}`}
                     >
                       <Download size={20} />

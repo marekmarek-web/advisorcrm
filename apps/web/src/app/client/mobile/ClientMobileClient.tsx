@@ -253,7 +253,7 @@ function DashboardHome({
             <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Přístup aktivní</span>
           </div>
           <h2 className="text-xl font-black mb-1">Vítejte, {initialData.profile?.firstName || "Kliente"}</h2>
-          <p className="text-sm text-slate-300 leading-relaxed">
+          <p className="text-sm text-[color:var(--wp-text-tertiary)] leading-relaxed">
             Vaše klientská zóna je připravená. Najdete tu dokumenty, zprávy a vše důležité od poradce.
           </p>
         </MobileCard>
@@ -264,9 +264,9 @@ function DashboardHome({
               {initialData.advisor.fullName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Váš poradce</p>
-              <p className="text-sm font-bold text-slate-900 truncate">{initialData.advisor.fullName}</p>
-              {initialData.advisor.email && <p className="text-xs text-slate-500 truncate">{initialData.advisor.email}</p>}
+              <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">Váš poradce</p>
+              <p className="text-sm font-bold text-[color:var(--wp-text)] truncate">{initialData.advisor.fullName}</p>
+              {initialData.advisor.email && <p className="text-xs text-[color:var(--wp-text-secondary)] truncate">{initialData.advisor.email}</p>}
             </div>
             <button type="button" onClick={() => router.push("/client/messages")} className="shrink-0 min-h-[36px] min-w-[36px] rounded-lg border border-indigo-200 bg-indigo-50 grid place-items-center text-indigo-600">
               <MessageSquare size={16} />
@@ -280,10 +280,10 @@ function DashboardHome({
               <button key={i} type="button" onClick={item.onClick} className="w-full flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-3.5 py-3 text-left">
                 <AlertCircle size={16} className="shrink-0 text-amber-600" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-slate-900 line-clamp-1">{item.label}</p>
-                  {item.detail && <p className="text-xs text-slate-500 line-clamp-1">{item.detail}</p>}
+                  <p className="text-sm font-bold text-[color:var(--wp-text)] line-clamp-1">{item.label}</p>
+                  {item.detail && <p className="text-xs text-[color:var(--wp-text-secondary)] line-clamp-1">{item.detail}</p>}
                 </div>
-                <ChevronRight size={14} className="shrink-0 text-slate-400" />
+                <ChevronRight size={14} className="shrink-0 text-[color:var(--wp-text-tertiary)]" />
               </button>
             ))}
           </MobileSection>
@@ -297,16 +297,16 @@ function DashboardHome({
             <button type="button" onClick={onNewRequest} className="min-h-[52px] rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-bold">
               Nový požadavek
             </button>
-            <button type="button" onClick={() => router.push("/client/documents")} className="min-h-[52px] rounded-xl border border-slate-200 text-slate-700 text-sm font-bold">
+            <button type="button" onClick={() => router.push("/client/documents")} className="min-h-[52px] rounded-xl border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text)] text-sm font-bold">
               Dokumenty
             </button>
-            <button type="button" onClick={() => router.push("/client/profile")} className="min-h-[52px] rounded-xl border border-slate-200 text-slate-700 text-sm font-bold">
+            <button type="button" onClick={() => router.push("/client/profile")} className="min-h-[52px] rounded-xl border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text)] text-sm font-bold">
               Můj profil
             </button>
           </div>
         </MobileSection>
 
-        <p className="text-xs text-slate-400 font-medium px-1 leading-relaxed">
+        <p className="text-xs text-[color:var(--wp-text-tertiary)] font-medium px-1 leading-relaxed">
           Jakmile váš poradce přidá smlouvy a dokumenty, zobrazí se zde automaticky.
         </p>
       </>
@@ -324,11 +324,11 @@ function DashboardHome({
             </div>
           ) : null}
           <div className="min-w-0 flex-1">
-            <p className="text-base font-black text-slate-900">
+            <p className="text-base font-black text-[color:var(--wp-text)]">
               Dobrý den, {initialData.profile?.firstName || "Kliente"}
             </p>
             {initialData.advisor && (
-              <p className="text-xs text-slate-500 truncate">
+              <p className="text-xs text-[color:var(--wp-text-secondary)] truncate">
                 Poradce: {initialData.advisor.fullName}
               </p>
             )}
@@ -349,17 +349,17 @@ function DashboardHome({
         <div className="grid grid-cols-3 gap-2">
           <MobileCard className="p-3">
             <TrendingUp size={14} className="text-emerald-500 mb-1" />
-            <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Investice / m</p>
+            <p className="text-[10px] uppercase tracking-wider text-[color:var(--wp-text-secondary)] font-black">Investice / m</p>
             <p className="text-base font-black mt-0.5">{fmtMoney(quickStats.monthlyInvestments)}</p>
           </MobileCard>
           <MobileCard className="p-3">
             <Shield size={14} className="text-amber-500 mb-1" />
-            <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Pojistné / m</p>
+            <p className="text-[10px] uppercase tracking-wider text-[color:var(--wp-text-secondary)] font-black">Pojistné / m</p>
             <p className="text-base font-black mt-0.5">{fmtMoney(quickStats.monthlyInsurancePremiums)}</p>
           </MobileCard>
           <MobileCard className="p-3">
             <Briefcase size={14} className="text-indigo-500 mb-1" />
-            <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Smlouvy</p>
+            <p className="text-[10px] uppercase tracking-wider text-[color:var(--wp-text-secondary)] font-black">Smlouvy</p>
             <p className="text-base font-black mt-0.5">{quickStats.activeContractCount}</p>
           </MobileCard>
         </div>
@@ -391,21 +391,21 @@ function DashboardHome({
                   {ADVISOR_PROPOSAL_SEGMENT_LABELS[heroProposal.segment] ?? heroProposal.segment}
                 </p>
                 {heroProposal.savingsAnnual !== null && heroProposal.savingsAnnual > 0 ? (
-                  <p className="text-base font-black text-slate-900 leading-snug mt-0.5">
+                  <p className="text-base font-black text-[color:var(--wp-text)] leading-snug mt-0.5">
                     Úspora{" "}
                     <span className="text-emerald-600">
                       {formatProposalMoneyCs(heroProposal.savingsAnnual, heroProposal.currency)} / rok
                     </span>
                   </p>
                 ) : (
-                  <p className="text-base font-black text-slate-900 leading-snug mt-0.5">
+                  <p className="text-base font-black text-[color:var(--wp-text)] leading-snug mt-0.5">
                     Nezávazné porovnání
                   </p>
                 )}
-                <p className="text-sm font-semibold text-slate-800 line-clamp-2 mt-1">
+                <p className="text-sm font-semibold text-[color:var(--wp-text)] line-clamp-2 mt-1">
                   „{heroProposal.title}"
                 </p>
-                <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+                <p className="text-[11px] text-[color:var(--wp-text-secondary)] mt-1 leading-snug">
                   Porovnání od poradce. Není to automatické doporučení.
                 </p>
               </div>
@@ -438,10 +438,10 @@ function DashboardHome({
             <button key={i} type="button" onClick={item.onClick} className="w-full flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-3.5 py-3 text-left">
               <AlertCircle size={16} className="shrink-0 text-amber-600" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-slate-900 line-clamp-1">{item.label}</p>
-                {item.detail && <p className="text-xs text-slate-500 line-clamp-1">{item.detail}</p>}
+                <p className="text-sm font-bold text-[color:var(--wp-text)] line-clamp-1">{item.label}</p>
+                {item.detail && <p className="text-xs text-[color:var(--wp-text-secondary)] line-clamp-1">{item.detail}</p>}
               </div>
-              <ChevronRight size={14} className="shrink-0 text-slate-400" />
+              <ChevronRight size={14} className="shrink-0 text-[color:var(--wp-text-tertiary)]" />
             </button>
           ))}
         </MobileSection>
@@ -456,14 +456,14 @@ function DashboardHome({
           <button type="button" onClick={() => router.push("/client/messages")} className="min-h-[52px] rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-sm font-bold inline-flex items-center justify-center gap-1.5">
             <MessageSquare size={15} /> Napsat poradci
           </button>
-          <button type="button" onClick={() => router.push("/client/documents")} className="min-h-[52px] rounded-xl border border-slate-200 text-slate-700 text-sm font-bold inline-flex items-center justify-center gap-1.5">
+          <button type="button" onClick={() => router.push("/client/documents")} className="min-h-[52px] rounded-xl border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text)] text-sm font-bold inline-flex items-center justify-center gap-1.5">
             <FolderOpen size={15} /> Trezor dokumentů
           </button>
-          <button type="button" onClick={() => router.push("/client/portfolio")} className="min-h-[52px] rounded-xl border border-slate-200 text-slate-700 text-sm font-bold inline-flex items-center justify-center gap-1.5">
+          <button type="button" onClick={() => router.push("/client/portfolio")} className="min-h-[52px] rounded-xl border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text)] text-sm font-bold inline-flex items-center justify-center gap-1.5">
             <Briefcase size={15} /> Moje portfolio
           </button>
           {hasPayments && (
-            <button type="button" onClick={() => router.push("/client/payments")} className="min-h-[52px] col-span-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-bold inline-flex items-center justify-center gap-1.5">
+            <button type="button" onClick={() => router.push("/client/payments")} className="min-h-[52px] col-span-2 rounded-xl border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text)] text-sm font-bold inline-flex items-center justify-center gap-1.5">
               <CreditCard size={15} /> Platby a instrukce
             </button>
           )}
@@ -482,10 +482,10 @@ function DashboardHome({
         >
           {openRequests.slice(0, 3).map((r) => (
             <MobileCard key={r.id} className="p-3 flex items-center gap-3">
-              <ListTodo size={16} className="shrink-0 text-slate-400" />
+              <ListTodo size={16} className="shrink-0 text-[color:var(--wp-text-tertiary)]" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-slate-900 line-clamp-1">{r.title}</p>
-                <p className="text-xs text-slate-500">{r.caseTypeLabel} · {r.statusLabel}</p>
+                <p className="text-sm font-bold text-[color:var(--wp-text)] line-clamp-1">{r.title}</p>
+                <p className="text-xs text-[color:var(--wp-text-secondary)]">{r.caseTypeLabel} · {r.statusLabel}</p>
               </div>
             </MobileCard>
           ))}
@@ -503,10 +503,10 @@ function DashboardHome({
         >
           {latestDocs.map((d) => (
             <MobileCard key={d.id} className="p-3 flex items-center gap-3">
-              <FileText size={16} className="shrink-0 text-slate-400" />
+              <FileText size={16} className="shrink-0 text-[color:var(--wp-text-tertiary)]" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-slate-900 line-clamp-1">{d.name}</p>
-                <p className="text-xs text-slate-500">{new Date(d.createdAt).toLocaleDateString("cs-CZ")}</p>
+                <p className="text-sm font-bold text-[color:var(--wp-text)] line-clamp-1">{d.name}</p>
+                <p className="text-xs text-[color:var(--wp-text-secondary)]">{new Date(d.createdAt).toLocaleDateString("cs-CZ")}</p>
               </div>
               <a href={`/api/documents/${d.id}/download`} className="shrink-0 text-xs font-bold text-indigo-600">
                 Stáhnout
@@ -604,7 +604,7 @@ function PortfolioProductLeadVisual({
     />
   ) : (
     <div
-      className="h-[5.5rem] w-[5.5rem] rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-sm font-black text-slate-600 shrink-0"
+      className="h-[5.5rem] w-[5.5rem] rounded-xl bg-[color:var(--wp-main-scroll-bg)] border border-[color:var(--wp-surface-card-border)] flex items-center justify-center text-sm font-black text-[color:var(--wp-text-secondary)] shrink-0"
       aria-hidden
     >
       {initials}
@@ -679,7 +679,7 @@ function PortfolioScreen({
 
   return (
     <>
-      <p className="text-[11px] text-slate-400 px-0.5 -mt-1 mb-1 leading-relaxed">
+      <p className="text-[11px] text-[color:var(--wp-text-tertiary)] px-0.5 -mt-1 mb-1 leading-relaxed">
         Souhrnné částky počítáme jen u aktivních smluv; ukončené zůstávají v seznamu níže.
       </p>
       <div className="grid grid-cols-2 gap-2">
@@ -702,7 +702,7 @@ function PortfolioScreen({
           </MobileCard>
         )}
         <MobileCard className="p-3">
-          <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Položek</p>
+          <p className="text-[10px] uppercase tracking-wider text-[color:var(--wp-text-secondary)] font-black">Položek</p>
           <p className="text-base font-black mt-0.5">{metrics.activeContractCount}</p>
         </MobileCard>
       </div>
@@ -719,7 +719,7 @@ function PortfolioScreen({
                 st === "Aktivní"
                   ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                   : st === "Ukončené"
-                    ? "bg-slate-100 text-slate-600 border-slate-200"
+                    ? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] border-[color:var(--wp-surface-card-border)]"
                     : "bg-amber-50 text-amber-800 border-amber-100";
               const isOneTimeInv =
                 p.segmentDetail?.kind === "investment" && p.segmentDetail.paymentType === "one_time";
@@ -771,13 +771,13 @@ function PortfolioScreen({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-slate-900 leading-snug line-clamp-2">
+                          <p className="text-sm font-bold text-[color:var(--wp-text)] leading-snug line-clamp-2">
                             {contract.productName || "Produkt"}
                           </p>
                           {contract.partnerName ? (
-                            <p className="text-xs text-slate-500 truncate mt-0.5">{contract.partnerName}</p>
+                            <p className="text-xs text-[color:var(--wp-text-secondary)] truncate mt-0.5">{contract.partnerName}</p>
                           ) : null}
-                          <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wide">{p.segmentLabel}</p>
+                          <p className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] mt-1 uppercase tracking-wide">{p.segmentLabel}</p>
                         </div>
                         <span className={`shrink-0 px-2 py-0.5 rounded-md border text-[10px] font-black uppercase tracking-wider ${stTone}`}>
                           {st}
@@ -788,8 +788,8 @@ function PortfolioScreen({
 
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Platba</p>
-                      <p className="font-bold text-slate-900">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Platba</p>
+                      <p className="font-bold text-[color:var(--wp-text)]">
                         {formatPortalPremiumLineCs(
                           contract.premiumAmount,
                           contract.premiumAnnual,
@@ -799,35 +799,35 @@ function PortfolioScreen({
                     </div>
                     {contract.contractNumber ? (
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Číslo smlouvy</p>
-                        <p className="font-mono text-slate-700 truncate">{contract.contractNumber}</p>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Číslo smlouvy</p>
+                        <p className="font-mono text-[color:var(--wp-text)] truncate">{contract.contractNumber}</p>
                       </div>
                     ) : null}
                     {contract.startDate ? (
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Od</p>
-                        <p className="font-bold text-slate-700">{formatDisplayDateCs(contract.startDate) || contract.startDate}</p>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Od</p>
+                        <p className="font-bold text-[color:var(--wp-text)]">{formatDisplayDateCs(contract.startDate) || contract.startDate}</p>
                       </div>
                     ) : null}
                     {contract.anniversaryDate ? (
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Výročí</p>
-                        <p className="font-bold text-slate-700">{formatDisplayDateCs(contract.anniversaryDate) || contract.anniversaryDate}</p>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Výročí</p>
+                        <p className="font-bold text-[color:var(--wp-text)]">{formatDisplayDateCs(contract.anniversaryDate) || contract.anniversaryDate}</p>
                       </div>
                     ) : null}
                   </div>
 
                   {detailRows.length > 0 ? (
-                    <div className="rounded-2xl border border-slate-200/90 bg-white p-3 space-y-0 shadow-sm">
+                    <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)]/90 bg-white p-3 space-y-0 shadow-sm">
                       {detailRows.map((row, ridx) => (
                         <div
                           key={`${row.label}-${ridx}`}
-                          className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-baseline sm:gap-3 py-2.5 border-b border-slate-100 last:border-b-0 first:pt-0 last:pb-0"
+                          className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-baseline sm:gap-3 py-2.5 border-b border-[color:var(--wp-surface-card-border)] last:border-b-0 first:pt-0 last:pb-0"
                         >
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)] shrink-0">
                             {row.label}
                           </span>
-                          <span className="text-[12px] font-bold text-slate-900 text-left sm:text-right min-w-0 leading-snug break-words">
+                          <span className="text-[12px] font-bold text-[color:var(--wp-text)] text-left sm:text-right min-w-0 leading-snug break-words">
                             {row.value}
                           </span>
                         </div>
@@ -837,14 +837,14 @@ function PortfolioScreen({
 
                   {lifeRisks.length > 0 ? (
                     <div className="space-y-1.5">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-0.5">Rizika / krytí</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] px-0.5">Rizika / krytí</p>
                       <div className="grid grid-cols-1 gap-1.5">
                         {lifeRisks.map((r, i) => (
                           <div
                             key={i}
-                            className="rounded-lg border border-slate-200 bg-white p-2 flex items-start justify-between gap-2 shadow-sm"
+                            className="rounded-lg border border-[color:var(--wp-surface-card-border)] bg-white p-2 flex items-start justify-between gap-2 shadow-sm"
                           >
-                            <span className="text-[12px] font-bold text-slate-800 leading-snug min-w-0 break-words">
+                            <span className="text-[12px] font-bold text-[color:var(--wp-text)] leading-snug min-w-0 break-words">
                               {r.label || "—"}
                             </span>
                             {r.amount ? (
@@ -863,9 +863,9 @@ function PortfolioScreen({
                       <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Složení vkladu</p>
                       <div className="space-y-1.5">
                         {dpsBreakdown.participant ? (
-                          <div className="flex justify-between text-[12px] font-bold text-slate-700">
+                          <div className="flex justify-between text-[12px] font-bold text-[color:var(--wp-text)]">
                             <span>Vlastní</span>
-                            <span className="tabular-nums text-slate-900">{dpsBreakdown.participant}</span>
+                            <span className="tabular-nums text-[color:var(--wp-text)]">{dpsBreakdown.participant}</span>
                           </div>
                         ) : null}
                         {dpsBreakdown.state ? (
@@ -908,7 +908,7 @@ function PortfolioScreen({
       })}
 
       {anyFvShown ? (
-        <p className="text-[10px] text-slate-400 leading-relaxed px-0.5">{SHARED_FV_DISCLAIMER}</p>
+        <p className="text-[10px] text-[color:var(--wp-text-tertiary)] leading-relaxed px-0.5">{SHARED_FV_DISCLAIMER}</p>
       ) : null}
     </>
   );
@@ -1281,7 +1281,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
           <button
             type="button"
             onClick={() => router.push("/client/notifications")}
-            className="relative min-h-[44px] min-w-[44px] rounded-xl border border-slate-200 grid place-items-center"
+            className="relative min-h-[44px] min-w-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] grid place-items-center"
             aria-label="Notifikace"
           >
             <Bell size={18} />
@@ -1299,12 +1299,12 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
         <main className="relative flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden">
           {/* Advisor strip */}
           {initialData.advisor ? (
-            <div className="shrink-0 px-4 py-2.5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2.5">
+            <div className="shrink-0 px-4 py-2.5 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]/60 flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white grid place-items-center text-xs font-black shrink-0">
                 {initialData.advisor.initials}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-900 truncate">{initialData.advisor.fullName}</p>
+                <p className="text-sm font-bold text-[color:var(--wp-text)] truncate">{initialData.advisor.fullName}</p>
                 <p className="text-[10px] font-black uppercase tracking-wider text-emerald-500">Váš poradce</p>
               </div>
             </div>
@@ -1314,15 +1314,15 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
             {busy ? <LoadingSkeleton rows={3} /> : null}
             {!busy && messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <p className="text-slate-500 font-medium text-sm">Zatím žádné zprávy.</p>
-                <p className="text-xs text-slate-400 mt-1">Napište poradci níže.</p>
+                <p className="text-[color:var(--wp-text-secondary)] font-medium text-sm">Zatím žádné zprávy.</p>
+                <p className="text-xs text-[color:var(--wp-text-tertiary)] mt-1">Napište poradci níže.</p>
               </div>
             ) : (
               <div className="space-y-1">
                 {groupedMessages.map(({ date, msgs: dayMsgs }) => (
                   <div key={date}>
                     <div className="flex justify-center py-3">
-                      <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-wider rounded-full">
+                      <span className="px-3 py-1 bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] text-[10px] font-black uppercase tracking-wider rounded-full">
                         {date}
                       </span>
                     </div>
@@ -1349,12 +1349,12 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
           {/* Compose area — always visible, pinned above bottom nav */}
           <div className="shrink-0 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-2">
             {composeFiles.length > 0 ? (
-              <p className="text-[11px] text-slate-500 mb-1.5 px-1">
+              <p className="text-[11px] text-[color:var(--wp-text-secondary)] mb-1.5 px-1">
                 {composeFiles.length} {composeFiles.length === 1 ? "soubor vybrán" : "soubory vybrány"}
               </p>
             ) : null}
             <div className="flex items-end gap-2">
-              <div className="flex-1 flex items-end gap-1.5 rounded-2xl border border-slate-200 bg-slate-50/60 pl-3 pr-2 py-2 focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-300 transition-all">
+              <div className="flex-1 flex items-end gap-1.5 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)]/60 pl-3 pr-2 py-2 focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-300 transition-all">
                 <textarea
                   rows={1}
                   value={composeBody}
@@ -1365,11 +1365,11 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
                       void sendMessage();
                     }
                   }}
-                  className="flex-1 bg-transparent border-none outline-none text-sm text-slate-700 resize-none max-h-24 min-h-[20px] leading-relaxed"
+                  className="flex-1 bg-transparent border-none outline-none text-sm text-[color:var(--wp-text)] resize-none max-h-24 min-h-[20px] leading-relaxed"
                   placeholder="Napište zprávu svému poradci"
                 />
                 <label
-                  className="shrink-0 h-7 w-7 grid place-items-center text-slate-400 hover:text-slate-600 cursor-pointer mb-0.5"
+                  className="shrink-0 h-7 w-7 grid place-items-center text-[color:var(--wp-text-tertiary)] hover:text-[color:var(--wp-text-secondary)] cursor-pointer mb-0.5"
                   title="Přiložit soubor"
                 >
                   <span className="sr-only">Přiložit soubor</span>
@@ -1425,7 +1425,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
           <>
             <SearchBar value={documentsSearch} onChange={setDocumentsSearch} placeholder="Hledat dokument..." />
             <MobileCard>
-              <label className="w-full min-h-[44px] rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-700 text-sm font-bold inline-flex items-center justify-center cursor-pointer">
+              <label className="w-full min-h-[44px] rounded-xl border border-dashed border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text)] text-sm font-bold inline-flex items-center justify-center cursor-pointer">
                 Nahrát dokument
                 <input type="file" className="hidden" onChange={(e) => uploadDocument(e.target.files?.[0] ?? null)} accept=".pdf,.jpg,.jpeg,.png,.webp" />
               </label>
@@ -1439,7 +1439,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
                   title={document.name}
                   subtitle={new Date(document.createdAt).toLocaleDateString("cs-CZ")}
                   action={
-                    <a href={`/api/documents/${document.id}/download`} className="inline-flex min-h-[36px] items-center rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-700">
+                    <a href={`/api/documents/${document.id}/download`} className="inline-flex min-h-[36px] items-center rounded-lg border border-[color:var(--wp-surface-card-border)] px-3 text-xs font-bold text-[color:var(--wp-text)]">
                       Stáhnout
                     </a>
                   }
@@ -1530,9 +1530,9 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
                           </div>
                           <div className="min-w-0">
                             <p className="text-[10px] font-black uppercase tracking-wider text-violet-600">{mr.categoryLabel}</p>
-                            <p className="text-sm font-bold text-slate-900 leading-snug">{mr.title}</p>
+                            <p className="text-sm font-bold text-[color:var(--wp-text)] leading-snug">{mr.title}</p>
                             {mr.dueAt && (
-                              <p className="text-[11px] text-slate-400 mt-0.5">
+                              <p className="text-[11px] text-[color:var(--wp-text-tertiary)] mt-0.5">
                                 Termín: {new Date(mr.dueAt).toLocaleDateString("cs-CZ")}
                               </p>
                             )}
@@ -1542,7 +1542,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
                           <StatusBadge tone={materialRequestStatusTone(mr.status)}>
                             {materialRequestStatusLabel(mr.status)}
                           </StatusBadge>
-                          <ChevronRight size={14} className="text-slate-400" />
+                          <ChevronRight size={14} className="text-[color:var(--wp-text-tertiary)]" />
                         </div>
                       </div>
                     </MobileCard>
@@ -1601,12 +1601,12 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
                   >
                     <MobileCard className={`p-3.5 ${isUnread ? "border-indigo-200 bg-indigo-50/40" : ""}`}>
                       <div className="flex items-start gap-3">
-                        <div className={`shrink-0 mt-0.5 w-9 h-9 rounded-xl border grid place-items-center ${isUnread ? "bg-indigo-100 border-indigo-200 text-indigo-600" : "bg-slate-100 border-slate-200 text-slate-500"}`}>
+                        <div className={`shrink-0 mt-0.5 w-9 h-9 rounded-xl border grid place-items-center ${isUnread ? "bg-indigo-100 border-indigo-200 text-indigo-600" : "bg-[color:var(--wp-surface-muted)] border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)]"}`}>
                           <IconComponent size={16} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">
-                            <p className={`text-sm font-bold leading-snug ${isUnread ? "text-slate-900" : "text-slate-700"}`}>
+                            <p className={`text-sm font-bold leading-snug ${isUnread ? "text-[color:var(--wp-text)]" : "text-[color:var(--wp-text)]"}`}>
                               {notification.title}
                             </p>
                             {isUnread && (
@@ -1614,15 +1614,15 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
                             )}
                           </div>
                           {notification.body ? (
-                            <p className="text-xs text-slate-500 line-clamp-2">
+                            <p className="text-xs text-[color:var(--wp-text-secondary)] line-clamp-2">
                               {formatPortalNotificationBody(notification.type, notification.body)}
                             </p>
                           ) : null}
-                          <p className="text-[11px] text-slate-400 mt-1">
+                          <p className="text-[11px] text-[color:var(--wp-text-tertiary)] mt-1">
                             {new Date(notification.createdAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "short", year: "numeric" })}
                           </p>
                         </div>
-                        {route && <ChevronRight size={14} className="text-slate-400 shrink-0 mt-1" />}
+                        {route && <ChevronRight size={14} className="text-[color:var(--wp-text-tertiary)] shrink-0 mt-1" />}
                       </div>
                     </MobileCard>
                   </button>
@@ -1642,19 +1642,19 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
                     {`${initialData.profile?.firstName?.[0] ?? ""}${initialData.profile?.lastName?.[0] ?? ""}`.toUpperCase() || "K"}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-black text-slate-900 truncate">{initialData.fullName}</p>
+                    <p className="text-sm font-black text-[color:var(--wp-text)] truncate">{initialData.fullName}</p>
                     {profileDraft.email && (
-                      <p className="text-xs text-slate-500 font-medium truncate">{profileDraft.email}</p>
+                      <p className="text-xs text-[color:var(--wp-text-secondary)] font-medium truncate">{profileDraft.email}</p>
                     )}
                     {profileDraft.phone && (
-                      <p className="text-xs text-slate-500 font-medium">{profileDraft.phone}</p>
+                      <p className="text-xs text-[color:var(--wp-text-secondary)] font-medium">{profileDraft.phone}</p>
                     )}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setProfileEditOpen((v) => !v)}
-                  className="shrink-0 min-h-[40px] min-w-[40px] rounded-xl border border-slate-200 grid place-items-center text-slate-500 hover:bg-slate-100 transition-colors"
+                  className="shrink-0 min-h-[40px] min-w-[40px] rounded-xl border border-[color:var(--wp-surface-card-border)] grid place-items-center text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-main-scroll-bg)] transition-colors"
                   aria-label="Upravit kontaktní údaje"
                 >
                   <Pencil size={15} />
@@ -1662,13 +1662,13 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
               </div>
 
               {profileEditOpen && (
-                <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
-                  <input value={profileDraft.email} onChange={(e) => setProfileDraft((prev) => ({ ...prev, email: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm bg-slate-50 focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="E-mail" />
-                  <input value={profileDraft.phone} onChange={(e) => setProfileDraft((prev) => ({ ...prev, phone: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm bg-slate-50 focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="Telefon" />
-                  <input value={profileDraft.street} onChange={(e) => setProfileDraft((prev) => ({ ...prev, street: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm bg-slate-50 focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="Ulice" />
+                <div className="mt-4 space-y-2 border-t border-[color:var(--wp-surface-card-border)] pt-4">
+                  <input value={profileDraft.email} onChange={(e) => setProfileDraft((prev) => ({ ...prev, email: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm bg-[color:var(--wp-main-scroll-bg)] focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="E-mail" />
+                  <input value={profileDraft.phone} onChange={(e) => setProfileDraft((prev) => ({ ...prev, phone: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm bg-[color:var(--wp-main-scroll-bg)] focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="Telefon" />
+                  <input value={profileDraft.street} onChange={(e) => setProfileDraft((prev) => ({ ...prev, street: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm bg-[color:var(--wp-main-scroll-bg)] focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="Ulice" />
                   <div className="grid grid-cols-2 gap-2">
-                    <input value={profileDraft.city} onChange={(e) => setProfileDraft((prev) => ({ ...prev, city: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm bg-slate-50 focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="Město" />
-                    <input value={profileDraft.zip} onChange={(e) => setProfileDraft((prev) => ({ ...prev, zip: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm bg-slate-50 focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="PSČ" />
+                    <input value={profileDraft.city} onChange={(e) => setProfileDraft((prev) => ({ ...prev, city: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm bg-[color:var(--wp-main-scroll-bg)] focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="Město" />
+                    <input value={profileDraft.zip} onChange={(e) => setProfileDraft((prev) => ({ ...prev, zip: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm bg-[color:var(--wp-main-scroll-bg)] focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="PSČ" />
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button
@@ -1681,7 +1681,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
                     >
                       Uložit
                     </button>
-                    <button type="button" onClick={() => setProfileEditOpen(false)} className="min-h-[44px] px-4 rounded-xl border border-slate-200 text-sm font-bold text-slate-600">
+                    <button type="button" onClick={() => setProfileEditOpen(false)} className="min-h-[44px] px-4 rounded-xl border border-[color:var(--wp-surface-card-border)] text-sm font-bold text-[color:var(--wp-text-secondary)]">
                       Zrušit
                     </button>
                   </div>
@@ -1693,7 +1693,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
             <MobileSection
               title="Domácnost"
               action={
-                <button type="button" onClick={() => setAddMemberOpen(true)} className="min-h-[32px] rounded-lg border border-slate-200 px-2.5 text-xs font-black">
+                <button type="button" onClick={() => setAddMemberOpen(true)} className="min-h-[32px] rounded-lg border border-[color:var(--wp-surface-card-border)] px-2.5 text-xs font-black">
                   + Přidat
                 </button>
               }
@@ -1706,12 +1706,12 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
                   const childLike = isHouseholdChildLikeRole(member.role);
                   return (
                     <MobileCard key={member.id} className="p-3.5 flex items-center gap-3">
-                      <div className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xs font-black ${childLike ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-700"}`}>
+                      <div className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xs font-black ${childLike ? "bg-amber-100 text-amber-700" : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text)]"}`}>
                         {`${member.firstName[0] ?? ""}${member.lastName[0] ?? ""}`}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-slate-900">{member.firstName} {member.lastName}</p>
-                        <p className="text-xs text-slate-500 font-medium">{roleLabel}{member.birthDate ? ` · ${new Date(member.birthDate).getFullYear()}` : ""}</p>
+                        <p className="text-sm font-bold text-[color:var(--wp-text)]">{member.firstName} {member.lastName}</p>
+                        <p className="text-xs text-[color:var(--wp-text-secondary)] font-medium">{roleLabel}{member.birthDate ? ` · ${new Date(member.birthDate).getFullYear()}` : ""}</p>
                       </div>
                     </MobileCard>
                   );
@@ -1722,10 +1722,10 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
             {/* ── Moduly ── */}
             <MobileSection title="Rychlý přístup">
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => router.push("/client/portfolio")} className="min-h-[52px] rounded-xl border border-slate-200 bg-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors">
+                <button type="button" onClick={() => router.push("/client/portfolio")} className="min-h-[52px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-[color:var(--wp-main-scroll-bg)] transition-colors">
                   <Briefcase size={16} className="text-indigo-500" /> Portfolio
                 </button>
-                <button type="button" onClick={() => router.push("/client/notifications")} className="min-h-[52px] rounded-xl border border-slate-200 bg-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors">
+                <button type="button" onClick={() => router.push("/client/notifications")} className="min-h-[52px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-[color:var(--wp-main-scroll-bg)] transition-colors">
                   <Bell size={16} className="text-rose-500" /> Oznámení
                   {unreadNotificationsCount > 0 && (
                     <span className="bg-rose-500 text-white text-[10px] font-black rounded-full w-4 h-4 grid place-items-center">
@@ -1733,10 +1733,10 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
                     </span>
                   )}
                 </button>
-                <button type="button" onClick={() => router.push("/client/payments")} className="min-h-[52px] rounded-xl border border-slate-200 bg-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors">
+                <button type="button" onClick={() => router.push("/client/payments")} className="min-h-[52px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-[color:var(--wp-main-scroll-bg)] transition-colors">
                   <CreditCard size={16} className="text-emerald-500" /> Platby
                 </button>
-                <button type="button" onClick={() => router.push("/client/calculators")} className="min-h-[52px] rounded-xl border border-slate-200 bg-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors">
+                <button type="button" onClick={() => router.push("/client/calculators")} className="min-h-[52px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-[color:var(--wp-main-scroll-bg)] transition-colors">
                   <Calculator size={16} className="text-amber-500" /> Kalkulačky
                 </button>
               </div>
@@ -1775,11 +1775,11 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
             type="text"
             value={requestSubject}
             onChange={(e) => setRequestSubject(e.target.value)}
-            className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm"
+            className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
             placeholder="Předmět (nepovinné)"
           />
-          <textarea rows={4} value={requestDescription} onChange={(e) => setRequestDescription(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Popis požadavku (nepovinné)" />
-          <label className="flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-sm font-bold text-slate-700">
+          <textarea rows={4} value={requestDescription} onChange={(e) => setRequestDescription(e.target.value)} className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 py-2 text-sm" placeholder="Popis požadavku (nepovinné)" />
+          <label className="flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] text-sm font-bold text-[color:var(--wp-text)]">
             Přiložit soubor
             <input
               type="file"
@@ -1790,7 +1790,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
             />
           </label>
           {requestFiles.length > 0 ? (
-            <p className="text-xs text-slate-500 px-1">
+            <p className="text-xs text-[color:var(--wp-text-secondary)] px-1">
               {requestFiles.length === 1 ? `1 soubor` : `${requestFiles.length} soubory`}
             </p>
           ) : null}
@@ -1811,8 +1811,8 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
               { id: "member", label: "Jiné" },
             ]}
           />
-          <input value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm" placeholder="Jméno a příjmení" />
-          <input type="date" value={newMemberBirthDate} onChange={(e) => setNewMemberBirthDate(e.target.value)} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm" />
+          <input value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm" placeholder="Jméno a příjmení" />
+          <input type="date" value={newMemberBirthDate} onChange={(e) => setNewMemberBirthDate(e.target.value)} className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm" />
           <CreateActionButton type="button" onClick={addHouseholdMember} className="min-h-[44px] w-full" icon={null}>
             Přidat člena
           </CreateActionButton>

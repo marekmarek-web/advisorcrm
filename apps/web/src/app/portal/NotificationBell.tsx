@@ -28,7 +28,7 @@ const ACCENT_ICON: Record<AdvisorNotificationDropdownAccent, string> = {
   violet: "bg-violet-50 text-violet-600 border-violet-100/50",
   amber: "bg-amber-50 text-amber-600 border-amber-100/50",
   rose: "bg-rose-50 text-rose-600 border-rose-100/50",
-  slate: "bg-slate-50 text-slate-600 border-slate-100/50",
+  slate: "bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text-secondary)] border-[color:var(--wp-surface-card-border)]/50",
 };
 
 const ACCENT_SUB: Record<AdvisorNotificationDropdownAccent, string> = {
@@ -37,7 +37,7 @@ const ACCENT_SUB: Record<AdvisorNotificationDropdownAccent, string> = {
   violet: "text-violet-600",
   amber: "text-amber-700",
   rose: "text-rose-600",
-  slate: "text-slate-600",
+  slate: "text-[color:var(--wp-text-secondary)]",
 };
 
 export function NotificationBell() {

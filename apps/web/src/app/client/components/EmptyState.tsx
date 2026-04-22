@@ -26,18 +26,18 @@ export function EmptyState({
       ? "bg-indigo-50 text-indigo-600 border-indigo-100"
       : tone === "success"
         ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-        : "bg-slate-100 text-slate-400 border-slate-200";
+        : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-tertiary)] border-[color:var(--wp-surface-card-border)]";
 
   return (
-    <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center space-y-3">
+    <div className="bg-white rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm p-10 text-center space-y-3">
       <div
         className={`mx-auto w-12 h-12 rounded-2xl border grid place-items-center ${toneClasses}`}
       >
         <Icon size={22} />
       </div>
-      <p className="text-slate-700 font-semibold">{title}</p>
+      <p className="text-[color:var(--wp-text)] font-semibold">{title}</p>
       {description && (
-        <p className="text-slate-500 text-sm max-w-md mx-auto">{description}</p>
+        <p className="text-[color:var(--wp-text-secondary)] text-sm max-w-md mx-auto">{description}</p>
       )}
       {action && <div className="pt-2 flex justify-center">{action}</div>}
     </div>

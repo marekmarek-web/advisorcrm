@@ -11,7 +11,7 @@ export function ContactHouseholdCard({
 }) {
   return (
     <div
-      className={`bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden group cursor-pointer hover:border-indigo-200 transition-colors ${className}`}
+      className={`bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden group cursor-pointer hover:border-indigo-200 transition-colors ${className}`}
     >
       <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
         <h3 className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">

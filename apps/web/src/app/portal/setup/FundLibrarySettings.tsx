@@ -231,7 +231,7 @@ export function FundLibrarySettings({ snapshot }: Props) {
       )}
 
       {snapshot.canEditTenantAllowlist && (
-        <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+        <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
           <div className="px-6 sm:px-8 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
             <h3 className="text-base font-black text-[color:var(--wp-text)]">Katalog fondů workspace</h3>
             <p className="text-xs font-medium text-[color:var(--wp-text-secondary)] mt-1">
@@ -271,7 +271,7 @@ export function FundLibrarySettings({ snapshot }: Props) {
       )}
 
       {snapshot.fundAddRequestQueue != null && (
-        <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+        <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
           <div className="px-6 sm:px-8 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
             <h3 className="text-base font-black text-[color:var(--wp-text)]">Požadavky na nové fondy</h3>
             <p className="text-xs font-medium text-[color:var(--wp-text-secondary)] mt-1">
@@ -349,7 +349,7 @@ export function FundLibrarySettings({ snapshot }: Props) {
         </div>
       )}
 
-      <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+      <div className="bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
         <div className="px-6 sm:px-8 py-5 border-b border-[color:var(--wp-surface-card-border)]/50 space-y-4">
           <div>
             <h3 className="text-base font-black text-[color:var(--wp-text)]">Moje fondy</h3>

@@ -212,7 +212,7 @@ export function ConfirmationPreviewPanel({
                 <span className={cx(
                   "mt-0.5 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center shrink-0",
                   blocked
-                    ? "bg-slate-200 text-slate-800"
+                    ? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text)]"
                     : needsInput
                       ? "bg-rose-100 text-rose-700"
                       : "bg-amber-200/90 text-amber-900",
@@ -223,10 +223,10 @@ export function ConfirmationPreviewPanel({
               <div className="min-w-0 flex-1">
                 <span className={cx(
                   "text-[13px] font-semibold leading-snug",
-                  needsInput ? "text-rose-800" : blocked ? "text-slate-800" : "text-amber-950",
+                  needsInput ? "text-rose-800" : blocked ? "text-[color:var(--wp-text)]" : "text-amber-950",
                 )}>{step.label}</span>
                 {blocked && (
-                  <span className="ml-2 align-middle text-[9px] font-bold text-slate-700 bg-slate-100 border border-slate-300 rounded-md px-1.5 py-0.5">
+                  <span className="ml-2 align-middle text-[9px] font-bold text-[color:var(--wp-text)] bg-[color:var(--wp-surface-muted)] border border-[color:var(--wp-surface-card-border)] rounded-md px-1.5 py-0.5">
                     Blokováno
                   </span>
                 )}
@@ -258,7 +258,7 @@ export function ConfirmationPreviewPanel({
                   </div>
                 ) : null}
                 {blocked && step.blockedReason ? (
-                  <p className="text-[10px] text-slate-800 mt-1 font-medium flex gap-1">
+                  <p className="text-[10px] text-[color:var(--wp-text)] mt-1 font-medium flex gap-1">
                     <AlertCircle size={10} className="shrink-0 mt-0.5" />
                     <span>{step.blockedReason}</span>
                   </p>
@@ -311,7 +311,7 @@ export function StepOutcomeCard({ outcomes, hasPartialFailure }: StepOutcomeCard
             o.status === "succeeded"      ? <CheckCircle2 size={13} className="text-emerald-600 shrink-0 mt-0.5" /> :
             o.status === "failed"         ? <XCircle size={13} className="text-rose-600 shrink-0 mt-0.5" /> :
             o.status === "requires_input" ? <CircleDashed size={13} className="text-amber-500 shrink-0 mt-0.5" /> :
-            o.status === "skipped"        ? <SkipForward size={13} className="text-slate-400 shrink-0 mt-0.5" /> :
+            o.status === "skipped"        ? <SkipForward size={13} className="text-[color:var(--wp-text-tertiary)] shrink-0 mt-0.5" /> :
                                             <RefreshCw size={13} className="text-indigo-400 shrink-0 mt-0.5" />;
           return (
             <div key={i} className="flex items-start gap-1.5">

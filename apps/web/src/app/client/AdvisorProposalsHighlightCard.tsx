@@ -51,7 +51,7 @@ export function AdvisorProposalsHighlightCard({
       </div>
 
       {hero.savingsAnnual !== null && hero.savingsAnnual > 0 ? (
-        <p className="text-2xl sm:text-3xl font-display font-black text-slate-900 leading-tight mb-2">
+        <p className="text-2xl sm:text-3xl font-display font-black text-[color:var(--wp-text)] leading-tight mb-2">
           Váš poradce pro vás spočítal úsporu{" "}
           <span className="text-emerald-600">
             {formatMoneyCs(hero.savingsAnnual, hero.currency)} / rok
@@ -59,18 +59,18 @@ export function AdvisorProposalsHighlightCard({
           .
         </p>
       ) : (
-        <p className="text-2xl sm:text-3xl font-display font-black text-slate-900 leading-tight mb-2">
+        <p className="text-2xl sm:text-3xl font-display font-black text-[color:var(--wp-text)] leading-tight mb-2">
           Váš poradce pro vás připravil nezávazné porovnání.
         </p>
       )}
 
-      <p className="text-base font-semibold text-slate-800 mb-2">„{hero.title}“</p>
+      <p className="text-base font-semibold text-[color:var(--wp-text)] mb-2">„{hero.title}“</p>
 
       {hero.summary && (
-        <p className="text-sm text-slate-600 mb-4 line-clamp-3">{hero.summary}</p>
+        <p className="text-sm text-[color:var(--wp-text-secondary)] mb-4 line-clamp-3">{hero.summary}</p>
       )}
 
-      <p className="text-xs text-slate-500 mb-4">
+      <p className="text-xs text-[color:var(--wp-text-secondary)] mb-4">
         Nezávazné porovnání připravené vaším poradcem. Není to automatické doporučení. Finální
         rozhodnutí je na vás.
       </p>

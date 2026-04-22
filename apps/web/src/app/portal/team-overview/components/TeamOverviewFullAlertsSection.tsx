@@ -12,8 +12,8 @@ export function TeamOverviewFullAlertsSection({
 }) {
   return (
     <section className="mb-8">
-      <h2 className="mb-1 text-lg font-black tracking-tight text-slate-950">Kompletní výpis signálů</h2>
-      <p className="mb-3 text-xs text-slate-500">
+      <h2 className="mb-1 text-lg font-black tracking-tight text-[color:var(--wp-text)]">Kompletní výpis signálů</h2>
+      <p className="mb-3 text-xs text-[color:var(--wp-text-secondary)]">
         CRM i kariérní upozornění — totéž, co v přehledu nahoře; zde celý seznam pro kontrolu nebo tisk.
       </p>
       {alerts.length === 0 ? (
@@ -30,16 +30,16 @@ export function TeamOverviewFullAlertsSection({
               <button
                 type="button"
                 onClick={() => selectMember(a.memberId)}
-                className="flex w-full flex-wrap items-center gap-2 rounded-xl border border-slate-200/80 bg-white p-4 text-left shadow-sm transition hover:border-amber-200/80 hover:bg-amber-50/40"
+                className="flex w-full flex-wrap items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)]/80 bg-white p-4 text-left shadow-sm transition hover:border-amber-200/80 hover:bg-amber-50/40"
               >
                 <span
                   className={`shrink-0 rounded-full p-1 ${a.severity === "critical" ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"}`}
                 >
                   <AlertTriangle className="h-4 w-4" />
                 </span>
-                <span className="min-w-0 flex-1 font-medium text-slate-900">{a.title}</span>
-                <span className="min-w-0 flex-[1_1_100%] text-sm text-slate-500 sm:flex-[1_1_auto]">{a.description}</span>
-                <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-slate-300" aria-hidden />
+                <span className="min-w-0 flex-1 font-medium text-[color:var(--wp-text)]">{a.title}</span>
+                <span className="min-w-0 flex-[1_1_100%] text-sm text-[color:var(--wp-text-secondary)] sm:flex-[1_1_auto]">{a.description}</span>
+                <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-[color:var(--wp-text-tertiary)]" aria-hidden />
               </button>
             </li>
           ))}
