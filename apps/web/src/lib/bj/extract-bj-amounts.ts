@@ -115,10 +115,22 @@ export function buildBjCalculationInput(params: BuildBjInputParams): BjCalculati
 
   const entryFee = toCzk(amounts.entryFee);
   const loanPrincipal = toCzk(amounts.loanPrincipal);
-  const contribMonthly = toCzk(amounts.participantContributionMonthly);
+  let contribMonthly = toCzk(amounts.participantContributionMonthly);
   const targetAmount = toCzk(amounts.targetAmount);
   const premiumAmount = toCzk(amounts.premiumAmount);
   const premiumAnnualRaw = toCzk(amounts.premiumAnnual);
+
+  // DPS/DIP: participantContribution zpravidla odpovídá měsíčnímu premium_amount
+  // (NN Penzijní spoření, Conseq PS…). Když extrakce explicitní pole nedodala,
+  // ale máme regular premium_amount, použijeme ho jako client contribution.
+  if (
+    contribMonthly == null &&
+    premiumAmount != null &&
+    params.category === "PENSION_PARTICIPANT_CONTRIBUTION" &&
+    amounts.paymentType !== "one_time"
+  ) {
+    contribMonthly = premiumAmount;
+  }
 
   let annualPremium: number | undefined = premiumAnnualRaw;
   let investmentAmount: number | undefined = targetAmount;

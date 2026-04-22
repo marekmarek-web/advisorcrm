@@ -49,8 +49,8 @@ async function main() {
   process.chdir(projectRoot);
   loadEnvLocal(projectRoot);
 
-  const { db, contracts } = await import("db");
-  const { eq, isNotNull, and } = await import("db");
+  const { db } = await import("../src/lib/db-client");
+  const { contracts, eq, isNotNull, and } = await import("../../../packages/db/src");
   const { recomputeBjForContract } = await import("../src/lib/bj/recompute-bj-for-contract");
 
   const tenantFilter = values.tenant?.trim() || null;
