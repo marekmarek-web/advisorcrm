@@ -293,6 +293,7 @@ export function ProductionScreen({ deviceClass = "phone" }: { deviceClass?: Devi
   const [summary, setSummary] = useState<ProductionSummary | null>(null);
   const [contracts, setContracts] = useState<ContractInPeriodRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [contractsError, setContractsError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const isTablet = deviceClass === "tablet";
@@ -300,15 +301,25 @@ export function ProductionScreen({ deviceClass = "phone" }: { deviceClass?: Devi
   function loadData() {
     startTransition(async () => {
       setError(null);
-      try {
-        const [summaryData, contractsData] = await Promise.all([
-          getProductionSummary(period),
-          getContractsForPeriod(period),
-        ]);
-        setSummary(summaryData);
-        setContracts(contractsData.rows);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Produkci se nepodařilo načíst.");
+      setContractsError(null);
+      const [summaryResult, contractsResult] = await Promise.allSettled([
+        getProductionSummary(period),
+        getContractsForPeriod(period),
+      ]);
+      if (summaryResult.status === "fulfilled") {
+        setSummary(summaryResult.value);
+      } else {
+        const err = summaryResult.reason;
+        if (typeof console !== "undefined") console.error("[ProductionScreen] summary failed", err);
+        setError(err instanceof Error ? err.message : "Produkci se nepodařilo načíst.");
+      }
+      if (contractsResult.status === "fulfilled") {
+        setContracts(contractsResult.value.rows);
+      } else {
+        const err = contractsResult.reason;
+        if (typeof console !== "undefined") console.error("[ProductionScreen] contracts failed", err);
+        setContracts([]);
+        setContractsError(err instanceof Error ? err.message : "Seznam smluv se nepodařilo načíst.");
       }
     });
   }
@@ -442,7 +453,26 @@ export function ProductionScreen({ deviceClass = "phone" }: { deviceClass?: Devi
           ) : null}
 
           <SegmentBreakdown summary={summary} isTablet={isTablet} />
-          <ContractList contracts={contracts} isTablet={isTablet} />
+          {contractsError ? (
+            <div className="px-4 pt-2">
+              <InlineAlert
+                tone="warning"
+                title="Seznam smluv se nepodařilo načíst"
+                description={contractsError}
+                action={
+                  <button
+                    type="button"
+                    onClick={loadData}
+                    className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-[11px] font-black uppercase tracking-wide text-amber-700 hover:bg-amber-50"
+                  >
+                    <RefreshCw size={12} /> Zkusit znovu
+                  </button>
+                }
+              />
+            </div>
+          ) : (
+            <ContractList contracts={contracts} isTablet={isTablet} />
+          )}
         </>
       ) : null}
 
