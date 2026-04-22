@@ -49,6 +49,18 @@ export const advisorPreferences = pgTable(
      * `career_position_coefficients.bj_value_czk` pro danou pozici.
      */
     careerBjBonusCzk: numeric("career_bj_bonus_czk", { precision: 10, scale: 2 }),
+    /** DIČ poradce (fyzická osoba); workspace fakturace zůstává v tenants. */
+    dic: text("dic"),
+    /** ČNB / MNA registrační číslo. */
+    licenseNumber: text("license_number"),
+    /** Veřejná pozice / titul pro report a public profile. */
+    publicTitle: text("public_title"),
+    /** Krátký medailonek (max ~280 znaků). */
+    bio: text("bio"),
+    /** Jazyk UI: cs/sk/en. */
+    locale: text("locale").default("cs"),
+    /** IANA timezone, default Europe/Prague. */
+    timezone: text("timezone").default("Europe/Prague"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

@@ -820,6 +820,12 @@ export async function updatePortalProfile(
     bio?: string;
     publicRole?: string;
     correspondenceAddress?: string;
+    dic?: string;
+    licenseNumber?: string;
+    publicTitle?: string;
+    website?: string;
+    locale?: string;
+    timezone?: string;
   },
   supervisorUserId?: string | null,
 ): Promise<void> {
@@ -855,7 +861,20 @@ export async function updatePortalProfile(
         set: { fullName: fullName.trim() || null, email, updatedAt: new Date() },
       });
 
-    if (extra?.phone !== undefined) {
+    const prefsUpdate: Record<string, unknown> = {};
+    if (extra?.phone !== undefined) prefsUpdate.phone = extra.phone.trim() || null;
+    if (extra?.website !== undefined) prefsUpdate.website = extra.website.trim() || null;
+    if (extra?.dic !== undefined) prefsUpdate.dic = extra.dic.trim() || null;
+    if (extra?.licenseNumber !== undefined) prefsUpdate.licenseNumber = extra.licenseNumber.trim() || null;
+    if (extra?.publicTitle !== undefined) prefsUpdate.publicTitle = extra.publicTitle.trim() || null;
+    if (extra?.bio !== undefined) prefsUpdate.bio = extra.bio.trim().slice(0, 280) || null;
+    if (extra?.locale !== undefined) {
+      const v = extra.locale.trim();
+      prefsUpdate.locale = ["cs", "sk", "en"].includes(v) ? v : null;
+    }
+    if (extra?.timezone !== undefined) prefsUpdate.timezone = extra.timezone.trim() || null;
+
+    if (Object.keys(prefsUpdate).length > 0) {
       const existing = await tx
         .select({ id: advisorPreferences.id })
         .from(advisorPreferences)
@@ -864,13 +883,13 @@ export async function updatePortalProfile(
       if (existing.length > 0) {
         await tx
           .update(advisorPreferences)
-          .set({ phone: extra.phone.trim() || null, updatedAt: new Date() })
+          .set({ ...prefsUpdate, updatedAt: new Date() })
           .where(eq(advisorPreferences.id, existing[0].id));
       } else {
         await tx.insert(advisorPreferences).values({
           userId: auth.userId,
           tenantId: auth.tenantId,
-          phone: extra.phone.trim() || null,
+          ...prefsUpdate,
         });
       }
     }
@@ -921,6 +940,75 @@ export async function updatePortalProfile(
         .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)) as any);
     }
   });
+}
+
+export type AdvisorPersonalProfile = {
+  fullName: string | null;
+  email: string | null;
+  phone: string | null;
+  ico: string | null;
+  dic: string | null;
+  licenseNumber: string | null;
+  publicTitle: string | null;
+  website: string | null;
+  bio: string | null;
+  correspondenceAddress: string | null;
+  company: string | null;
+  locale: string | null;
+  timezone: string | null;
+};
+
+export async function getAdvisorPersonalProfile(): Promise<AdvisorPersonalProfile> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+  const readMeta = (k: string): string | null => {
+    const raw = meta[k];
+    if (typeof raw !== "string") return null;
+    const t = raw.trim();
+    return t.length > 0 ? t : null;
+  };
+
+  const prefs = await withAuthContext(async (auth, tx) => {
+    const row = await tx
+      .select({
+        phone: advisorPreferences.phone,
+        website: advisorPreferences.website,
+        dic: advisorPreferences.dic,
+        licenseNumber: advisorPreferences.licenseNumber,
+        publicTitle: advisorPreferences.publicTitle,
+        bio: advisorPreferences.bio,
+        locale: advisorPreferences.locale,
+        timezone: advisorPreferences.timezone,
+      })
+      .from(advisorPreferences)
+      .where(
+        and(
+          eq(advisorPreferences.tenantId, auth.tenantId),
+          eq(advisorPreferences.userId, auth.userId)
+        )
+      )
+      .limit(1);
+    return row[0] ?? null;
+  }).catch(() => null);
+
+  return {
+    fullName: readMeta("full_name") ?? user?.email ?? null,
+    email: user?.email ?? null,
+    phone: prefs?.phone?.trim() || null,
+    ico: readMeta("ico"),
+    dic: prefs?.dic?.trim() || null,
+    licenseNumber: prefs?.licenseNumber?.trim() || null,
+    publicTitle: prefs?.publicTitle?.trim() || readMeta("public_role"),
+    website: prefs?.website?.trim() || null,
+    bio: prefs?.bio?.trim() || readMeta("bio"),
+    correspondenceAddress: readMeta("correspondence_address"),
+    company: readMeta("company"),
+    locale: prefs?.locale?.trim() || "cs",
+    timezone: prefs?.timezone?.trim() || "Europe/Prague",
+  };
 }
 
 export type SupervisorOption = {

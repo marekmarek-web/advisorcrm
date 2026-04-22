@@ -39,6 +39,7 @@ import { setWorkspaceBirthdayEmailTheme } from "@/app/actions/birthday-greetings
 import { BirthdayPremiumThemePreview } from "@/app/components/email/BirthdayPremiumThemePreview";
 import type { RoleName } from "@/shared/rolePermissions";
 import {
+  getAdvisorPersonalProfile,
   listSupervisorOptions,
   updatePortalPassword,
   updatePortalProfile,
@@ -224,6 +225,15 @@ export function SettingsProfileScreen({
   const [ico, setIco] = useState("");
   const [company, setCompany] = useState("");
   const [fullName, setFullName] = useState(advisorName);
+  const [email, setEmail] = useState("");
+  const [dic, setDic] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [publicTitle, setPublicTitle] = useState("");
+  const [website, setWebsite] = useState("");
+  const [bio, setBio] = useState("");
+  const [correspondenceAddress, setCorrespondenceAddress] = useState("");
+  const [locale, setLocale] = useState("cs");
+  const [timezone, setTimezone] = useState("Europe/Prague");
   const [supervisorUserId, setSupervisorUserId] = useState("");
   const [supervisorOptions, setSupervisorOptions] = useState<SupervisorOption[]>([]);
   const [notificationPrefs, setNotificationPrefsState] = useState<NotificationPrefs>({
@@ -267,16 +277,30 @@ export function SettingsProfileScreen({
     startTransition(async () => {
       setError(null);
       try {
-        const [avatar, prefs, quick, supervisors] = await Promise.all([
+        const [avatar, prefs, quick, supervisors, personal] = await Promise.all([
           getAdvisorAvatarUrl(),
           getNotificationPrefs(),
           getQuickActionsConfig(),
           listSupervisorOptions(),
+          getAdvisorPersonalProfile(),
         ]);
         setAvatarUrl(avatar);
         setNotificationPrefsState(prefs);
         setQuickActions(quick);
         setSupervisorOptions(supervisors);
+        if (personal.fullName) setFullName(personal.fullName);
+        setEmail(personal.email ?? "");
+        setPhone(personal.phone ?? "");
+        setIco(personal.ico ?? "");
+        setDic(personal.dic ?? "");
+        setLicenseNumber(personal.licenseNumber ?? "");
+        setPublicTitle(personal.publicTitle ?? "");
+        setWebsite(personal.website ?? "");
+        setBio(personal.bio ?? "");
+        setCorrespondenceAddress(personal.correspondenceAddress ?? "");
+        setCompany(personal.company ?? "");
+        setLocale(personal.locale ?? "cs");
+        setTimezone(personal.timezone ?? "Europe/Prague");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Nastavení se nepodařilo načíst.");
       }
@@ -306,7 +330,23 @@ export function SettingsProfileScreen({
     startTransition(async () => {
       setError(null);
       try {
-        await updatePortalProfile(fullName, { phone, ico, company }, supervisorUserId || null);
+        await updatePortalProfile(
+          fullName,
+          {
+            phone,
+            ico,
+            company,
+            correspondenceAddress,
+            dic,
+            licenseNumber,
+            publicTitle,
+            website,
+            bio,
+            locale,
+            timezone,
+          },
+          supervisorUserId || null,
+        );
         setProfileOpen(false);
         showSuccess("Profil byl uložen.");
       } catch (e) {
@@ -590,19 +630,60 @@ export function SettingsProfileScreen({
 
       {/* Profile edit */}
       <BottomSheet open={profileOpen} onClose={() => setProfileOpen(false)} title="Osobní údaje">
-        <div className="space-y-3">
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
-              Jméno a příjmení
-            </label>
-            <input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
-              placeholder="Jan Novák"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-5 pb-2">
+          {/* ---- Identita ---- */}
+          <section className="space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Identita</p>
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
+                Jméno a příjmení
+              </label>
+              <input
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
+                placeholder="Jan Novák"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
+                Veřejná pozice / titul
+              </label>
+              <input
+                value={publicTitle}
+                onChange={(e) => setPublicTitle(e.target.value)}
+                className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
+                placeholder="Finanční poradce · Hypoteční specialista"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
+                Bio <span className="font-normal text-[color:var(--wp-text-tertiary)]">({bio.length}/280)</span>
+              </label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value.slice(0, 280))}
+                className="w-full min-h-[88px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 py-2 text-sm resize-none"
+                placeholder="Krátký medailonek pro klienty a reporty."
+                rows={3}
+              />
+            </div>
+          </section>
+
+          {/* ---- Kontakt ---- */}
+          <section className="space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Kontakt</p>
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
+                E-mail <span className="font-normal text-[color:var(--wp-text-tertiary)]">(přihlašovací)</span>
+              </label>
+              <input
+                value={email}
+                readOnly
+                disabled
+                className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm bg-[color:var(--wp-surface-muted)]/60 text-[color:var(--wp-text-secondary)]"
+              />
+            </div>
             <div>
               <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
                 Telefon
@@ -617,46 +698,141 @@ export function SettingsProfileScreen({
             </div>
             <div>
               <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
-                IČO
+                Web
               </label>
               <input
-                value={ico}
-                onChange={(e) => setIco(e.target.value)}
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
                 className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
-                placeholder="12345678"
+                placeholder="https://…"
+                type="url"
               />
             </div>
-          </div>
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
-              Společnost / adresa
-            </label>
-            <input
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
-              placeholder="Název firmy nebo adresa"
-            />
-          </div>
-          {supervisorOptions.length > 0 ? (
             <div>
               <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
-                Nadřízený
+                Korespondenční adresa
               </label>
-              <CustomDropdown
-                value={supervisorUserId}
-                onChange={setSupervisorUserId}
-                placeholder="Bez nadřízeného"
-                options={[
-                  { id: "", label: "Bez nadřízeného" },
-                  ...supervisorOptions.map((item) => ({
-                    id: item.userId,
-                    label: `${item.displayName} (${item.roleName})`,
-                  })),
-                ]}
+              <input
+                value={correspondenceAddress}
+                onChange={(e) => setCorrespondenceAddress(e.target.value)}
+                className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
+                placeholder="Ulice 123, Praha"
               />
             </div>
-          ) : null}
+          </section>
+
+          {/* ---- Fakturace ---- */}
+          <section className="space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Fakturace</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
+                  IČO
+                </label>
+                <input
+                  value={ico}
+                  onChange={(e) => setIco(e.target.value)}
+                  className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
+                  placeholder="12345678"
+                  inputMode="numeric"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
+                  DIČ
+                </label>
+                <input
+                  value={dic}
+                  onChange={(e) => setDic(e.target.value)}
+                  className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
+                  placeholder="CZ12345678"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
+                Společnost / fakturační adresa
+              </label>
+              <input
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
+                placeholder="Název firmy nebo fakturační adresa"
+              />
+            </div>
+          </section>
+
+          {/* ---- Profesní ---- */}
+          <section className="space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Profesní</p>
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
+                Číslo licence (ČNB / MNA)
+              </label>
+              <input
+                value={licenseNumber}
+                onChange={(e) => setLicenseNumber(e.target.value)}
+                className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm font-mono"
+                placeholder="123456"
+              />
+            </div>
+            {supervisorOptions.length > 0 ? (
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
+                  Nadřízený
+                </label>
+                <CustomDropdown
+                  value={supervisorUserId}
+                  onChange={setSupervisorUserId}
+                  placeholder="Bez nadřízeného"
+                  options={[
+                    { id: "", label: "Bez nadřízeného" },
+                    ...supervisorOptions.map((item) => ({
+                      id: item.userId,
+                      label: `${item.displayName} (${item.roleName})`,
+                    })),
+                  ]}
+                />
+              </div>
+            ) : null}
+          </section>
+
+          {/* ---- Preference ---- */}
+          <section className="space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Preference</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
+                  Jazyk UI
+                </label>
+                <select
+                  value={locale}
+                  onChange={(e) => setLocale(e.target.value)}
+                  className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm bg-[color:var(--wp-surface-card)]"
+                >
+                  <option value="cs">Čeština</option>
+                  <option value="sk">Slovenčina</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
+                  Časové pásmo
+                </label>
+                <select
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm bg-[color:var(--wp-surface-card)]"
+                >
+                  <option value="Europe/Prague">Europe/Prague</option>
+                  <option value="Europe/Bratislava">Europe/Bratislava</option>
+                  <option value="Europe/Vienna">Europe/Vienna</option>
+                  <option value="Europe/Berlin">Europe/Berlin</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
           <button
             type="button"
             onClick={saveProfile}
