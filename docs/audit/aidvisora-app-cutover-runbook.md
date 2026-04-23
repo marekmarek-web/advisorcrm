@@ -112,7 +112,14 @@ Musí projít. Budget = 0/0/0 pro actions/api/lib.
 
 ---
 
-## 3. Staging cutover (72h hold)
+## 3. Staging cutover (14-denní burn-in hold)
+
+> **Sjednocení 2026-04-23:** původní "72h hold" nahrazen **14-denním burn-inem**
+> v souladu s [`post-launch-roadmap-2026-04-22.md` B4.1](post-launch-roadmap-2026-04-22.md#b41--cutover-na-aidvisora_app-runtime-role)
+> a SL-112. 72h je příliš krátké okno na zachycení tenant-specifických race
+> conditions (týdenní cron cykly, měsíční billing ticks, low-frequency admin
+> akce). Evidence log vyplňuj průběžně dle
+> [`docs/launch/cutover-evidence-template.md`](../launch/cutover-evidence-template.md) §6.
 
 1. Vercel staging → Environment Variables:
    - Uložit aktuální `DATABASE_URL` jako `DATABASE_URL_ROLLBACK` (postgres role).
@@ -131,15 +138,19 @@ Musí projít. Budget = 0/0/0 pro actions/api/lib.
    - Events / Calendar
    - Client portal — sign in, overview, requests
    - Pre-auth: invite URL, unsubscribe URL
-4. **72h hold** pod syntetickým traffikem. Sentry filtr:
+4. **14-denní burn-in** pod mixem syntetického + reálného staging traffiku
+   (interní + pilot tenanti). Sentry filtr (alert A13, viz
+   [`docs/observability/sentry-alerts.md`](../observability/sentry-alerts.md#a13--db-role-cutover-guard--db_error_kind-spike-p0)):
    - `db_error_kind:rls_deny` → **hard red**, rollback.
    - `db_error_kind:missing_guc` → **hard red**, fix před prod.
    - `db_error_kind:permission_denied` → hard red, chybí GRANT.
-5. Rollback drill: swap `DATABASE_URL` ↔ `DATABASE_URL_ROLLBACK`, redeploy,
-   smoke. Dokumentovat elapsed time (target < 10 min).
+5. Rollback drill (povinný v rámci 14 dní): swap `DATABASE_URL` ↔
+   `DATABASE_URL_ROLLBACK`, redeploy, smoke. Dokumentovat elapsed time
+   (target < 10 min) v evidence packu §5.
+6. Denní check-in do evidence packu §6 (min. D+1, D+3, D+7, D+14).
 
-**GO gate pro prod:** 72h staging bez RLS error spike + rollback drill
-provedený a zdokumentovaný.
+**GO gate pro prod:** 14 dní staging bez `db_error_kind` eventů + rollback
+drill provedený a zdokumentovaný v evidence packu.
 
 ---
 

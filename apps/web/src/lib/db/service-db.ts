@@ -32,8 +32,33 @@ import type { TenantContextDb } from "@/lib/db/with-tenant-context";
  * v actions/RSC/non-cron route handlerech, jinak rozbiješ tenant izolaci.
  */
 
-const serviceConnectionString =
-  process.env.DATABASE_URL_SERVICE ?? process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL;
+const runtimeDatabaseUrl = process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL;
+const explicitServiceUrl = process.env.DATABASE_URL_SERVICE;
+
+/**
+ * Cutover guard (B4.1): pokud runtime `DATABASE_URL` běží pod rolí
+ * `aidvisora_app` (NOBYPASSRLS + FORCE RLS), musí být `DATABASE_URL_SERVICE`
+ * explicitně nastaven na `postgres` role — jinak by crony/webhooky běžely
+ * pod aidvisora_app a při cross-tenant iteraci by vracely prázdné výsledky
+ * (žádný explicit SQL error, jen zticha nefungující billing/analytics).
+ *
+ * Detekce přes substring `aidvisora_app` je konzervativní — neovlivňuje
+ * pre-cutover stav (postgres role). Lokální dev a test prostředí mají typicky
+ * `postgres` role a `DATABASE_URL_SERVICE` se nevyžaduje.
+ */
+const runtimeLooksCutover =
+  typeof runtimeDatabaseUrl === "string" && runtimeDatabaseUrl.includes("aidvisora_app");
+
+if (runtimeLooksCutover && !explicitServiceUrl) {
+  throw new Error(
+    "Cutover guard: DATABASE_URL je pod rolí aidvisora_app, ale DATABASE_URL_SERVICE chybí. " +
+      "Nastav DATABASE_URL_SERVICE na postgres-role pooler string (viz " +
+      "docs/audit/aidvisora-app-cutover-runbook.md §3.1). Fallback na DATABASE_URL " +
+      "by cron/webhook flows provedl pod aidvisora_app rolí a rozbil cross-tenant iteraci.",
+  );
+}
+
+const serviceConnectionString = explicitServiceUrl ?? runtimeDatabaseUrl;
 
 if (!serviceConnectionString) {
   throw new Error(

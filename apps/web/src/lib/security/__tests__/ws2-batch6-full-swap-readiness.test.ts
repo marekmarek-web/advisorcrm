@@ -169,11 +169,34 @@ describe("WS-2 Batch 6 — raw db.* budget ratchet", () => {
     });
   }
 
-  it("cutover gate: actions musí být 0 před swapem DATABASE_URL na aidvisora_app", () => {
-    // Tento test je záměrně skipovaný DNES, protože M4 refaktoring ještě běží.
-    // Před cutoverem na staging tento test ODSKIPNOUT a budget ratchet nastavit
-    // na 0 napříč všemi cestami.
-    expect(DB_RAW_BUDGET["apps/web/src/app/actions"]).toBeGreaterThanOrEqual(0);
+  it("cutover gate: všechny budgety = 0 (hard assertion před swapem DATABASE_URL na aidvisora_app)", () => {
+    // Ratchet zavřený k 2026-04-23: M4 refaktoring dokončen, všechny budgety = 0.
+    // Regrese na cokoli > 0 = hard blocker pro cutover (runtime role NOBYPASSRLS
+    // by odhalila chybějící tenant GUC jako 500 v produkci).
+    expect(DB_RAW_BUDGET["apps/web/src/app/actions"]).toBe(0);
+    expect(DB_RAW_BUDGET["apps/web/src/app/api"]).toBe(0);
+    expect(DB_RAW_BUDGET["apps/web/src/lib"]).toBe(0);
+  });
+
+  it("cutover gate: žádný soubor mimo whitelist neobsahuje raw db.* (live scan)", () => {
+    const offenders: Array<{ file: string; count: number }> = [];
+    for (const rel of Object.keys(DB_RAW_BUDGET)) {
+      const abs = path.join(REPO_ROOT, rel);
+      if (!existsSync(abs)) continue;
+      for (const file of walk(abs)) {
+        const repoRel = toRepoRel(file);
+        if (DB_WHITELIST_FILES.has(repoRel)) continue;
+        const src = readFileSync(file, "utf8");
+        const count = countLegacyDbMutations(src);
+        if (count > 0) offenders.push({ file: repoRel, count });
+      }
+    }
+    expect(
+      offenders,
+      `Cutover blocker — nové raw db.* mimo whitelist:\n${offenders
+        .map((o) => `  ${o.file} × ${o.count}`)
+        .join("\n")}`,
+    ).toEqual([]);
   });
 });
 

@@ -226,7 +226,7 @@
 ## C.2 DB URL swap (pokud je v plánu v launch okně)
 
 - [ ] **SL-094** [P2] Nastav `DATABASE_URL` + `DATABASE_URL_SERVICE`, redeploy, manuální smoke (login, CRM, portál, cron). → [docs/audit/aidvisora-app-cutover-runbook.md](audit/aidvisora-app-cutover-runbook.md) §3–4
-- [ ] **SL-095** [P2] 72 h „hold“ + soft-watch 24 h dle runbooku. → [docs/audit/aidvisora-app-cutover-runbook.md](audit/aidvisora-app-cutover-runbook.md)
+- [ ] **SL-095** [P2] 14-denní staging burn-in (sjednoceno s B4.1) + prod soft-watch 24 h dle runbooku. → [docs/audit/aidvisora-app-cutover-runbook.md §3](audit/aidvisora-app-cutover-runbook.md)
 - [ ] **SL-096** [P2] Po stabilizaci: rotace hesla `postgres`, update `DATABASE_URL_SERVICE`; uklidit `DATABASE_URL_ROLLBACK`. → [docs/audit/aidvisora-app-cutover-runbook.md](audit/aidvisora-app-cutover-runbook.md) §4.7
 - [ ] **SL-097** [P2] Audit log tick + Vercel cron logy po cutoveru. → [docs/audit/aidvisora-app-cutover-runbook.md](audit/aidvisora-app-cutover-runbook.md) §4.5
 

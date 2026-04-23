@@ -160,6 +160,23 @@ Zdůvodnění (B3.13): payments list je nejčastější route, kterou klient ote
 | Runbook | 20+ hits/h = buď targeted probe, nebo copy-paste jailbreak viral. 1) Grep `ai_generations` za posledních 60 min + tenant IDs. 2) Pokud 1 tenant → zablokovat dočasně; 3) pokud rozptylený → noise pattern v detektoru, tune heuristics. |
 | Severity | **P2** |
 
+### A13 · DB role cutover guard — `db_error_kind` spike (P0)
+
+| Pole | Hodnota |
+|---|---|
+| Název | `A13 · db_error_kind spike — aidvisora_app runtime` |
+| Filtr | `tags[db_error_kind]:[rls_deny,missing_guc,permission_denied] environment:production` |
+| Condition | `count() > 0` za 5 min (tj. **jakýkoli** výskyt okamžitě) |
+| Action | E-mail `bezpecnost@aidvisora.cz` + Sentry mobile push |
+| Runbook | [`docs/audit/aidvisora-app-cutover-runbook.md §5 Rollback`](../audit/aidvisora-app-cutover-runbook.md#5-rollback-v-kterékoliv-fázi) — swap `DATABASE_URL` ↔ `DATABASE_URL_ROLLBACK`, redeploy. |
+| Severity | **P0** |
+
+Zdůvodnění: wrapper `withTenantContext` / `withUserContext` / `withServiceTenantContext` tagují Postgres chyby přes `db_error_kind` (viz `apps/web/src/lib/db/with-tenant-context.ts`). Po cutoveru runtime role na `aidvisora_app` (NOBYPASSRLS + FORCE RLS) je **jakýkoli** výskyt `rls_deny` / `missing_guc` / `permission_denied` = chybějící policy / GRANT / GUC a okamžitý trigger pro rollback podle runbook §5.
+
+**Pre-cutover stav:** runtime role = `postgres` BYPASSRLS; kind tagy se v praxi nevyskytují (alert je de facto tichý). Staging burn-in (14 dní dle roadmap B4.1) slouží k ověření, že alert zůstává na 0 pod aidvisora_app rolí.
+
+**Dodatečné facets pro triage:** `db_wrapper` (`withTenantContext` | `withUserContext` | `withServiceTenantContext`), `tenant_id`, `user_id`.
+
 ### A7 · Dunning grace period started (P2)
 
 | Pole | Hodnota |
@@ -201,6 +218,7 @@ Každý alert výše **musí** mít v `incident-runbook.md` dohledatelný postup
 | A10 assistant ledger | `docs/assistant-multimodal-crm-live-readiness.md` §ledger |
 | A11 contract review apply | AI review fix plan §apply-failed fallback |
 | A12 prompt injection | security-audit log review + tune heuristics |
+| A13 db_error_kind spike | [`docs/audit/aidvisora-app-cutover-runbook.md §5 Rollback`](../audit/aidvisora-app-cutover-runbook.md) |
 
 ## 6. Review
 
@@ -214,6 +232,7 @@ Každý alert výše **musí** mít v `incident-runbook.md` dohledatelný postup
 |---|---|---|
 | 2026-04-20 | Initial v1 — definováno 7 alertů, mapping na runbook. | Marek |
 | 2026-04-22 | B3.13 — přidáno A8–A12 (client portal payments/profile, assistant ledger, contract review apply, prompt injection burst). | Marek |
+| 2026-04-23 | B4.1 prep — přidáno A13 (`db_error_kind` spike guard pro `aidvisora_app` cutover). | Marek |
 
 ---
 

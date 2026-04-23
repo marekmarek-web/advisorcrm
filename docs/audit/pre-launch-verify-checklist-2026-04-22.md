@@ -49,7 +49,12 @@ Požadovaný minimum:
 - `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`
 - `VERCEL_EDGE_CONFIG` (kill-switches)
 - **Nepovinné, ale doporučené:** `MFA_ENFORCE_ADVISORS=true` (B3.3),
-  `TURNSTILE_SECRET` (B3.7), `DATABASE_URL_SERVICE` (pro B4.1 cutover crony).
+  `TURNSTILE_SECRET` (B3.7).
+- **Povinné před aidvisora_app cutover (B4.1 / SL-094):**
+  `DATABASE_URL_SERVICE` (postgres role, BYPASSRLS) — vymáháno runtime
+  guardem v `apps/web/src/lib/db/service-db.ts`, který throwne, pokud
+  `DATABASE_URL` ukazuje na `aidvisora_app` roli a `DATABASE_URL_SERVICE`
+  chybí. Bez této env var cron/webhook flows spadnou nebo vrátí prázdná data.
 
 ## 4. Sentry alerts (Sentry UI → Alerts)
 
