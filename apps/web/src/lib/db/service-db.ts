@@ -49,7 +49,16 @@ const explicitServiceUrl = process.env.DATABASE_URL_SERVICE;
 const runtimeLooksCutover =
   typeof runtimeDatabaseUrl === "string" && runtimeDatabaseUrl.includes("aidvisora_app");
 
-if (runtimeLooksCutover && !explicitServiceUrl) {
+/**
+ * Během `next build` Next.js načítá API moduly pro analýzu (collect page data), ale
+ * `DATABASE_URL_SERVICE` na Vercelu často není v build-time env — build by jinak padal dřív,
+ * než nasadíš správné proměnné pro runtime. Guard vynucujeme jen mimo build fázi.
+ * @see https://github.com/vercel/next.js/blob/canary/packages/next/src/shared/lib/constants.ts
+ */
+const isNextBuildOrExportPhase =
+  process.env.NEXT_PHASE === "phase-production-build" || process.env.NEXT_PHASE === "phase-export";
+
+if (runtimeLooksCutover && !explicitServiceUrl && !isNextBuildOrExportPhase) {
   throw new Error(
     "Cutover guard: DATABASE_URL je pod rolí aidvisora_app, ale DATABASE_URL_SERVICE chybí. " +
       "Nastav DATABASE_URL_SERVICE na postgres-role pooler string (viz " +
