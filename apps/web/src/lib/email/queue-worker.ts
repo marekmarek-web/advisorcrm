@@ -17,6 +17,7 @@ import { resolveFromHeader } from "@/lib/email/resolve-from-header";
 import { personalizeMessage } from "@/lib/email/personalization";
 import { buildListUnsubscribeHeaders } from "@/lib/email/list-unsubscribe";
 import { rewriteHtmlForTracking, injectOpenPixel } from "@/lib/email/tracking";
+import { isFeatureEnabled } from "@/lib/admin/feature-flags";
 
 const DEFAULT_BATCH_SIZE = 40;
 const MAX_ATTEMPTS = 3;
@@ -250,15 +251,22 @@ async function processOne(
     });
 
     // Tracking: rewrite <a href> do /api/t/c/<token>?u=<url>, inject open pixel.
-    const trackedHtml = campaign.trackingEnabled
-      ? injectOpenPixel(
-          rewriteHtmlForTracking(bodyHtml, {
-            token: recipient.trackingToken ?? null,
-            baseUrl: appBaseUrl(),
-          }),
-          { token: recipient.trackingToken ?? null, baseUrl: appBaseUrl() },
-        )
-      : bodyHtml;
+    // Sepnuto jen pokud je per-tenant flag `email_campaigns_v2_tracking` zapnutý
+    // A zároveň `campaign.trackingEnabled` není explicitně vypnuto.
+    const trackingTenantEnabled = isFeatureEnabled(
+      "email_campaigns_v2_tracking",
+      job.tenantId,
+    );
+    const trackedHtml =
+      campaign.trackingEnabled && trackingTenantEnabled
+        ? injectOpenPixel(
+            rewriteHtmlForTracking(bodyHtml, {
+              token: recipient.trackingToken ?? null,
+              baseUrl: appBaseUrl(),
+            }),
+            { token: recipient.trackingToken ?? null, baseUrl: appBaseUrl() },
+          )
+        : bodyHtml;
 
     const from = await resolveFromHeader({
       tenantId: job.tenantId,

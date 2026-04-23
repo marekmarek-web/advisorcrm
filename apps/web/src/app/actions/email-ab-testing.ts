@@ -21,6 +21,7 @@ import {
   type SegmentFilter,
 } from "@/lib/email/segment-filter";
 import { mintTrackingToken } from "@/lib/email/queue-enqueue";
+import { isFeatureEnabled } from "@/lib/admin/feature-flags";
 
 /**
  * Metadata A/B testu uložená v `segment_filter` (jsonb) parent kampaně.
@@ -68,6 +69,9 @@ export async function createAbVariant(input: {
   return withAuthContext(async (auth, tx) => {
     if (!hasPermission(auth.roleName, "contacts:write")) {
       throw new Error("Nemáte oprávnění.");
+    }
+    if (!isFeatureEnabled("email_campaigns_v2_ab", auth.tenantId)) {
+      throw new Error("A/B testing e-mailů není aktivní.");
     }
     const subjectB = input.subjectB.trim();
     if (!subjectB) throw new Error("Zadejte subject pro variantu B.");
@@ -137,6 +141,9 @@ export async function launchAbTest(input: {
   return withAuthContext(async (auth, tx) => {
     if (!hasPermission(auth.roleName, "contacts:write")) {
       throw new Error("Nemáte oprávnění.");
+    }
+    if (!isFeatureEnabled("email_campaigns_v2_ab", auth.tenantId)) {
+      throw new Error("A/B testing e-mailů není aktivní.");
     }
     const [parent] = await tx
       .select()

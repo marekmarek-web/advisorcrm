@@ -50,5 +50,9 @@ export type LegalDocumentSlug =
 /** E-mail pro bezpečnostní incidenty (oddělený od běžné podpory). */
 export const LEGAL_SECURITY_EMAIL = "bezpecnost@aidvisora.cz";
 
-/** Externí status page — placeholder, doplníme po spuštění Instatus/Statuspage. */
-export const LEGAL_STATUS_PAGE_URL = "https://status.aidvisora.cz";
+/**
+ * Provozní stav — do spuštění externí status page (Instatus/Statuspage) cílíme
+ * na interní `/status` routu, která renderuje živý health snapshot.
+ * Po spuštění public statuspage nahradit za `https://status.aidvisora.cz`.
+ */
+export const LEGAL_STATUS_PAGE_URL = "/status";

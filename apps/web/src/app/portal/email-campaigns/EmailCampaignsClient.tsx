@@ -79,11 +79,20 @@ const TEMPLATE_ICONS = {
 type ViewMode = "editor" | "preview" | "history";
 type PreviewDevice = "desktop" | "mobile";
 
+export type EmailCampaignsFlagState = {
+  aiEnabled: boolean;
+  abEnabled: boolean;
+  referralsEnabled: boolean;
+  automationsEnabled: boolean;
+};
+
 type Props = {
   initialRows: CampaignListRow[];
   initialSegments: SegmentCount[];
   /** Jméno (nebo e-mail) autora — pro náhled „Od:“ a branding. */
   fromName?: string;
+  /** Feature-flag gate pro AI / A/B / Doporučení / Automatizace. */
+  flags?: EmailCampaignsFlagState;
 };
 
 type EditorMode = "visual" | "source";
@@ -134,7 +143,19 @@ function previewReplace(input: string): string {
     .replace(/\{\{unsubscribe_url\}\}/gi, "#");
 }
 
-export function EmailCampaignsClient({ initialRows, initialSegments, fromName }: Props) {
+const DEFAULT_FLAGS: EmailCampaignsFlagState = {
+  aiEnabled: false,
+  abEnabled: false,
+  referralsEnabled: false,
+  automationsEnabled: false,
+};
+
+export function EmailCampaignsClient({
+  initialRows,
+  initialSegments,
+  fromName,
+  flags = DEFAULT_FLAGS,
+}: Props) {
   const router = useRouter();
   const toast = useToast();
   const confirm = useConfirm();
@@ -695,43 +716,47 @@ Odeslání nelze vrátit zpět.`,
             >
               <Newspaper size={16} />
             </ToolbarBtn>
-            <ToolbarBtn
-              onClick={async () => {
-                if (form.bodyHtml && form.bodyHtml.trim().length > 0) {
-                  const ok = await confirm({
-                    title: "Přepsat editor AI návrhem?",
-                    message:
-                      "Aktuální obsah editoru bude nahrazen AI vygenerovaným návrhem. Pokračovat?",
-                    confirmLabel: "Ano, vygenerovat",
-                    cancelLabel: "Zrušit",
-                  });
-                  if (!ok) return;
+            {flags.aiEnabled ? (
+              <ToolbarBtn
+                onClick={async () => {
+                  if (form.bodyHtml && form.bodyHtml.trim().length > 0) {
+                    const ok = await confirm({
+                      title: "Přepsat editor AI návrhem?",
+                      message:
+                        "Aktuální obsah editoru bude nahrazen AI vygenerovaným návrhem. Pokračovat?",
+                      confirmLabel: "Ano, vygenerovat",
+                      cancelLabel: "Zrušit",
+                    });
+                    if (!ok) return;
+                  }
+                  setAiDraftModalOpen(true);
+                }}
+                label="Vygenerovat návrh AI asistentem"
+              >
+                <Wand2 size={16} />
+              </ToolbarBtn>
+            ) : null}
+            {flags.abEnabled ? (
+              <ToolbarBtn
+                onClick={() => {
+                  if (!form.draftId) {
+                    toast.showToast(
+                      "A/B test lze spustit jen u uloženého konceptu – nejdříve klikněte na „Uložit koncept“.",
+                      "info",
+                    );
+                    return;
+                  }
+                  setAbTestModalOpen(true);
+                }}
+                label={
+                  form.draftId
+                    ? "Spustit A/B test (varianta B)"
+                    : "A/B test – nejprve uložte koncept"
                 }
-                setAiDraftModalOpen(true);
-              }}
-              label="Vygenerovat návrh AI asistentem"
-            >
-              <Wand2 size={16} />
-            </ToolbarBtn>
-            <ToolbarBtn
-              onClick={() => {
-                if (!form.draftId) {
-                  toast.showToast(
-                    "A/B test lze spustit jen u uloženého konceptu – nejdříve klikněte na „Uložit koncept“.",
-                    "info",
-                  );
-                  return;
-                }
-                setAbTestModalOpen(true);
-              }}
-              label={
-                form.draftId
-                  ? "Spustit A/B test (varianta B)"
-                  : "A/B test – nejprve uložte koncept"
-              }
-            >
-              <SplitSquareHorizontal size={16} />
-            </ToolbarBtn>
+              >
+                <SplitSquareHorizontal size={16} />
+              </ToolbarBtn>
+            ) : null}
           </div>
           {editorMode === "visual" ? (
             <div
@@ -1151,24 +1176,28 @@ Odeslání nelze vrátit zpět.`,
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <a
-              href="/portal/email-campaigns/automations"
-              className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-4 py-2 text-sm font-bold text-[color:var(--wp-text)] shadow-sm hover:bg-[color:var(--wp-main-scroll-bg)]"
-            >
-              Automatizace →
-            </a>
+            {flags.automationsEnabled ? (
+              <a
+                href="/portal/email-campaigns/automations"
+                className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-4 py-2 text-sm font-bold text-[color:var(--wp-text)] shadow-sm hover:bg-[color:var(--wp-main-scroll-bg)]"
+              >
+                Automatizace →
+              </a>
+            ) : null}
             <a
               href="/portal/email-campaigns/content-sources"
               className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-4 py-2 text-sm font-bold text-[color:var(--wp-text)] shadow-sm hover:bg-[color:var(--wp-main-scroll-bg)]"
             >
               Zdroje obsahu →
             </a>
-            <a
-              href="/portal/email-campaigns/referrals"
-              className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-4 py-2 text-sm font-bold text-[color:var(--wp-text)] shadow-sm hover:bg-[color:var(--wp-main-scroll-bg)]"
-            >
-              Doporučení →
-            </a>
+            {flags.referralsEnabled ? (
+              <a
+                href="/portal/email-campaigns/referrals"
+                className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white px-4 py-2 text-sm font-bold text-[color:var(--wp-text)] shadow-sm hover:bg-[color:var(--wp-main-scroll-bg)]"
+              >
+                Doporučení →
+              </a>
+            ) : null}
           </div>
         </div>
 

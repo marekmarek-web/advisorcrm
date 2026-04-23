@@ -551,12 +551,17 @@ export default function PremiumLandingPage() {
                   </div>
                 </div>
               ) : (
-                <div className="relative rounded-[24px] md:rounded-[32px] border border-white/10 bg-[#060918]/80 shadow-[0_0_60px_rgba(99,102,241,0.15)] overflow-hidden p-8 md:p-10 min-h-[280px] flex flex-col justify-center">
-                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/15 to-transparent pointer-events-none" />
-                  <div className="relative z-10 text-center lg:text-left">
-                    <p className="text-white font-jakarta font-bold text-lg mb-3">Všechno pod jednou střechou</p>
-                    <p className="text-sm text-slate-400 leading-relaxed max-w-md mx-auto lg:mx-0">
-                      Kalendář, pipeline, karta klienta, dokumenty a klientský portál — přehledně propojené, bez skákání mezi Excelem a e-maily.
+                // Launch — když není `NEXT_PUBLIC_LANDING_DEMO_VIDEO_URL` nastaveno,
+                // nepoužíváme dekorativní fallback. Přímo mountneme první z živých
+                // ukázek (Obchody — Pipeline). Vimeo player (~800 KB) se díky
+                // VimeoFacade stáhne až po kliknutí, takže hero zůstává rychlé
+                // a uživatel má okamžitý motion proof na first paint.
+                <div className="relative rounded-[24px] md:rounded-[32px] border border-white/10 bg-[#060918]/80 shadow-[0_0_60px_rgba(99,102,241,0.2)] overflow-hidden">
+                  <VimeoFacade vimeoId="1184117287" hash="6595dae869" title="Obchody — pipeline" />
+                  <div className="px-5 py-4 border-t border-white/10 bg-white/[0.02]">
+                    <p className="text-xs font-bold uppercase tracking-widest text-indigo-300">Ukázka z aplikace</p>
+                    <p className="text-sm text-slate-300 mt-1 leading-relaxed">
+                      Obchodní pipeline — od prvního kontaktu po podpis. Tahat, filtrovat, přiřazovat.
                     </p>
                   </div>
                 </div>
@@ -572,7 +577,7 @@ export default function PremiumLandingPage() {
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-2">Orientační model</p>
             <p className="text-slate-300 text-sm md:text-base max-w-xl">
-              Odhad měsíční hodnoty podle vašich vstupů — doladíte v plné kalkulačce níže.
+              Odhad měsíční hodnoty podle vašich vstupů — doladíte v plné kalkulačce níže. Ilustrativně, nejde o garanci výsledku.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0">
@@ -687,7 +692,7 @@ export default function PremiumLandingPage() {
                 Co <span className="text-glow-shimmer">Aidvisora opravdu umí.</span>
               </h2>
               <p className="text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
-                Čtyři krátké ukázky přímo z aplikace. Žádné mockupy, žádné rendery — reálné UI, reálná práce s klientem.
+                Čtyři krátké ukázky z produkční aplikace (seeded demo data, bez mockupů a renderů).
               </p>
             </div>
           </ScrollReveal>
@@ -777,7 +782,7 @@ export default function PremiumLandingPage() {
                 icon: Bot,
                 title: "AI review smluv, ne jen šablony",
                 desc: "Nahrajete PDF smlouvy, Aidvisora přečte pole, typ produktu, pojistné, rizika — a sama navrhne, co zkopírovat do karty klienta. Žádný copy-paste, žádné ruční přepisování.",
-                highlight: "Průměrně 12 minut / smlouva → 40 sekund",
+                highlight: "V pilotech typicky několikanásobně rychlejší než ruční přepis",
               },
               {
                 icon: Users,
@@ -888,7 +893,7 @@ export default function PremiumLandingPage() {
                   <div className="flex flex-col gap-2">
                     <CheckCircle2 size={24} className="text-emerald-400 mb-2"/>
                     <h4 className="font-bold text-white">Lidská kontrola</h4>
-                    <p className="text-sm text-slate-400">AI nikdy nemění klientská data bez vašeho výslovného souhlasu na 1 klik.</p>
+                    <p className="text-sm text-slate-400">AI nepropisuje údaje do karty klienta ani neodesílá zprávy bez vašeho potvrzení.</p>
                   </div>
                   <div className="flex flex-col gap-2">
                     <Search size={24} className="text-emerald-400 mb-2"/>
@@ -1173,10 +1178,10 @@ export default function PremiumLandingPage() {
                 </div>
 
                 <div className="relative z-10 bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm text-center">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2 block">Budoucí hodnota (Při 7% p.a.)</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2 block">Modelová budoucí hodnota (7 % p.a.)*</span>
                   <div className="text-4xl sm:text-5xl font-black text-white mb-2">{formatNumber(futureValue)} <span className="text-xl sm:text-2xl text-slate-500">Kč</span></div>
                   <p className="mt-3 text-[11px] text-slate-500 leading-relaxed">
-                    Výstup do PDF reportu si připravíte v aplikaci po přihlášení (analýzy a kalkulačky).
+                    *Ilustrativní výpočet. Nejde o investiční doporučení ani garanci výnosu; minulé výnosy nepředurčují budoucí. Výstup do PDF reportu pro klienta si připravíte v aplikaci po přihlášení.
                   </p>
                   <Link
                     href="/prihlaseni?register=1"
@@ -1798,6 +1803,9 @@ export default function PremiumLandingPage() {
                <p className="text-sm text-slate-500 mt-4 max-w-lg mx-auto">
                  Při roční fakturaci platíte o {ANNUAL_BILLING_DISCOUNT_PERCENT} % méně než při součtu 12 měsíčních plateb (stejné funkce, jiné fakturační období).
                </p>
+               <p className="text-xs text-slate-500 mt-2 max-w-lg mx-auto">
+                 Ceny jsou uvedeny <strong className="text-slate-400">bez DPH</strong> (21 %). DPH doplní Stripe Tax podle DIČ (MOSS/OSS, reverse-charge pro plátce z EU).
+               </p>
                {isAnnualPricing ? (
                  <p className="text-xs text-emerald-400/90 mt-3 max-w-lg mx-auto font-medium">
                    Ekvivalent měsíčně při roční platbě: úspora{" "}
@@ -1949,6 +1957,10 @@ export default function PremiumLandingPage() {
                </div>
              </ScrollReveal>
           </div>
+
+          <p className="mt-10 text-center text-xs text-slate-500 max-w-xl mx-auto">
+            Všechny ceny jsou <strong className="text-slate-400">bez DPH</strong> (21 %). DPH doplní Stripe Tax podle DIČ.
+          </p>
         </div>
       </section>
 

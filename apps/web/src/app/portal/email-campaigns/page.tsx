@@ -2,7 +2,8 @@ import {
   listEmailCampaignsFull,
   getSegmentCounts,
 } from "@/app/actions/email-campaigns";
-import { getCachedSupabaseUser } from "@/lib/auth/require-auth";
+import { getCachedSupabaseUser, requireAuthInAction } from "@/lib/auth/require-auth";
+import { isFeatureEnabled } from "@/lib/admin/feature-flags";
 import { EmailCampaignsClient } from "./EmailCampaignsClient";
 
 export const dynamic = "force-dynamic";
@@ -42,5 +43,31 @@ export default async function EmailCampaignsPage() {
         : null;
   const fromName = fullName ?? user?.email ?? "";
 
-  return <EmailCampaignsClient initialRows={rows} initialSegments={segments} fromName={fromName} />;
+  // Feature flag stavy pro gating editorových tlačítek (AI / A/B / Doporučení).
+  let flags = {
+    aiEnabled: false,
+    abEnabled: false,
+    referralsEnabled: false,
+    automationsEnabled: false,
+  };
+  try {
+    const auth = await requireAuthInAction();
+    flags = {
+      aiEnabled: isFeatureEnabled("email_campaigns_v2_ai", auth.tenantId),
+      abEnabled: isFeatureEnabled("email_campaigns_v2_ab", auth.tenantId),
+      referralsEnabled: isFeatureEnabled("email_campaigns_v2_referrals", auth.tenantId),
+      automationsEnabled: isFeatureEnabled("email_campaigns_v2_automations", auth.tenantId),
+    };
+  } catch {
+    // pokud auth selže, nech všechny flag v default off (bezpečně)
+  }
+
+  return (
+    <EmailCampaignsClient
+      initialRows={rows}
+      initialSegments={segments}
+      fromName={fromName}
+      flags={flags}
+    />
+  );
 }

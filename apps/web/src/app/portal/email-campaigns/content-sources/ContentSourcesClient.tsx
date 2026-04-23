@@ -8,8 +8,8 @@ import {
   deleteContentSource,
   type ContentSourceRow,
 } from "@/app/actions/email-content-sources";
-import type { ArticleMetadata } from "@/lib/email/article-fetcher";
-import { ARTICLE_FETCHER_ALLOWED_DOMAINS } from "@/lib/email/article-fetcher";
+import type { ArticleMetadata } from "@/lib/email/article-fetcher-shared";
+import { ARTICLE_FETCHER_ALLOWED_DOMAINS } from "@/lib/email/article-fetcher-shared";
 import { useConfirm } from "@/app/components/ConfirmDialog";
 
 type Props = {

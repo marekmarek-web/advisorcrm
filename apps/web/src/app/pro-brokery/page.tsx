@@ -32,7 +32,7 @@ export default function ProBrokeryPage() {
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-gray-700 dark:text-gray-300">
           Jedna instance platformy pro vaši organizaci (workspace), oddělená data od jiných poradců, role Manažer / Poradce /
           Asistent a smluvní rámec pro zpracování osobních údajů klientů. Negarantujeme „stoprocentní GDPR“ — umíme ale
-          popsát reálná opatření a stav zavádění.
+          popsat reálná opatření a stav zavádění.
         </p>
       </header>
 

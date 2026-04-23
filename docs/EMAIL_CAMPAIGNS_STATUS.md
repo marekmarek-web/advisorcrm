@@ -150,3 +150,136 @@ tracking, automatizace, referraly, kurátované novinky a AI generátor.
   subcomponenty.
 - Statistický test významnosti u A/B (nyní jen porovnání open rate) —
   Wilson confidence interval + minimum sample threshold.
+
+## Gap closure v2 (2026-04-23)
+
+Druhá vlna uzavírá rezidua z původního 3+ měsíčního plánu: chybějící
+automation triggery, rozšířený segment builder, year-in-review nad
+skutečnými datovými zdroji, referral thank-you automation, whitelist
+domén pro article fetcher, editor UI pro článek / AI návrh / A/B test,
+GDPR consent check, mass-send audit log a feature flags.
+
+### Feature flag matrix
+
+| Kód flagu | Scope | Default | Kde se kontroluje |
+| --- | --- | --- | --- |
+| `email_campaigns_v2_queue` | tenant | **ON** | `queueEmailCampaign` ([email-campaigns.ts](../apps/web/src/app/actions/email-campaigns.ts)) |
+| `email_campaigns_v2_tracking` | tenant | **ON** | `processEmailQueueBatch` ([queue-worker.ts](../apps/web/src/lib/email/queue-worker.ts)) |
+| `email_campaigns_v2_automations` | tenant | OFF | `runDueAutomations` ([automation-worker.ts](../apps/web/src/lib/email/automation-worker.ts)) + navigační link |
+| `email_campaigns_v2_ai` | tenant | OFF | `generateCampaignDraft` + toolbar button (Wand2) |
+| `email_campaigns_v2_ab` | tenant | OFF | `createAbVariant` + `launchAbTest` + toolbar button (SplitSquareHorizontal) |
+| `email_campaigns_v2_referrals` | tenant | OFF | `createReferralRequest` + navigační link |
+
+Flagy jsou definované v `apps/web/src/lib/admin/feature-flags.ts`. Admin je
+může per tenant přepnout přes `setFeatureOverride(code, tenantId, enabled)`.
+
+### Rollout postup
+
+1. **Pilot (1 tenant, interní)** — nastavit všechny `email_campaigns_v2_*`
+   flagy na **ON** pro interní testovací tenant. Ověřit queue, tracking,
+   automations, AI, A/B i referraly přes jeden end-to-end scénář
+   (viz sekce „Verifikace po nasazení").
+2. **10 % tenantů (early adopters)** — vybrané poradenské firmy, které
+   mají ve zpětné vazbě požádáno o beta přístup. Postupně zapnout
+   `automations`, pak `referrals`, nakonec `ai` a `ab`. Sledovat
+   `incident_logs` (mass-send audit) a Resend bounce rate denně týden.
+3. **100 % tenantů** — `queue` a `tracking` už jsou default ON. Zbytek
+   flagů zapnout hromadně po 2 týdnech od začátku 10% vlny bez
+   negativních signálů (open rate > 15 %, bounce < 3 %, žádné Svix
+   verifikační chyby).
+
+### GDPR consent a mass-send audit
+
+- `hasValidConsent(contactId, "marketing_emails")` v
+  [consent-check.ts](../apps/web/src/lib/compliance/consent-check.ts)
+  joinuje `consents` + `processing_purposes`. Kill-switch
+  `EMAIL_CONSENT_ENFORCEMENT=0` consent check přeskočí (pro testovací
+  prostředí). Seed migrace
+  `email-campaigns-marketing-consent-2026-04-23.sql` přidává
+  `marketing_emails` purpose pro všechny existující tenanty a
+  `contacts.birth_greeting_opt_out` bool sloupec.
+- `queueEmailCampaign` + `automation-worker` vždy filtruje kontakty
+  bez platného consentu z příjemců a loguje skipped count v
+  `email_automation_runs`.
+- Při ≥ 50 příjemcích se zavolá `createIncident` (severity: `low`) v
+  [incident-service.ts](../apps/web/src/lib/security/incident-service.ts)
+  s meta `{ campaignId, recipientCount, segmentId }`. Auditní stopa
+  pro compliance a DPO.
+
+### Article fetcher — SSRF guard
+
+[article-fetcher.ts](../apps/web/src/lib/email/article-fetcher.ts) má
+whitelist domén `ARTICLE_FETCHER_ALLOWED_DOMAINS` (kurzy.cz, penize.cz,
+hypoindex.cz, idnes.cz, aktualne.cz, e15.cz, seznamzpravy.cz,
+novinky.cz, roklen24.cz) a funkci `isPrivateOrInvalidHost`, která
+odmítá privátní IP, loopback, link-local a cloud metadata IP. URL se
+kontroluje před fetchem i po redirectu (final URL).
+
+### Verifikace po nasazení (SQL queries)
+
+Po každé rollout vlně spustit tyto kontroly:
+
+```sql
+-- Automations běží denně a zpracovávají pravidla
+SELECT
+  date_trunc('day', started_at) AS day,
+  count(*) AS runs,
+  sum(matched_count) AS matched,
+  sum(queued_count) AS queued,
+  sum(skipped_count) AS skipped
+FROM email_automation_runs
+WHERE started_at > now() - interval '7 days'
+GROUP BY 1
+ORDER BY 1;
+
+-- Tracking eventy tečou z Resendu
+SELECT event_type, count(*)
+FROM email_campaign_events
+WHERE occurred_at > now() - interval '24 hours'
+GROUP BY 1
+ORDER BY 2 DESC;
+
+-- Consent check filtruje kontakty bez souhlasu (hledej 'no consent' v důvodech)
+SELECT skipped_reason, count(*)
+FROM email_automation_runs
+WHERE skipped_reason IS NOT NULL
+  AND started_at > now() - interval '7 days'
+GROUP BY 1;
+
+-- Mass send audit log má stopu
+SELECT created_at, title, meta
+FROM incident_logs
+WHERE title LIKE 'Mass email send%'
+  AND created_at > now() - interval '7 days'
+ORDER BY created_at DESC;
+
+-- A/B testy finalizují automaticky
+SELECT
+  c.id AS parent_id,
+  c.subject AS subject_a,
+  (SELECT subject FROM email_campaigns WHERE parent_campaign_id = c.id AND ab_variant = 'b') AS subject_b,
+  (c.segment_filter->'_ab'->>'finalizeAt')::timestamptz AS finalize_at,
+  (c.segment_filter->'_ab'->>'finalizedAt')::timestamptz AS finalized_at,
+  c.segment_filter->'_ab'->>'pickedWinnerVariant' AS winner
+FROM email_campaigns c
+WHERE c.parent_campaign_id IS NULL
+  AND c.segment_filter ? '_ab'
+ORDER BY c.created_at DESC
+LIMIT 20;
+
+-- AI generator log — kontrola, že drafty jsou logované
+SELECT
+  date_trunc('day', created_at) AS day,
+  count(*) FILTER (WHERE status = 'success') AS ok,
+  count(*) FILTER (WHERE status = 'failure') AS failed
+FROM ai_generations
+WHERE prompt_type = 'email_campaign_draft'
+  AND created_at > now() - interval '14 days'
+GROUP BY 1
+ORDER BY 1;
+```
+
+Pokud `queued` je 0 u vybraného tenanta po aktivaci flagu, zkontrolovat:
+- zda pro daný tenant běží `isFeatureEnabled("email_campaigns_v2_automations", tenantId) = true`,
+- zda `email_automation_rules.is_active = true` a `trigger_type` patří mezi implementované (`birthday`, `inactive_client`, `year_in_review`, `contract_anniversary`, `service_due`, `proposal_accepted`, `contract_activated`, `analysis_completed`, `referral_ask_after_proposal`, `referral_ask_after_anniversary`),
+- zda existuje `email_templates` se shodným `kind` (např. `birthday`, `referral_ask`, `year_in_review`).

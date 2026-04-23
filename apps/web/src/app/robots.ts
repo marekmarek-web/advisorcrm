@@ -22,7 +22,6 @@ export default function robots(): MetadataRoute.Robots {
           "/dashboard/",
           "/onboarding/",
           "/monitoring/",
-          "/status/",
         ],
       },
       // AI crawlers — blokovat scraping citlivých sekcí. Produktové landing stránky

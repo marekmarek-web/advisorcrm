@@ -32,6 +32,10 @@
     "text": "• Cookies třetích stran — Aidvisora nezpřístupňuje své stránky reklamním sítím, pixelům sociálních sítí ani cross-site trackerům. Platební rozhraní Stripe (pokud je pro účet aktivní) nasazuje vlastní technické cookies nezbytné pro zpracování platby přímo na své doméně."
   },
   {
+    "type": "li",
+    "text": "• Vložená videa (Vimeo) — na marketingových stránkách používáme Vimeo facade, tj. video embed se načítá až po vašem kliknutí na Play. Do té doby stahujeme pouze statický obrázkový náhled (vumbnail.com / i.vimeocdn.com) bez nastavení cookies. Po spuštění přehrávače může Vimeo použít vlastní cookies pro funkce přehrávání; parametr „dnt=1“ (Do Not Track) je v iframe nastaven. Pokud video nespustíte, žádné cookies Vimea se neukládají."
+  },
+  {
     "type": "h1",
     "text": "2. Konkrétní přehled položek (aktuální stav)"
   },

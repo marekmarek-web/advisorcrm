@@ -176,8 +176,8 @@ export default function KontaktPage() {
           <ContactCard
             icon={ShieldAlert}
             title="Status a provozní stav"
-            description="Sledování dostupnosti platformy, historie incidentů a plánované údržby. Po spuštění veřejné status page zde bude aktivní odkaz."
-            actionLabel="Status page"
+            description="Živý přehled dostupnosti klíčových komponent (databáze, auth, Stripe, e-mail). Dedikovaná public status page se připravuje."
+            actionLabel="Otevřít /status"
             actionHref={LEGAL_STATUS_PAGE_URL}
           />
           <ContactCard

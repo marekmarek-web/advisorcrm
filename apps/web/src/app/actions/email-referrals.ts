@@ -15,6 +15,7 @@ import {
   sql,
 } from "db";
 import { mintTrackingToken } from "@/lib/email/queue-enqueue";
+import { isFeatureEnabled } from "@/lib/admin/feature-flags";
 
 export type ReferralRequestRow = {
   id: string;
@@ -43,6 +44,9 @@ export async function createReferralRequest(input: {
   return withAuthContext(async (auth, tx) => {
     if (!hasPermission(auth.roleName, "contacts:write")) {
       throw new Error("Nemáte oprávnění.");
+    }
+    if (!isFeatureEnabled("email_campaigns_v2_referrals", auth.tenantId)) {
+      throw new Error("Modul Doporučení není ve vašem tenantovi aktivní.");
     }
 
     const [contact] = await tx

@@ -22,6 +22,7 @@ import { resolveFromHeader } from "@/lib/email/resolve-from-header";
 import { personalizeMessage } from "@/lib/email/personalization";
 import { buildListUnsubscribeHeaders } from "@/lib/email/list-unsubscribe";
 import { enqueueCampaignForSending } from "@/lib/email/queue-enqueue";
+import { isFeatureEnabled } from "@/lib/admin/feature-flags";
 import {
   CAMPAIGN_SEGMENTS,
   type CampaignSegment,
@@ -697,6 +698,11 @@ export async function queueEmailCampaign(input: {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:write")) {
     throw new Error("Nemáte oprávnění odesílat kampaň.");
+  }
+  if (!isFeatureEnabled("email_campaigns_v2_queue", auth.tenantId)) {
+    throw new Error(
+      "Fronta e-mailových kampaní (v2) není pro váš tenant aktivní. Obraťte se na admina.",
+    );
   }
   const scheduledFor = input.scheduledFor
     ? new Date(input.scheduledFor as string | Date)

@@ -120,6 +120,49 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     defaultEnabled: false,
     rolloutScope: "tenant",
   },
+  // --- Email campaigns v2 flags ---
+  {
+    code: "email_campaigns_v2_queue",
+    label: "Email kampaně v2 — queue & scheduling",
+    description: "Async queue-based sending via email_send_queue + cron worker (replaces sync Resend calls).",
+    defaultEnabled: true,
+    rolloutScope: "tenant",
+  },
+  {
+    code: "email_campaigns_v2_tracking",
+    label: "Email kampaně v2 — open/click tracking",
+    description: "Open pixel + click-tracking redirect + Resend webhooks pro email_campaign_events.",
+    defaultEnabled: true,
+    rolloutScope: "tenant",
+  },
+  {
+    code: "email_campaigns_v2_automations",
+    label: "Email kampaně v2 — automatizace",
+    description: "Daily cron /api/cron/email-automations — birthday/contract anniversary/service due/proposal/contract activated/analysis completed/referral ask.",
+    defaultEnabled: false,
+    rolloutScope: "tenant",
+  },
+  {
+    code: "email_campaigns_v2_ai",
+    label: "Email kampaně v2 — AI generátor",
+    description: "AI-powered návrh kampaně (subject/preheader/bodyHtml) v editoru.",
+    defaultEnabled: false,
+    rolloutScope: "tenant",
+  },
+  {
+    code: "email_campaigns_v2_ab",
+    label: "Email kampaně v2 — A/B testing",
+    description: "A/B variant subjectu + split audience + automatická finalizace vítěze.",
+    defaultEnabled: false,
+    rolloutScope: "tenant",
+  },
+  {
+    code: "email_campaigns_v2_referrals",
+    label: "Email kampaně v2 — doporučení",
+    description: "Referral request kampaně, public /r/[token] landing a thank-you automation.",
+    defaultEnabled: false,
+    rolloutScope: "tenant",
+  },
 ];
 
 const tenantOverrides = new Map<string, Map<string, boolean>>();

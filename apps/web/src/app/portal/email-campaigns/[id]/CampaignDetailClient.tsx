@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import type {
   CampaignDetailPayload,
   CampaignRecipientRow,
+  AbTestInfo,
 } from "@/app/actions/email-campaign-detail";
 import { cancelScheduledCampaign } from "@/app/actions/email-campaign-detail";
 import { queueEmailCampaign } from "@/app/actions/email-campaigns";
+import { finalizeAbTestWinner } from "@/app/actions/email-ab-testing";
 
 type Props = { data: CampaignDetailPayload };
 
@@ -313,6 +315,15 @@ export default function CampaignDetailClient({ data }: Props) {
         </div>
       ) : null}
 
+      {/* A/B test panel */}
+      {data.abTest ? (
+        <AbTestPanel
+          parentCampaignId={data.id}
+          ab={data.abTest}
+          onRefresh={() => router.refresh()}
+        />
+      ) : null}
+
       {/* Recipients table */}
       <div className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-white shadow-sm">
         <div className="border-b border-[color:var(--wp-surface-card-border)] px-6 py-4">
@@ -438,6 +449,210 @@ function Sparkline({ data }: { data: { date: string; opens: number; clicks: numb
           Kliknutí
         </span>
       </div>
+    </div>
+  );
+}
+
+function AbTestPanel({
+  parentCampaignId,
+  ab,
+  onRefresh,
+}: {
+  parentCampaignId: string;
+  ab: AbTestInfo;
+  onRefresh: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const finalizeDate = new Date(ab.finalizeAt);
+  const now = Date.now();
+  const remainingMs = finalizeDate.getTime() - now;
+  const canFinalize = !ab.finalizedAt && (ab.variantA.sentCount > 0 || ab.variantB.sentCount > 0);
+  const winner = ab.pickedWinnerVariant;
+  const aBetter = ab.variantA.openRate >= ab.variantB.openRate;
+
+  const onFinalize = () => {
+    if (!confirm("Vybrat vítěze teď a odeslat zbytku publika?")) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        await finalizeAbTestWinner(parentCampaignId);
+        onRefresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Finalizace A/B testu selhala.");
+      }
+    });
+  };
+
+  const maxOpenRate = Math.max(ab.variantA.openRate, ab.variantB.openRate, 0.001);
+
+  return (
+    <div className="rounded-[var(--wp-radius-card)] border border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-6 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-black uppercase tracking-widest text-indigo-700">
+            A/B test
+          </h2>
+          <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">
+            Každá varianta obdrží {ab.splitPercent} % publika. Vítěz jde zbývajícím{" "}
+            {100 - ab.splitPercent * 2} % (holdout).
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-[color:var(--wp-text-tertiary)]">
+            {ab.finalizedAt ? (
+              <>
+                Finalizováno {new Date(ab.finalizedAt).toLocaleString("cs-CZ")}. Vítěz:{" "}
+                <span className="text-indigo-700">Varianta {winner?.toUpperCase() ?? "—"}</span>.
+              </>
+            ) : remainingMs > 0 ? (
+              <>Automatická finalizace: {finalizeDate.toLocaleString("cs-CZ")}</>
+            ) : (
+              <>Termín finalizace uplynul — čeká na cron worker nebo manuální spuštění.</>
+            )}
+          </p>
+        </div>
+        {!ab.finalizedAt ? (
+          <button
+            type="button"
+            onClick={onFinalize}
+            disabled={!canFinalize || isPending}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-black text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {isPending ? "Finalizuji…" : "Finalizovat teď"}
+          </button>
+        ) : null}
+      </div>
+
+      {error ? (
+        <p className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <AbVariantCard
+          label="Varianta A"
+          subject={ab.variantA.subject}
+          stats={ab.variantA}
+          isWinner={winner === "a" || (!winner && aBetter && ab.variantA.sentCount > 0)}
+        />
+        <AbVariantCard
+          label="Varianta B"
+          subject={ab.variantB.subject}
+          stats={ab.variantB}
+          isWinner={winner === "b" || (!winner && !aBetter && ab.variantB.sentCount > 0)}
+        />
+      </div>
+
+      <div className="mt-4 rounded-xl bg-white/70 p-4">
+        <p className="mb-2 text-[11px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
+          Open rate (porovnání)
+        </p>
+        <div className="space-y-2">
+          <AbBar label="A" rate={ab.variantA.openRate} max={maxOpenRate} color="bg-sky-500" />
+          <AbBar label="B" rate={ab.variantB.openRate} max={maxOpenRate} color="bg-violet-500" />
+        </div>
+      </div>
+
+      {ab.holdoutPendingCount > 0 && !ab.finalizedAt ? (
+        <p className="mt-3 text-[11px] font-bold text-[color:var(--wp-text-tertiary)]">
+          Holdout publika: {ab.holdoutPendingCount} příjemců čeká na odeslání vítězné varianty.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function AbVariantCard({
+  label,
+  subject,
+  stats,
+  isWinner,
+}: {
+  label: string;
+  subject: string;
+  stats: { sentCount: number; openCount: number; clickCount: number; openRate: number; clickRate: number };
+  isWinner: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-xl border p-4 ${
+        isWinner
+          ? "border-emerald-300 bg-emerald-50/60"
+          : "border-[color:var(--wp-surface-card-border)] bg-white"
+      }`}
+    >
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[11px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
+          {label}
+        </p>
+        {isWinner ? (
+          <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-white">
+            Vítěz
+          </span>
+        ) : null}
+      </div>
+      <p className="text-sm font-bold text-[color:var(--wp-text)]">{subject}</p>
+      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
+            Odesláno
+          </p>
+          <p className="text-lg font-black text-[color:var(--wp-text)]">{stats.sentCount}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
+            Open
+          </p>
+          <p className="text-lg font-black text-sky-700">
+            {(stats.openRate * 100).toFixed(1)} %
+          </p>
+          <p className="text-[10px] text-[color:var(--wp-text-tertiary)]">
+            {stats.openCount} unik.
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
+            Click
+          </p>
+          <p className="text-lg font-black text-violet-700">
+            {(stats.clickRate * 100).toFixed(1)} %
+          </p>
+          <p className="text-[10px] text-[color:var(--wp-text-tertiary)]">
+            {stats.clickCount} unik.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AbBar({
+  label,
+  rate,
+  max,
+  color,
+}: {
+  label: string;
+  rate: number;
+  max: number;
+  color: string;
+}) {
+  const width = max > 0 ? Math.min(100, (rate / max) * 100) : 0;
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-4 text-center text-xs font-black text-[color:var(--wp-text-secondary)]">
+        {label}
+      </span>
+      <div className="flex-1 overflow-hidden rounded-full bg-[color:var(--wp-main-scroll-bg)]">
+        <div
+          className={`h-4 ${color} transition-all`}
+          style={{ width: `${width.toFixed(1)}%` }}
+        />
+      </div>
+      <span className="w-16 text-right text-xs font-black text-[color:var(--wp-text)]">
+        {(rate * 100).toFixed(1)} %
+      </span>
     </div>
   );
 }

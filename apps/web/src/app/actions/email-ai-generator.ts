@@ -4,6 +4,8 @@ import { withAuthContext } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
 import { createResponseStructured } from "@/lib/openai";
 import { emailTemplates, emailContentSources, inArray, eq, and } from "db";
+import { saveGeneration } from "@/lib/ai/ai-generations-repository";
+import { isFeatureEnabled } from "@/lib/admin/feature-flags";
 
 export type GeneratedCampaignDraft = {
   subject: string;
@@ -52,10 +54,17 @@ export async function generateCampaignDraft(input: {
   baseTemplateKind?: string | null;
   articleIds?: string[];
   toneHints?: string | null;
+  /** Volitelné — pokud editor už pracuje s uloženým draftem, logujeme jeho ID do ai_generations. */
+  campaignId?: string | null;
 }): Promise<GeneratedCampaignDraft> {
   return withAuthContext(async (auth, tx) => {
     if (!hasPermission(auth.roleName, "contacts:write")) {
       throw new Error("Nemáte oprávnění.");
+    }
+    if (!isFeatureEnabled("email_campaigns_v2_ai", auth.tenantId)) {
+      throw new Error(
+        "AI generátor e-mailů není ve vašem tenantovi aktivní. Obraťte se na admina pro zapnutí.",
+      );
     }
     const goal = input.goal.trim();
     if (!goal) throw new Error("Uveďte cíl kampaně.");
@@ -134,7 +143,7 @@ export async function generateCampaignDraft(input: {
           routing: { category: "default" },
         },
       );
-      return {
+      const draft: GeneratedCampaignDraft = {
         subject: (parsed.subject ?? "").toString().trim().slice(0, 200) || "Novinky",
         preheader: (parsed.preheader ?? "").toString().trim().slice(0, 200),
         bodyHtml: ensurePersonalizationPlaceholders(
@@ -142,8 +151,39 @@ export async function generateCampaignDraft(input: {
         ),
         notes: parsed.notes ? String(parsed.notes).slice(0, 500) : null,
       };
+
+      try {
+        await saveGeneration({
+          tenantId: auth.tenantId,
+          entityType: "email_campaign",
+          entityId: input.campaignId ?? "draft-preview",
+          promptType: "email_campaign_draft",
+          promptId: "email-ai-generator-v1",
+          generatedByUserId: auth.userId,
+          outputText: JSON.stringify(draft),
+          status: "success",
+        });
+      } catch {
+        // log selhání nesmí rozbít návrat draftu — zalogování je bonus.
+      }
+
+      return draft;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      try {
+        await saveGeneration({
+          tenantId: auth.tenantId,
+          entityType: "email_campaign",
+          entityId: input.campaignId ?? "draft-preview",
+          promptType: "email_campaign_draft",
+          promptId: "email-ai-generator-v1",
+          generatedByUserId: auth.userId,
+          outputText: JSON.stringify({ error: msg, input: { goal, audienceDescription: input.audienceDescription, baseTemplateKind: input.baseTemplateKind } }),
+          status: "failure",
+        });
+      } catch {
+        // no-op
+      }
       throw new Error(`Generování draftu selhalo: ${msg}`);
     }
   });

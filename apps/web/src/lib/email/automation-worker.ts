@@ -19,6 +19,7 @@ import {
   isConsentEnforcementEnabled,
   PURPOSE_MARKETING_EMAILS,
 } from "@/lib/compliance/consent-check";
+import { isFeatureEnabled } from "@/lib/admin/feature-flags";
 
 /**
  * F4 — denní worker automatizací. Prochází všechna `email_automation_rules`
@@ -73,6 +74,18 @@ export async function runDueAutomations(): Promise<{
 
   for (const row of rows) {
     try {
+      if (!isFeatureEnabled("email_campaigns_v2_automations", row.tenantId)) {
+        perRule.push({
+          ruleId: row.id,
+          ruleName: row.name,
+          triggerType: row.triggerType,
+          matched: 0,
+          queued: 0,
+          skipped: 0,
+          failed: 0,
+        });
+        continue;
+      }
       const result = await runSingleRule(row);
       perRule.push(result);
       totalQueued += result.queued;

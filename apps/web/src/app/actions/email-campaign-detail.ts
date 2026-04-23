@@ -50,6 +50,26 @@ export type CampaignRecipientRow = {
   errorMessage: string | null;
 };
 
+export type AbVariantStats = {
+  campaignId: string;
+  subject: string;
+  sentCount: number;
+  openCount: number;
+  clickCount: number;
+  openRate: number;
+  clickRate: number;
+};
+
+export type AbTestInfo = {
+  splitPercent: number;
+  finalizeAt: string;
+  finalizedAt: string | null;
+  pickedWinnerVariant: "a" | "b" | null;
+  holdoutPendingCount: number;
+  variantA: AbVariantStats;
+  variantB: AbVariantStats;
+};
+
 export type CampaignDetailPayload = {
   id: string;
   name: string;
@@ -63,6 +83,8 @@ export type CampaignDetailPayload = {
   recipients: CampaignRecipientRow[];
   /** daily buckets of 'opened'/'clicked' eventů za posledních 14 dní. */
   sparkline: { date: string; opens: number; clicks: number }[];
+  /** Pokud je kampaň součástí A/B testu (parent A), tady jsou data B varianty i metadata. */
+  abTest: AbTestInfo | null;
 };
 
 export async function getCampaignDetail(campaignId: string): Promise<CampaignDetailPayload> {
@@ -82,6 +104,9 @@ export async function getCampaignDetail(campaignId: string): Promise<CampaignDet
         sentAt: emailCampaigns.sentAt,
         createdAt: emailCampaigns.createdAt,
         recipientCount: emailCampaigns.recipientCount,
+        parentCampaignId: emailCampaigns.parentCampaignId,
+        abVariant: emailCampaigns.abVariant,
+        segmentFilter: emailCampaigns.segmentFilter,
       })
       .from(emailCampaigns)
       .where(and(eq(emailCampaigns.id, campaignId), eq(emailCampaigns.tenantId, auth.tenantId)))
@@ -188,8 +213,116 @@ export async function getCampaignDetail(campaignId: string): Promise<CampaignDet
       sparklineRows as unknown as Array<{ day: string; opens: number; clicks: number }>
     ).map((r) => ({ date: r.day, opens: r.opens, clicks: r.clicks }));
 
-    return { ...campaign, kpis, recipients, sparkline };
+    let abTest: AbTestInfo | null = null;
+    if (campaign.parentCampaignId === null) {
+      const abMeta = extractAbMetadata(campaign.segmentFilter);
+      if (abMeta) {
+        const [variantB] = await tx
+          .select({
+            id: emailCampaigns.id,
+            subject: emailCampaigns.subject,
+            recipientCount: emailCampaigns.recipientCount,
+          })
+          .from(emailCampaigns)
+          .where(
+            and(
+              eq(emailCampaigns.parentCampaignId, campaign.id),
+              eq(emailCampaigns.abVariant, "b"),
+              eq(emailCampaigns.tenantId, auth.tenantId),
+            ),
+          )
+          .limit(1);
+        if (variantB) {
+          const [bStats] = await tx
+            .select({
+              total: sql<number>`count(*)::int`,
+              sent: sql<number>`count(*) filter (where ${emailCampaignRecipients.status} in ('sent','delivered','opened','clicked'))::int`,
+              opened: sql<number>`count(*) filter (where ${emailCampaignRecipients.openedAt} is not null)::int`,
+              clicked: sql<number>`count(*) filter (where ${emailCampaignRecipients.firstClickAt} is not null)::int`,
+            })
+            .from(emailCampaignRecipients)
+            .where(
+              and(
+                eq(emailCampaignRecipients.tenantId, auth.tenantId),
+                eq(emailCampaignRecipients.campaignId, variantB.id),
+              ),
+            );
+          const aSent = kpis.sentCount;
+          const aOpen = kpis.openCount;
+          const aClick = kpis.clickCount;
+          const bTotal = bStats?.total ?? 0;
+          const bSent = bStats?.sent ?? 0;
+          const bOpen = bStats?.opened ?? 0;
+          const bClick = bStats?.clicked ?? 0;
+          abTest = {
+            splitPercent: abMeta.splitPercent,
+            finalizeAt: abMeta.finalizeAt,
+            finalizedAt: abMeta.finalizedAt,
+            pickedWinnerVariant: abMeta.pickedWinnerVariant,
+            holdoutPendingCount: abMeta.finalizedAt ? 0 : (abMeta.holdoutContactIds?.length ?? 0),
+            variantA: {
+              campaignId: campaign.id,
+              subject: campaign.subject,
+              sentCount: aSent,
+              openCount: aOpen,
+              clickCount: aClick,
+              openRate: aSent > 0 ? aOpen / aSent : 0,
+              clickRate: aSent > 0 ? aClick / aSent : 0,
+            },
+            variantB: {
+              campaignId: variantB.id,
+              subject: variantB.subject,
+              sentCount: bSent,
+              openCount: bOpen,
+              clickCount: bClick,
+              openRate: bSent > 0 ? bOpen / bSent : 0,
+              clickRate: bSent > 0 ? bClick / bSent : 0,
+            },
+          };
+          void bTotal;
+        }
+      }
+    }
+
+    const {
+      parentCampaignId: _parentCampaignId,
+      abVariant: _abVariant,
+      segmentFilter: _segmentFilter,
+      ...campaignPublic
+    } = campaign;
+    void _parentCampaignId;
+    void _abVariant;
+    void _segmentFilter;
+
+    return { ...campaignPublic, kpis, recipients, sparkline, abTest };
   });
+}
+
+function extractAbMetadata(
+  segmentFilter: unknown,
+): {
+  splitPercent: number;
+  finalizeAt: string;
+  pickedWinnerVariant: "a" | "b" | null;
+  finalizedAt: string | null;
+  holdoutContactIds: string[];
+} | null {
+  if (!segmentFilter || typeof segmentFilter !== "object") return null;
+  const obj = segmentFilter as Record<string, unknown>;
+  const ab = obj._ab;
+  if (!ab || typeof ab !== "object") return null;
+  const a = ab as Record<string, unknown>;
+  const splitPercent = typeof a.splitPercent === "number" ? a.splitPercent : 20;
+  const finalizeAt = typeof a.finalizeAt === "string" ? a.finalizeAt : new Date().toISOString();
+  const pickedWinnerVariant =
+    a.pickedWinnerVariant === "a" || a.pickedWinnerVariant === "b"
+      ? (a.pickedWinnerVariant as "a" | "b")
+      : null;
+  const finalizedAt = typeof a.finalizedAt === "string" ? a.finalizedAt : null;
+  const holdoutContactIds = Array.isArray(a.holdoutContactIds)
+    ? (a.holdoutContactIds.filter((x) => typeof x === "string") as string[])
+    : [];
+  return { splitPercent, finalizeAt, pickedWinnerVariant, finalizedAt, holdoutContactIds };
 }
 
 export async function cancelScheduledCampaign(campaignId: string): Promise<{ ok: true }> {
