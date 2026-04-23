@@ -3,12 +3,14 @@
 import { withAuthContext, withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
-import { contactCoverage, opportunityStages } from "db";
-import { eq, and, asc } from "db";
+import { contactCoverage, contracts, householdMembers, opportunityStages } from "db";
+import { eq, and, asc, inArray, isNull } from "db";
 import { getContractsByContact } from "./contracts";
 import { getPipelineByContact } from "./pipeline";
 import { createOpportunity } from "./pipeline";
 import { createTask } from "./tasks";
+import { resolveSegmentForPaymentSetup } from "@/lib/client-portfolio/payment-setup-portfolio-synth";
+import { selectStandalonePaymentSetupsForClientContact } from "@/lib/client-portfolio/standalone-payment-setups-query";
 import { resolveCoverageItems } from "@/app/lib/coverage/calculations";
 import { getItemInfo, getItemSegmentCode } from "@/app/lib/coverage/item-keys";
 import { segmentToCaseType } from "@/app/lib/segment-hierarchy";
@@ -36,10 +38,58 @@ export async function getCoverageForContact(contactId: string): Promise<GetCover
       throw new Error("Forbidden");
     }
 
-    const [contractsList, pipelineStages] = await Promise.all([
-      getContractsByContact(contactId),
-      getPipelineByContact(contactId),
-    ]);
+    const pipelineStages = await getPipelineByContact(contactId);
+
+    let contractsList: { id: string; segment: string }[];
+    if (auth.roleName === "Client" && auth.contactId === contactId) {
+      contractsList = await withTenantContextFromAuth(auth, async (tx) => {
+        const [selfHm] = await tx
+          .select({ householdId: householdMembers.householdId })
+          .from(householdMembers)
+          .where(eq(householdMembers.contactId, contactId))
+          .limit(1);
+        const memberIds = selfHm?.householdId
+          ? await tx
+              .select({ cid: householdMembers.contactId })
+              .from(householdMembers)
+              .where(eq(householdMembers.householdId, selfHm.householdId))
+              .then((r) => r.map((x) => x.cid))
+          : [contactId];
+        const contractSegRows = await tx
+          .select({
+            id: contracts.id,
+            segment: contracts.segment,
+            contractNumber: contracts.contractNumber,
+          })
+          .from(contracts)
+          .where(
+            and(
+              eq(contracts.tenantId, auth.tenantId),
+              inArray(contracts.contactId, memberIds),
+              eq(contracts.visibleToClient, true),
+              inArray(contracts.portfolioStatus, ["active", "ended"]),
+              isNull(contracts.archivedAt)
+            )
+          );
+        const numSet = new Set(
+          contractSegRows.map((c) => c.contractNumber?.trim()).filter((n): n is string => !!n)
+        );
+        const standalones = await selectStandalonePaymentSetupsForClientContact(tx, {
+          tenantId: auth.tenantId,
+          contactIds: memberIds,
+          contractNumbersWithPublishedRows: numSet,
+        });
+        const fromContracts = contractSegRows.map((c) => ({ id: c.id, segment: c.segment }));
+        const fromPayment = standalones.map((p) => ({
+          id: p.id,
+          segment: resolveSegmentForPaymentSetup(p),
+        }));
+        return [...fromContracts, ...fromPayment];
+      });
+    } else {
+      const full = await getContractsByContact(contactId);
+      contractsList = full.map((c) => ({ id: c.id, segment: c.segment }));
+    }
 
     let coverageRows: (typeof contactCoverage.$inferSelect)[] = [];
     try {

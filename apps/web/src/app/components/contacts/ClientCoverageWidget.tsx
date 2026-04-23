@@ -404,6 +404,7 @@ function CoverageItemRow({
   onOptimisticStatusChange,
   onRefresh,
   single,
+  readOnly,
 }: {
   contactId: string;
   item: ResolvedCoverageItem;
@@ -411,12 +412,38 @@ function CoverageItemRow({
   onOptimisticStatusChange: (itemKey: string, status: CoverageStatus) => void;
   onRefresh: () => void;
   single?: boolean;
+  /** Klientská zóna: jen náhled, bez úprav stavu. */
+  readOnly?: boolean;
 }) {
   const [updating, setUpdating] = useState(false);
   const toast = useToast();
   const isDone = item.status === "done";
   const isPending = item.status === "in_progress" || item.status === "opportunity";
   const isNone = !isDone && !isPending;
+
+  if (readOnly) {
+    const roLabel = single && isDone ? "Hotovo" : single && isPending ? "Řeší se" : single && isNone ? "Nastavit" : item.label;
+    return (
+      <div className="flex items-center gap-2 w-full min-w-0">
+        <div
+          className={`group/btn flex items-center gap-3 text-[13px] font-bold px-3 py-2.5 rounded-xl w-full min-w-0 border min-h-[44px] ${
+            single ? "justify-center" : "text-left"
+          } ${
+            isDone
+              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+              : isPending
+                ? "bg-amber-50 text-amber-800 border-amber-200"
+                : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-muted)] border-[color:var(--wp-border)]"
+          }`}
+        >
+          {isDone && <CheckCircle2 size={16} className="text-emerald-500 shrink-0" aria-hidden />}
+          {isPending && <Clock size={16} className="text-amber-500 shrink-0" aria-hidden />}
+          {isNone && <Circle size={16} className="text-[color:var(--wp-text-muted)] shrink-0" aria-hidden />}
+          <span className="min-w-0 line-clamp-2 text-left break-words">{roLabel}</span>
+        </div>
+      </div>
+    );
+  }
 
   async function handleCycleStatus() {
     const next = nextStatus(item.status);
@@ -509,6 +536,7 @@ function CoverageAreaCard({
   contactId,
   onRefresh,
   onOptimisticStatusChange,
+  readOnly,
 }: {
   category: string;
   displayName: string;
@@ -516,6 +544,7 @@ function CoverageAreaCard({
   contactId: string;
   onRefresh: () => void;
   onOptimisticStatusChange: (itemKey: string, status: CoverageStatus) => void;
+  readOnly?: boolean;
 }) {
   const spec = getCategorySpec(category);
   const Icon = spec.icon;
@@ -539,6 +568,7 @@ function CoverageAreaCard({
             onOptimisticStatusChange={onOptimisticStatusChange}
             onRefresh={onRefresh}
             single={single}
+            readOnly={readOnly}
           />
         ))}
       </div>
@@ -588,7 +618,14 @@ export function useClientCoverage(contactId: string) {
 }
 
 /** Hlavní widget – použití na záložce Přehled (spec „pokryti produktu.txt“). */
-export function ClientCoverageWidget({ contactId }: { contactId: string }) {
+export function ClientCoverageWidget({
+  contactId,
+  readOnly,
+}: {
+  contactId: string;
+  /** true = klientská zóna (bez změn stavu / akcí). */
+  readOnly?: boolean;
+}) {
   const { items, summary, loading, error, refetch, applyOptimisticStatus } = useClientCoverage(contactId);
 
   const itemsForGrid = items.length > 0 ? items : getDefaultCoverageItems();
@@ -639,7 +676,11 @@ export function ClientCoverageWidget({ contactId }: { contactId: string }) {
             </div>
             <div>
               <h2 className="text-2xl font-black text-[color:var(--wp-text)] tracking-tight">Pokrytí produktů</h2>
-              <p className="text-sm font-bold text-[color:var(--wp-text-muted)] mt-1">Interaktivní mapa klientova portfolia</p>
+              <p className="text-sm font-bold text-[color:var(--wp-text-muted)] mt-1">
+                {readOnly
+                  ? "Přehled stavu u poradce (včetně domácnosti, kde je to zaznamenáno)"
+                  : "Interaktivní mapa klientova portfolia"}
+              </p>
             </div>
           </div>
           <div className="flex-1 max-w-sm w-full bg-slate-50/50 dark:bg-[color:var(--wp-surface-muted)] p-4 rounded-2xl border border-slate-100 dark:border-[color:var(--wp-border)]">
@@ -658,17 +699,23 @@ export function ClientCoverageWidget({ contactId }: { contactId: string }) {
               <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-700 ease-out" style={{ width: `${activePct}%` }} />
               <div className="h-full bg-gradient-to-r from-amber-300 to-amber-400 transition-all duration-700 ease-out" style={{ width: `${pendingPct}%` }} />
             </div>
-            <p className="text-[9px] text-[color:var(--wp-text-muted)] font-bold uppercase tracking-widest mt-3 text-center">Klikni na položku pro změnu stavu.</p>
+            <p className="text-[9px] text-[color:var(--wp-text-muted)] font-bold uppercase tracking-widest mt-3 text-center">
+              {readOnly
+                ? "Přehled odpovídá stavu u poradce (domácnost, kde je to evidováno)."
+                : "Klikni na položku pro změnu stavu."}
+            </p>
           </div>
         </div>
         <div className="flex items-center justify-between mb-4">
           <span className="text-sm font-bold text-[color:var(--wp-text-muted)]" />
-          <Link
-            href={`/portal/contacts/${contactId}#obchody`}
-            className="text-sm font-black text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors flex items-center gap-1 min-h-[44px]"
-          >
-            Obchody <span aria-hidden>→</span>
-          </Link>
+          {!readOnly && (
+            <Link
+              href={`/portal/contacts/${contactId}#obchody`}
+              className="text-sm font-black text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors flex items-center gap-1 min-h-[44px]"
+            >
+              Obchody <span aria-hidden>→</span>
+            </Link>
+          )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {CATEGORY_ORDER.filter((cat) => byCategory[cat]?.length).map((category) => (
@@ -680,6 +727,7 @@ export function ClientCoverageWidget({ contactId }: { contactId: string }) {
               contactId={contactId}
               onRefresh={refetch}
               onOptimisticStatusChange={applyOptimisticStatus}
+              readOnly={readOnly}
             />
           ))}
         </div>

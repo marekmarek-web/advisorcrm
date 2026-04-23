@@ -119,7 +119,10 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
   const [expanded, setExpanded] = useState(false);
   const [logoError, setLogoError] = useState(false);
 
-  const st = portfolioContractStatusLabelCs(contract.portfolioStatus, contract.startDate);
+  const isPaymentOnly = contract.portfolioRowKind === "payment_setup";
+  const st = isPaymentOnly
+    ? "V evidenci"
+    : portfolioContractStatusLabelCs(contract.portfolioStatus, contract.startDate);
   const displayLogo = resolvePortalProductDisplayLogo(p, {
     fundLogoPath: fvAux?.fundLogoPath ?? null,
   });
@@ -170,7 +173,9 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
         }
       : null;
 
+  const payAttrs = contract.portfolioAttributes as Record<string, unknown>;
   const hasDetail =
+    isPaymentOnly ||
     detailRows.length > 0 ||
     fv ||
     fvPartial ||
@@ -180,11 +185,13 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
     (contract.sourceDocumentId && visibleSourceDocs[contract.sourceDocumentId]);
 
   const statusColors =
-    st === "Aktivní"
-      ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-      : st === "Ukončené"
-        ? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] border-[color:var(--wp-surface-card-border)]"
-        : "bg-amber-50 text-amber-700 border-amber-100";
+    isPaymentOnly
+      ? "bg-amber-50 text-amber-800 border-amber-200"
+      : st === "Aktivní"
+        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+        : st === "Ukončené"
+          ? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] border-[color:var(--wp-surface-card-border)]"
+          : "bg-amber-50 text-amber-700 border-amber-100";
 
   const showLogo = !!logoPath && !logoError;
   const initials = institutionInitials(contract.partnerName ?? p.productName);
@@ -297,6 +304,31 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: Produ
       {/* Expanded detail */}
       {expanded && hasDetail && (
         <div className="border-t border-[color:var(--wp-surface-card-border)] px-4 pb-5 sm:px-5 pt-4 space-y-4 bg-[color:var(--wp-main-scroll-bg)]/40">
+          {isPaymentOnly && (
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-amber-800">Platební instrukce</p>
+              <p className="text-xs text-[color:var(--wp-text-secondary)]">
+                Položka z platebního pokynu — zobrazuje se v portfoliu i bez nahrané smlouvy v detailu.
+              </p>
+              {typeof payAttrs.paymentInstructionAccount === "string" && payAttrs.paymentInstructionAccount.trim() ? (
+                <p className="text-sm font-bold text-[color:var(--wp-text)]">
+                  <span className="text-[color:var(--wp-text-tertiary)] font-semibold">Účet: </span>
+                  {payAttrs.paymentInstructionAccount}
+                </p>
+              ) : null}
+              {typeof payAttrs.paymentInstructionVs === "string" && payAttrs.paymentInstructionVs.trim() ? (
+                <p className="text-sm font-bold text-[color:var(--wp-text)]">
+                  <span className="text-[color:var(--wp-text-tertiary)] font-semibold">VS: </span>
+                  {payAttrs.paymentInstructionVs}
+                </p>
+              ) : null}
+              {typeof payAttrs.paymentInstructionNotes === "string" && payAttrs.paymentInstructionNotes?.trim() ? (
+                <p className="text-xs font-medium text-[color:var(--wp-text)] whitespace-pre-wrap break-words">
+                  {payAttrs.paymentInstructionNotes}
+                </p>
+              ) : null}
+            </div>
+          )}
           {/* Detail rows grid */}
           {detailRows.length > 0 && (
             <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)]/90 bg-white shadow-sm overflow-hidden">

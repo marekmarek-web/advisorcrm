@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Ceník · Aidvisora",
     description:
-      "Start od 990 Kč / měsíc bez DPH. Bez per-klient poplatků, trial 14 dní, faktura přes Stripe Tax a DPA smlouvou v základu.",
+      "Start od 990 Kč / měsíc. Bez per-klient poplatků, trial 14 dní, DPA smlouva v základu. Nejsme plátci DPH.",
     type: "website",
     locale: "cs_CZ",
     url: "/pricing",
@@ -109,7 +109,7 @@ export default function PricingPage() {
           <p className="max-w-2xl mx-auto text-lg text-slate-300 leading-relaxed">
             Platíte za sebe, ne za klienty. {PUBLIC_TRIAL_DURATION_DAYS} dní zdarma,
             fakturace měsíčně nebo ročně (ročně −{ANNUAL_BILLING_DISCOUNT_PERCENT}&nbsp;%).
-            Ceny jsou bez DPH; DPH 21&nbsp;% se doplní podle Stripe Tax (MOSS/OSS, reverse-charge dle DIČ).
+            Uvedené ceny jsou konečné — nejsme plátci DPH.
           </p>
         </div>
       </section>
@@ -187,8 +187,7 @@ export default function PricingPage() {
           </div>
 
           <p className="mt-8 text-center text-xs text-slate-500">
-            Ceny jsou bez DPH (21&nbsp;%). Klientská zóna je zahrnuta v každém tarifu —
-            neplatíte za klienta ani za seat.
+            Nejsme plátci DPH — uvedené ceny jsou konečné. Klientská zóna je zahrnuta v každém tarifu, neplatíte za klienta ani za seat.
           </p>
         </div>
       </section>

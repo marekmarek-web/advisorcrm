@@ -30,6 +30,7 @@ import {
 } from "@/lib/calculators/mortgage/rates";
 import { buildMortgagePdfSections } from "@/lib/calculators/pdf";
 import { CalculatorPdfExportButton } from "@/components/calculators/CalculatorPdfExportButton";
+import { ClientCalculatorSendToAdvisorSection } from "@/app/client/calculators/ClientCalculatorSendToAdvisorSection";
 
 export type MortgageCalculatorAudience = "advisor" | "client";
 
@@ -139,6 +140,33 @@ export function MortgageCalculatorPage({
 
   const isClientAudience = audience === "client";
 
+  const clientPortalMortgagePayload = useMemo(() => {
+    if (!isClientAudience) return null;
+    const desc = [
+      `Produkt: ${state.product === "mortgage" ? "Hypotéka" : "Úvěr na cokoliv"}`,
+      `Vlastní zdroje / akontace: ${state.own.toLocaleString("cs-CZ")} Kč`,
+      `Výše úvěru: ${state.loan.toLocaleString("cs-CZ")} Kč`,
+      `Délka: ${state.term} let`,
+      `Měsíční splátka (orientační): ${Math.round(result.monthlyPayment).toLocaleString("cs-CZ")} Kč`,
+      `Úrok (model): ${result.finalRate.toFixed(2)} % p.a.`,
+    ].join("\n");
+    const calculatorSnapshot: Record<string, unknown> = {
+      version: 1,
+      kind: "mortgage",
+      capturedAt: new Date().toISOString(),
+      inputs: { ...state },
+      results: {
+        monthlyPayment: result.monthlyPayment,
+        finalRate: result.finalRate,
+        totalPaid: result.totalPaid,
+        borrowingAmount: result.borrowingAmount,
+        displayLtv: result.displayLtv,
+        propertyValue: result.propertyValue,
+      },
+    };
+    return { desc, calculatorSnapshot };
+  }, [isClientAudience, state, result]);
+
   return (
     <div className={isClientAudience ? "pt-0 pb-4" : "pt-0 pb-56 lg:pb-0"}>
       <CalculatorPageShell>
@@ -211,6 +239,15 @@ export function MortgageCalculatorPage({
               sourceUrl={ratesMeta?.sourceUrl}
             />
           </div>
+        )}
+
+        {isClientAudience && clientPortalMortgagePayload && (
+          <ClientCalculatorSendToAdvisorSection
+            caseType="hypotéka"
+            subject="Kalkulačka hypotéky / úvěru"
+            description={clientPortalMortgagePayload.desc}
+            calculatorSnapshot={clientPortalMortgagePayload.calculatorSnapshot}
+          />
         )}
       </CalculatorPageShell>
 

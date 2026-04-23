@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { getPortalNotificationDeepLink } from "@/lib/client-portal/portal-notification-routing";
 import {
   Bell,
@@ -73,6 +73,8 @@ type ClientDashboardLayoutProps = {
   advisorProposals: ClientAdvisorProposal[];
   /** B2.4: Když je tenant flag vypnutý, dashboard skryje CTA „Nový požadavek“ i modal. */
   serviceRequestsEnabled?: boolean;
+  /** Blok pokrytí produktů (stejný model jako u poradce, read-only). */
+  coverageSection?: ReactNode;
 };
 
 function formatMoney(value: number): string {
@@ -104,6 +106,7 @@ export function ClientDashboardLayout({
   advisorMaterialRequests,
   advisorProposals,
   serviceRequestsEnabled = true,
+  coverageSection,
 }: ClientDashboardLayoutProps) {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
 
@@ -335,6 +338,8 @@ export function ClientDashboardLayout({
           </p>
         </Link>
       </div>
+
+      {coverageSection}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-gradient-to-br from-aidv-create to-[#0f172a] rounded-[24px] p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">

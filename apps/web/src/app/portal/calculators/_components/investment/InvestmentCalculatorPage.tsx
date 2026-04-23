@@ -43,6 +43,7 @@ import {
 import { formatCurrency } from "@/lib/calculators/investment/formatters";
 import { buildInvestmentPdfSections } from "@/lib/calculators/pdf";
 import { CalculatorPdfExportButton } from "@/components/calculators/CalculatorPdfExportButton";
+import { ClientCalculatorSendToAdvisorSection } from "@/app/client/calculators/ClientCalculatorSendToAdvisorSection";
 
 export type InvestmentCalculatorAudience = "advisor" | "client";
 
@@ -83,6 +84,53 @@ export function InvestmentCalculatorPage({
   );
 
   const isClientAudience = audience === "client";
+
+  const clientPortalInvestmentPayload = useMemo(() => {
+    if (!isClientAudience) return null;
+    const desc = [
+      `Strategie: ${profile.name} (${profile.rate} % p.a.)`,
+      `Jednorázově: ${formatCurrency(initial)}`,
+      `Měsíčně: ${formatCurrency(monthly)}`,
+      `Horizont: ${years} let`,
+      `Odhad konečné hodnoty: ${formatCurrency(projection.totalBalance)}`,
+      `Vloženo celkem: ${formatCurrency(projection.totalInvested)}`,
+    ].join("\n");
+    const calculatorSnapshot: Record<string, unknown> = {
+      version: 1,
+      kind: "investment",
+      capturedAt: new Date().toISOString(),
+      inputs: {
+        initial,
+        monthly,
+        years,
+        profileIndex,
+        profileName: profile.name,
+        profileRate: profile.rate,
+        startYear,
+      },
+      results: {
+        totalBalance: projection.totalBalance,
+        totalInvested: projection.totalInvested,
+        totalGain: projection.totalGain,
+        totalGainPercent: projection.totalGainPercent,
+        backtestPoints: {
+          invested: backtestResult.invested.length,
+          sp500: backtestResult.sp500.length,
+        },
+      },
+    };
+    return { desc, calculatorSnapshot };
+  }, [
+    isClientAudience,
+    profile,
+    initial,
+    monthly,
+    years,
+    profileIndex,
+    projection,
+    backtestResult,
+    startYear,
+  ]);
 
   return (
     <div className={isClientAudience ? "pt-0 pb-4" : "pt-0 pb-[240px] lg:pb-0"}>
@@ -174,6 +222,15 @@ export function InvestmentCalculatorPage({
             onStartYearChange={setStartYear}
           />
         </div>
+
+        {isClientAudience && clientPortalInvestmentPayload && (
+          <ClientCalculatorSendToAdvisorSection
+            caseType="investice"
+            subject="Kalkulačka investic"
+            description={clientPortalInvestmentPayload.desc}
+            calculatorSnapshot={clientPortalInvestmentPayload.calculatorSnapshot}
+          />
+        )}
       </CalculatorPageShell>
 
       {/* Fixed mobile dock only for advisor view; client sees results inline above */}

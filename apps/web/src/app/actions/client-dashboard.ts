@@ -5,6 +5,11 @@ import { db } from "db";
 import { clientInvitations, contracts, memberships, roles, userProfiles } from "db";
 import { and, desc, eq, inArray, isNotNull, isNull } from "db";
 import { aggregatePortfolioMetrics } from "@/lib/client-portfolio/read-model";
+import {
+  resolveSegmentForPaymentSetup,
+  premiumFieldsFromAmountAndFrequency,
+} from "@/lib/client-portfolio/payment-setup-portfolio-synth";
+import { selectStandalonePaymentSetupsForClientContact } from "@/lib/client-portfolio/standalone-payment-setups-query";
 
 /** Drizzle `db` nebo tx z `withTenantContext` — strukturálně kompatibilní `select` API. */
 type ContractReader = Pick<typeof db, "select">;
@@ -54,17 +59,18 @@ function toInitials(name: string): string {
 export async function getClientDashboardMetrics(
   contactId: string
 ): Promise<DashboardMetricSummary> {
-  const contractRows = await withAuthContext(async (auth, tx) => {
+  return withAuthContext(async (auth, tx) => {
     if (auth.roleName !== "Client" || auth.contactId !== contactId) {
       throw new Error("Forbidden");
     }
-    return tx
+    const contractRows = await tx
       .select({
         segment: contracts.segment,
         premiumAmount: contracts.premiumAmount,
         premiumAnnual: contracts.premiumAnnual,
         portfolioAttributes: contracts.portfolioAttributes,
         portfolioStatus: contracts.portfolioStatus,
+        contractNumber: contracts.contractNumber,
       })
       .from(contracts)
       .where(
@@ -76,60 +82,112 @@ export async function getClientDashboardMetrics(
           isNull(contracts.archivedAt)
         )
       );
-  });
 
-  const agg = aggregatePortfolioMetrics(
-    contractRows.map((r) => ({
+    const numSet = new Set(
+      contractRows.map((c) => c.contractNumber?.trim()).filter((n): n is string => !!n)
+    );
+    const standalonePayments = await selectStandalonePaymentSetupsForClientContact(tx, {
+      tenantId: auth.tenantId,
+      contactIds: [contactId],
+      contractNumbersWithPublishedRows: numSet,
+    });
+
+    const contractMetrics = contractRows.map((r) => ({
       segment: r.segment,
       premiumAmount: r.premiumAmount != null ? String(r.premiumAmount) : null,
       premiumAnnual: r.premiumAnnual != null ? String(r.premiumAnnual) : null,
       portfolioAttributes: (r.portfolioAttributes ?? {}) as Record<string, unknown>,
       portfolioStatus: r.portfolioStatus,
-    }))
-  );
+    }));
 
-  const investmentSegments = new Set(["INV", "DIP", "DPS"]);
-  let assetsUnderManagement = 0;
-  for (const contract of contractRows) {
-    if (contract.portfolioStatus === "ended") continue;
-    if (!investmentSegments.has(contract.segment)) continue;
+    const paymentMetrics = standalonePayments.map((ps) => {
+      const seg = resolveSegmentForPaymentSetup(ps);
+      const { premiumAmount, premiumAnnual, portfolioAttributes } = premiumFieldsFromAmountAndFrequency(
+        ps.amount != null ? String(ps.amount) : null,
+        ps.frequency,
+        ps.paymentType
+      );
+      return {
+        segment: seg,
+        premiumAmount,
+        premiumAnnual,
+        portfolioAttributes: portfolioAttributes as Record<string, unknown>,
+        portfolioStatus: "active" as const,
+      };
+    });
 
-    const attrs = (contract.portfolioAttributes ?? {}) as Record<string, unknown>;
-    const paymentType = typeof attrs.paymentType === "string" ? attrs.paymentType : null;
+    const agg = aggregatePortfolioMetrics([...contractMetrics, ...paymentMetrics]);
 
-    if (paymentType === "one_time") {
-      // Jednorázová investice — premium_amount je přímo investovaná jistina.
-      // Historický bug: násobilo se × 12 a 1 mil. Kč se propisovalo jako 12 mil. Kč.
-      const lump = Number(contract.premiumAmount ?? 0);
-      if (Number.isFinite(lump) && lump > 0) assetsUnderManagement += lump;
-      continue;
+    const investmentSegments = new Set(["INV", "DIP", "DPS"]);
+    let assetsUnderManagement = 0;
+    for (const contract of contractRows) {
+      if (contract.portfolioStatus === "ended") continue;
+      if (!investmentSegments.has(contract.segment)) continue;
+
+      const attrs = (contract.portfolioAttributes ?? {}) as Record<string, unknown>;
+      const paymentType = typeof attrs.paymentType === "string" ? attrs.paymentType : null;
+
+      if (paymentType === "one_time") {
+        const lump = Number(contract.premiumAmount ?? 0);
+        if (Number.isFinite(lump) && lump > 0) assetsUnderManagement += lump;
+        continue;
+      }
+
+      const intended =
+        parseAmountLoose(attrs.intendedInvestment) ||
+        parseAmountLoose(attrs.investmentAmount) ||
+        parseAmountLoose(attrs.targetAmount);
+      if (intended > 0) {
+        assetsUnderManagement += intended;
+        continue;
+      }
+
+      const monthly = Number(contract.premiumAmount ?? 0);
+      const annual = Number(contract.premiumAnnual ?? 0);
+      const normalizedAnnual = annual > 0 ? annual : monthly * 12;
+      if (Number.isFinite(normalizedAnnual) && normalizedAnnual > 0) {
+        assetsUnderManagement += normalizedAnnual;
+      }
     }
 
-    // Pravidelná investice: preferuj `intendedInvestment` (celková plánovaná částka).
-    const intended =
-      parseAmountLoose(attrs.intendedInvestment) ||
-      parseAmountLoose(attrs.investmentAmount) ||
-      parseAmountLoose(attrs.targetAmount);
-    if (intended > 0) {
-      assetsUnderManagement += intended;
-      continue;
+    for (const ps of standalonePayments) {
+      const seg = resolveSegmentForPaymentSetup(ps);
+      if (!investmentSegments.has(seg)) continue;
+      const { premiumAmount, premiumAnnual, portfolioAttributes } = premiumFieldsFromAmountAndFrequency(
+        ps.amount != null ? String(ps.amount) : null,
+        ps.frequency,
+        ps.paymentType
+      );
+      const attrs = portfolioAttributes as Record<string, unknown>;
+      const paymentType = typeof attrs.paymentType === "string" ? attrs.paymentType : null;
+      if (paymentType === "one_time") {
+        const lump = Number(premiumAmount ?? 0);
+        if (Number.isFinite(lump) && lump > 0) assetsUnderManagement += lump;
+        continue;
+      }
+      const intended =
+        parseAmountLoose(attrs.intendedInvestment) ||
+        parseAmountLoose(attrs.investmentAmount) ||
+        parseAmountLoose(attrs.targetAmount);
+      if (intended > 0) {
+        assetsUnderManagement += intended;
+        continue;
+      }
+      const monthly = Number(premiumAmount ?? 0);
+      const annual = Number(premiumAnnual ?? 0);
+      const normalizedAnnual = annual > 0 ? annual : monthly * 12;
+      if (Number.isFinite(normalizedAnnual) && normalizedAnnual > 0) {
+        assetsUnderManagement += normalizedAnnual;
+      }
     }
 
-    // Fallback: roční ekvivalent měsíčních příspěvků (best-effort proxy).
-    const monthly = Number(contract.premiumAmount ?? 0);
-    const annual = Number(contract.premiumAnnual ?? 0);
-    const normalizedAnnual = annual > 0 ? annual : monthly * 12;
-    if (Number.isFinite(normalizedAnnual) && normalizedAnnual > 0) {
-      assetsUnderManagement += normalizedAnnual;
-    }
-  }
-
-  return {
-    assetsUnderManagement: Math.round(assetsUnderManagement),
-    monthlyInvestments: agg.monthlyInvestments,
-    monthlyInsurancePremiums: agg.monthlyInsurancePremiums,
-    activeContractCount: agg.activeContractCount,
-  };
+    return {
+      assetsUnderManagement: Math.round(assetsUnderManagement),
+      monthlyInvestments: agg.monthlyInvestments,
+      monthlyInsurancePremiums: agg.monthlyInsurancePremiums,
+      activeContractCount: agg.activeContractCount,
+    };
+  });
 }
 
 /**

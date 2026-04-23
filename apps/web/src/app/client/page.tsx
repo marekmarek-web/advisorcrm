@@ -4,6 +4,7 @@ import { mapFinancialSummaryForClientDashboard } from "@/lib/client-portal/map-f
 import { getEffectiveTenantSettingsForWorkspaceResolved } from "@/lib/billing/effective-workspace";
 import { getCachedSupabaseUser } from "@/lib/auth/require-auth";
 import { requireClientZoneAuth } from "@/lib/auth/require-auth";
+import { ClientCoverageWidget } from "@/app/components/contacts/ClientCoverageWidget";
 import { ClientDashboardLayout } from "./ClientDashboardLayout";
 import { ClientWelcomeView } from "./ClientWelcomeView";
 
@@ -91,6 +92,7 @@ export default async function ClientZonePage() {
       )}
       advisorProposals={bundle.advisorProposals}
       serviceRequestsEnabled={serviceRequestsEnabled}
+      coverageSection={<ClientCoverageWidget contactId={bundle.contactId} readOnly />}
     />
   );
 }

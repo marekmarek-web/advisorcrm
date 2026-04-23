@@ -369,6 +369,8 @@ export async function createClientPortalRequest(params: {
   /** Předmět / název požadavku (stejné pole jako v klientském průvodci). */
   subject?: string | null;
   description?: string | null;
+  /** Strukturovaný výstup kalkulačky (`opportunities.custom_fields.client_portal_calculator_snapshot`). */
+  calculatorSnapshot?: Record<string, unknown> | null;
 }): Promise<{ success: true; id: string } | { success: false; error: string }> {
   const auth = await requireAuthInAction();
   const canCreate =
@@ -402,6 +404,20 @@ export async function createClientPortalRequest(params: {
 
     if (!firstStage) return { kind: "no_stage" as const };
 
+    const customFields: Record<string, unknown> = {
+      client_portal_request: true,
+      client_request_subject: subjectTrim || null,
+      client_description: descTrim || null,
+    };
+    if (
+      params.calculatorSnapshot &&
+      typeof params.calculatorSnapshot === "object" &&
+      !Array.isArray(params.calculatorSnapshot) &&
+      Object.keys(params.calculatorSnapshot).length > 0
+    ) {
+      customFields.client_portal_calculator_snapshot = params.calculatorSnapshot;
+    }
+
     const [row] = await tx
       .insert(opportunities)
       .values({
@@ -410,11 +426,7 @@ export async function createClientPortalRequest(params: {
         title: title.trim(),
         caseType: params.caseType.trim() || "jiné",
         stageId: firstStage.id,
-        customFields: {
-          client_portal_request: true,
-          client_request_subject: subjectTrim || null,
-          client_description: descTrim || null,
-        },
+        customFields,
       })
       .returning({ id: opportunities.id });
 

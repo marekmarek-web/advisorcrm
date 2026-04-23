@@ -298,10 +298,10 @@ export function WorkspaceStripeBilling({
       ) : null}
       {billing.checkoutAvailable && !isNative ? (
         <p className="max-w-xl text-xs text-[color:var(--wp-text-secondary)]">
-          Fakturační údaje (firma, adresa, <strong>IČO / DIČ</strong>) zadáte
-          v následujícím kroku v zabezpečeném Stripe checkoutu. DPH je
-          počítána automaticky podle ČR sazeb (Stripe Tax). Faktury později
-          spravujete v Stripe Customer Portalu („Spravovat platby a faktury“).
+          Fakturační údaje (firma, adresa, <strong>IČO</strong>) zadáte
+          v následujícím kroku v zabezpečeném Stripe checkoutu. Uvedené ceny jsou konečné —
+          nejsme plátci DPH. Faktury později spravujete v Stripe Customer Portalu
+          („Spravovat platby a faktury“).
         </p>
       ) : null}
       {activePromoLabel && billing.checkoutAvailable ? (
