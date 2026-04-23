@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { FileText, Paperclip, Send } from "lucide-react";
 import clsx from "clsx";
-import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
+import { portalPrimaryGradientBaseClassName } from "@/lib/ui/create-action-button-styles";
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -12,7 +12,7 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-const CHIPS = ["Požádat o dokumenty", "Potvrdit termín schůzky", "Navrhnout další krok"] as const;
+const CHIPS = ["Požádat", "Potvrdit termín", "Navrhnout krok"] as const;
 
 export function MessageComposer({
   body,
@@ -169,30 +169,32 @@ export function MessageComposer({
               onClick={onSend}
               disabled={isPending || !canSend}
               className={clsx(
-                portalPrimaryButtonClassName,
-                "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-50",
+                portalPrimaryGradientBaseClassName,
+                "h-9 min-h-0 shrink-0 gap-1 rounded-lg px-2.5 text-[11.5px] font-semibold",
+                "hover:translate-y-0 active:scale-100",
+                "disabled:cursor-not-allowed disabled:opacity-50",
               )}
             >
-              <Send className="h-3.5 w-3.5" />
+              <Send className="h-3 w-3" />
               Odeslat
             </button>
           </div>
 
-          <div className="mt-1 flex flex-wrap gap-1.5 px-1 pb-1 pt-1.5">
+          <div className="mt-1 flex flex-nowrap gap-1.5 overflow-x-auto px-1 pb-2 pt-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {CHIPS.map((chip) => (
               <button
                 key={chip}
                 type="button"
                 onClick={() => {
-                  if (chip === "Požádat o dokumenty") {
+                  if (chip === "Požádat") {
                     appendChip("Mohli byste prosím doplnit potřebné dokumenty?");
-                  } else if (chip === "Potvrdit termín schůzky") {
+                  } else if (chip === "Potvrdit termín") {
                     appendChip("Potvrzuji domluvený termín schůzky. Těším se na setkání.");
                   } else {
                     appendChip("Navrhuji následující krok:");
                   }
                 }}
-                className="rounded-full border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-2.5 py-1 text-[11.5px] font-medium text-[color:var(--wp-text-secondary)] transition hover:bg-[color:var(--wp-surface-card)]"
+                className="shrink-0 whitespace-nowrap rounded-full border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-2.5 py-1 text-[11.5px] font-medium text-[color:var(--wp-text-secondary)] transition hover:bg-[color:var(--wp-surface-card)]"
               >
                 {chip}
               </button>

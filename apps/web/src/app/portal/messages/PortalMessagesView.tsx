@@ -678,7 +678,7 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
   ]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-[#f4f6fb] p-4 md:min-h-[calc(100vh-8rem)] md:p-5 dark:bg-slate-950">
+    <div className="flex min-h-0 flex-1 flex-col bg-[#f4f6fb] p-4 pb-6 md:p-5 md:pb-6 dark:bg-slate-950">
       <div className="mx-auto flex min-h-0 w-full max-w-[1500px] flex-1 flex-col gap-4 xl:grid xl:min-h-0 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(260px,300px)]">
         <div
           className={`min-h-0 min-w-0 xl:flex xl:flex-col ${showList ? "flex flex-1 flex-col" : "hidden xl:flex"} ${showList ? "max-xl:min-h-[50vh]" : ""}`}
@@ -770,7 +770,7 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
           )}
         </main>
 
-        <div className="hidden min-h-0 min-w-0 xl:block">
+        <div className="hidden min-h-0 min-w-0 pb-1 xl:block xl:pb-2">
           {selectedContactId && contextPanelProps ? (
             <ConversationContextPanel {...contextPanelProps} />
           ) : (

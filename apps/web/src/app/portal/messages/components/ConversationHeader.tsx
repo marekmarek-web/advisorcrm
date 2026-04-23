@@ -61,12 +61,12 @@ export function ConversationHeader({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {showContextTrigger && onOpenContext ? (
             <button
               type="button"
               onClick={onOpenContext}
-              className="xl:hidden inline-flex items-center rounded-[22px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-2.5 text-sm font-medium text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"
+              className="xl:hidden inline-flex h-7 items-center rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-2 text-[11px] font-medium text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"
             >
               Kontext
             </button>
@@ -74,18 +74,18 @@ export function ConversationHeader({
           <Link
             href={contactProfileHref(contactId)}
             prefetch
-            className="inline-flex items-center gap-2 rounded-[22px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-2.5 text-sm font-medium text-[color:var(--wp-text)] shadow-sm hover:bg-[color:var(--wp-surface-muted)] sm:px-5 sm:py-3"
+            className="inline-flex h-7 items-center gap-1 rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-2 text-[11px] font-medium text-[color:var(--wp-text)] shadow-sm hover:bg-[color:var(--wp-surface-muted)]"
             aria-label={`Profil klienta ${contactName}`}
           >
-            <User className="h-4 w-4" />
+            <User className="h-3 w-3 shrink-0" />
             Profil
           </Link>
           <button
             type="button"
             onClick={onNewAction}
-            className="inline-flex items-center gap-2 rounded-[22px] bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:opacity-95 sm:px-5 sm:py-3"
+            className="inline-flex h-7 items-center gap-1 rounded-lg bg-slate-900 px-2 text-[11px] font-medium text-white shadow-sm hover:opacity-95"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3 w-3 shrink-0" />
             Nová akce
           </button>
         </div>
