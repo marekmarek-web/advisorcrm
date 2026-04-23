@@ -651,11 +651,11 @@ export async function setAdvisorPortalRequestHandling(
       .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)));
 
     /**
-     * Když poradce označí portálový požadavek jako vyřešený/zamítnutý, nemá smysl držet
+     * Když poradce označí portálový požadavek jako vyřešený, nemá smysl držet
      * "unread" odznak na zvonku. Auto-read příslušné advisor_notifications řádky, aby
-     * se badge vyčistil. Pro ostatní stavy (in_progress, none/null) necháváme status být.
+     * se badge vyčistil. Pro ostatní stavy (waiting, null) necháváme status být.
      */
-    if (handling === "resolved" || handling === "rejected") {
+    if (handling === "resolved") {
       try {
         await tx
           .update(advisorNotifications)

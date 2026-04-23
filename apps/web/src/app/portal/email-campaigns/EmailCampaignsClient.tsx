@@ -211,11 +211,16 @@ export function EmailCampaignsClient({ initialRows, initialSegments, fromName }:
   /** Bezpečné execCommand pro contenteditable ve vizuálním režimu. */
   const execCmd = useCallback(
     (command: string, value?: string) => {
-      if (editorMode !== "visual" || !visualRef.current) return;
-      visualRef.current.focus();
+      if (editorMode !== "visual") return;
+      const el = visualRef.current;
+      if (!el) return;
+      el.focus();
       try {
         document.execCommand(command, false, value);
-        setForm((prev) => ({ ...prev, bodyHtml: visualRef.current?.innerHTML ?? prev.bodyHtml }));
+        const next = visualRef.current?.innerHTML;
+        if (typeof next === "string") {
+          setForm((prev) => ({ ...prev, bodyHtml: next }));
+        }
       } catch {
         /* fallback – režim zdroje */
       }
@@ -259,10 +264,30 @@ export function EmailCampaignsClient({ initialRows, initialSegments, fromName }:
     if (editorMode !== "visual") return;
     const el = visualRef.current;
     if (!el) return;
-    if (el.innerHTML !== form.bodyHtml) {
-      el.innerHTML = form.bodyHtml;
+    try {
+      const target = form.bodyHtml ?? "";
+      if (el.innerHTML !== target) {
+        el.innerHTML = target;
+      }
+    } catch {
+      /* tichý fallback – nevykládáme uživateli na obličej */
     }
   }, [editorMode, form.bodyHtml]);
+
+  /** Bezpečný přepínač režimu editoru – před změnou uloží aktuální obsah z contenteditable. */
+  const switchEditorMode = useCallback(
+    (next: EditorMode) => {
+      if (next === editorMode) return;
+      if (editorMode === "visual") {
+        const html = visualRef.current?.innerHTML;
+        if (typeof html === "string") {
+          setForm((prev) => (prev.bodyHtml === html ? prev : { ...prev, bodyHtml: html }));
+        }
+      }
+      setEditorMode(next);
+    },
+    [editorMode]
+  );
 
   const previewSubject = previewReplace(form.subject);
   const previewBody = previewReplace(form.bodyHtml);
@@ -540,7 +565,7 @@ Odeslání nelze vrátit zpět.`,
           <div className="inline-flex rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-main-scroll-bg)] p-0.5 text-[11px] font-bold uppercase tracking-wider">
             <button
               type="button"
-              onClick={() => setEditorMode("visual")}
+              onClick={() => switchEditorMode("visual")}
               className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors ${
                 editorMode === "visual"
                   ? "bg-white text-indigo-600 shadow-sm"
@@ -552,7 +577,7 @@ Odeslání nelze vrátit zpět.`,
             </button>
             <button
               type="button"
-              onClick={() => setEditorMode("source")}
+              onClick={() => switchEditorMode("source")}
               className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors ${
                 editorMode === "source"
                   ? "bg-white text-indigo-600 shadow-sm"
@@ -620,18 +645,18 @@ Odeslání nelze vrátit zpět.`,
               ref={visualRef}
               contentEditable
               suppressContentEditableWarning
-              onInput={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  bodyHtml: (e.currentTarget as HTMLDivElement).innerHTML,
-                }))
-              }
-              onBlur={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  bodyHtml: (e.currentTarget as HTMLDivElement).innerHTML,
-                }))
-              }
+              onInput={(e) => {
+                const target = e.currentTarget as HTMLDivElement | null;
+                const html = target?.innerHTML;
+                if (typeof html !== "string") return;
+                setForm((prev) => (prev.bodyHtml === html ? prev : { ...prev, bodyHtml: html }));
+              }}
+              onBlur={(e) => {
+                const target = e.currentTarget as HTMLDivElement | null;
+                const html = target?.innerHTML;
+                if (typeof html !== "string") return;
+                setForm((prev) => (prev.bodyHtml === html ? prev : { ...prev, bodyHtml: html }));
+              }}
               className="block min-h-[240px] w-full resize-y overflow-auto bg-white p-4 text-sm leading-relaxed text-[color:var(--wp-text)] outline-none [&_a]:text-indigo-600 [&_a]:underline [&_img]:max-w-full [&_img]:rounded-md [&_ol]:ml-5 [&_ol]:list-decimal [&_ul]:ml-5 [&_ul]:list-disc"
               data-placeholder="Začněte psát obsah e-mailu..."
             />

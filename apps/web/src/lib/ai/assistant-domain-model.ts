@@ -420,7 +420,8 @@ export function resolveContractSegmentFromUserText(text: string): string | null 
     if (lower.includes(slang)) return seg;
   }
   // Employee-liability (ODP_ZAM) must be checked BEFORE generic odpovednost → ODP fallback.
-  if (/zaměstnanec|zamestnanec|zaměstnaneck|zamestnaneck|pracovní\s*odpovědnos|pracovni\s*odpovednos/i.test(text)) {
+  // Pokrývá skloňování „zaměstnanec / zaměstnance / zaměstnanecká / …" (vzor „zaměstnan" bez suffixu) i pracovní odpovědnost.
+  if (/zam[ěe]stnan|pracovn[íi]\s*odpov[ěe]dnos/i.test(text)) {
     return "ODP_ZAM";
   }
   if (/\bhavarijní|havarijni|\bhav\b|kasko/i.test(text)) return "AUTO_HAV";

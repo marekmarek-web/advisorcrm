@@ -24,8 +24,8 @@ export function ConversationQuickActions({
   const handlers = { ai: onAiSuggest, meeting: onScheduleMeeting, task: onCreateTask };
 
   return (
-    <div className="shrink-0 border-b border-[color:var(--wp-surface-card-border)] px-5 py-3 md:px-6">
-      <div className="flex flex-wrap gap-2">
+    <div className="shrink-0 border-b border-[color:var(--wp-surface-card-border)] px-4 py-2 md:px-6">
+      <div className="flex flex-wrap gap-1.5">
         {ACTIONS.map((action) => (
           <button
             key={action.id}
@@ -34,7 +34,7 @@ export function ConversationQuickActions({
             title={action.primary && aiBusy ? "Generuji návrh…" : undefined}
             onClick={() => handlers[action.id]()}
             className={clsx(
-              "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition",
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium transition",
               action.primary && aiBusy && "cursor-not-allowed opacity-60",
               action.primary
                 ? "border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100/80 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-200"
@@ -42,11 +42,11 @@ export function ConversationQuickActions({
             )}
           >
             {action.primary && aiBusy ? (
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
             ) : action.primary ? (
-              <Sparkles className="h-4 w-4 shrink-0" />
+              <Sparkles className="h-3.5 w-3.5 shrink-0" />
             ) : (
-              <Plus className="h-4 w-4 shrink-0" />
+              <Plus className="h-3.5 w-3.5 shrink-0" />
             )}
             {action.primary && aiBusy ? "Generuji…" : action.label}
           </button>

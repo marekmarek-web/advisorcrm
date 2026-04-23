@@ -52,14 +52,60 @@ function readConsumedOutcome(): ConsumedOutcome | null {
   }
 }
 
+/**
+ * Navigace po OAuth návratu. iOS po klepnutí na "Open in Aidvisora?" dialogu
+ * doručí URL přes `appUrlOpen` dřív, než WKWebView stihne přejít do
+ * `document.visibilityState === "visible"` (SFSafariViewController se teprve
+ * animuje pryč). Dříve jsme v tu chvíli navigaci **zahazovali**, takže
+ * exchangeCodeForSession proběhl, session cookies se nastavily, ale uživatel
+ * zůstal viset na `/prihlaseni`. Teď místo toho počkáme max. ~2.5 s na
+ * visibilitychange / focus / pageshow a pak navigujeme — pokud už viditelné
+ * jsme, navigujeme hned.
+ */
 function safeReplaceLocation(target: string) {
   if (typeof window === "undefined") return;
-  if (typeof document !== "undefined" && document.visibilityState && document.visibilityState !== "visible") {
-    logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] skip navigate — document hidden:", target);
+  if (window.location.href === target) return;
+
+  const go = () => {
+    if (typeof window === "undefined") return;
+    if (window.location.href === target) return;
+    window.location.replace(target);
+  };
+
+  const isVisible = () =>
+    typeof document === "undefined" ||
+    !document.visibilityState ||
+    document.visibilityState === "visible";
+
+  if (isVisible()) {
+    go();
     return;
   }
-  if (window.location.href === target) return;
-  window.location.replace(target);
+
+  logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] document hidden — deferring navigation:", target);
+
+  let navigated = false;
+  const cleanup = () => {
+    document.removeEventListener("visibilitychange", onVis);
+    window.removeEventListener("focus", onFocus);
+    window.removeEventListener("pageshow", onFocus);
+    clearTimeout(timer);
+  };
+  const trigger = () => {
+    if (navigated) return;
+    navigated = true;
+    cleanup();
+    go();
+  };
+  const onVis = () => {
+    if (isVisible()) trigger();
+  };
+  const onFocus = () => trigger();
+
+  document.addEventListener("visibilitychange", onVis);
+  window.addEventListener("focus", onFocus);
+  window.addEventListener("pageshow", onFocus);
+  const timer = setTimeout(trigger, 2500);
 }
 
 /**
@@ -90,6 +136,33 @@ export function NativeOAuthDeepLinkBridge() {
         import("@/lib/supabase/client"),
         import("@/lib/url/native-web-app-base"),
       ]);
+
+      /**
+       * Server-side exchange URL. Místo aby JS v bridge volal
+       * `supabase.auth.exchangeCodeForSession` ve WebView (kde se z různých
+       * důvodů — race WKWebView cookie flush po SFSafariViewController,
+       * různé instance Supabase klienta, MFA edge cases — exchange občas
+       * neprovede), naviguje WebView na `/auth/callback?code=…`. Tahle
+       * klasická HTTP-level navigace:
+       *   1) pošle kompletní cookie jar (včetně `sb-…-auth-token-code-verifier`,
+       *      který tam `signInWithOAuth` napsal před Browser.open),
+       *   2) server (`apps/web/src/app/auth/callback/route.ts`) udělá PKCE
+       *      exchange a Set-Cookie na session tokeny v odpovědi,
+       *   3) server pošle 307 redirect na `next` (defaultně `/portal/today`),
+       *   4) WebView redirect následuje s novými cookies — proxy.ts uzná
+       *      session a portal layout případně provede provisioning přes
+       *      `/register/complete`.
+       */
+      const buildServerExchangeUrl = (
+        origin: string,
+        code: string,
+        nextPath: string,
+      ): string => {
+        const qs = new URLSearchParams();
+        qs.set("code", code);
+        qs.set("next", nextPath);
+        return `${origin}/auth/callback?${qs.toString()}`;
+      };
 
       const closeBrowserAndAwaitDismissed = async (): Promise<void> => {
         let handle: { remove: () => Promise<void> } | null = null;
@@ -174,49 +247,38 @@ export function NativeOAuthDeepLinkBridge() {
                 return;
               }
 
+              /**
+               * Stale launch URL / horké znovuotevření appky: session už v
+               * úložišti leží (kód byl reálně vyměněný dřív). Než poslat
+               * WebView znovu na `/auth/callback` s použitým kódem (server
+               * by vrátil `/prihlaseni?error=invalid+grant`), raději skočíme
+               * rovnou na portál.
+               */
               try {
                 const supabase = createClient();
                 const { data: existing } = await supabase.auth.getSession();
                 if (existing?.session) {
                   logNativeOAuthDebug(
-                    "[NativeOAuthDeepLinkBridge] session already present, skipping exchange for stale launch URL code",
+                    "[NativeOAuthDeepLinkBridge] session already present, skipping server exchange (stale launch URL code)",
                   );
+                  const target = `${origin}/portal/today`;
+                  safeReplaceLocation(target);
                   writeConsumedCode(code, { outcome: "ok" });
                   return;
                 }
               } catch {}
 
-              logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] exchanging auth code…");
-              try {
-                const supabase = createClient();
-                const { error } = await supabase.auth.exchangeCodeForSession(code);
-                if (error) {
-                  console.error("[NativeOAuthDeepLinkBridge] exchangeCodeForSession error:", error.message);
-                  writeConsumedCode(code, { outcome: "error", message: error.message });
-                  const target = `${origin}/prihlaseni?error=${encodeURIComponent(error.message)}`;
-                  logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] navigating to error page:", target);
-                  safeReplaceLocation(target);
-                  return;
-                }
-                writeConsumedCode(code, { outcome: "ok" });
-                const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-                if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
-                  const nextPath = "/portal/today";
-                  const mfaUrl = `${origin}/prihlaseni?pending_mfa=1&native=1&next=${encodeURIComponent(nextPath)}`;
-                  logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] MFA required, navigating to:", mfaUrl);
-                  safeReplaceLocation(mfaUrl);
-                  return;
-                }
-                const target = `${origin}/register/complete?next=%2Fportal%2Ftoday`;
-                logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] session exchanged OK, navigating to:", target);
-                safeReplaceLocation(target);
-              } catch (e) {
-                const msg = e instanceof Error ? e.message : "session_exchange_failed";
-                console.error("[NativeOAuthDeepLinkBridge] unexpected error during code exchange:", e);
-                writeConsumedCode(code, { outcome: "error", message: msg });
-                const target = `${origin}/prihlaseni?error=${encodeURIComponent(msg)}`;
-                safeReplaceLocation(target);
-              }
+              /**
+               * Tohle je primární cesta. WebView si necháme navigovat na
+               * server-side route, která má v requestu všechna cookie
+               * (včetně `-code-verifier`), udělá PKCE exchange, nastaví
+               * `Set-Cookie` na session tokeny a 307 redirectne na `next`.
+               * MFA, error mapping a rate-limit řeší už ten handler.
+               */
+              const target = buildServerExchangeUrl(origin, code, "/portal/today");
+              logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] delegating exchange to server:", target);
+              writeConsumedCode(code, { outcome: "ok" });
+              safeReplaceLocation(target);
               return;
             }
             logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] auth/callback without code, navigating to portal");

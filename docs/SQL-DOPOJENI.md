@@ -51,6 +51,7 @@ Při **nové** migraci nebo významné úpravě `.sql` přidejte **jeden řádek
 | 2026-04-21 | Úklid katalogu: merge duplicitních partnerů case-insensitive (Uniqa/UNIQA → UNIQA, Investika/INVESTIKA → INVESTIKA) s přepisem FK v `contracts`, `payment_accounts` a `client_payment_setups`; dedup produktů v rámci (partner, segment); odstranění ČSOB/HYPO duplicity vs. ČSOB Hypoteční banka; odstranění segmentu ZDRAV (guard na 0 smluv, jinak RAISE EXCEPTION) | [catalog-dedup-partners-products-2026-04-21.sql](../packages/db/migrations/catalog-dedup-partners-products-2026-04-21.sql) |
 | 2026-04-21 | Gap fill (priorita 1–5) + odstranění Moneta: FK `contracts.partner_id` / `payment_accounts.partner_id` / `client_payment_setups.partner_id` → NULL pro Moneta, DELETE globálních produktů Moneta, DELETE globálního partnera Moneta (HYPO + UVER). Nové partnery (Generali Česká pojišťovna, UNIQA Penzijní společnost, Modrá pyramida) a nové segmenty (CEST, FIRMA_POJ) doplní `pnpm run db:seed-catalog` z aktualizovaného `catalog.json` | [catalog-moneta-removal-2026-04-21.sql](../packages/db/migrations/catalog-moneta-removal-2026-04-21.sql) |
 | 2026-04-22 | Segment ODP_ZAM (Odpovědnost zaměstnance): idempotentní backfill `contracts.segment` a `client_payment_setups.segment` z `ODP` → `ODP_ZAM` kde product/provider name obsahuje „zaměstnanec". Nové partnery (Allianz pojišťovna, ČPP, ČSOB pojišťovna, Generali Česká pojišťovna, Kooperativa, UNIQA) doplní `pnpm run db:seed-catalog` | [catalog-odp-zam-segment-2026-04-22.sql](../packages/db/migrations/catalog-odp-zam-segment-2026-04-22.sql) |
+| 2026-04-22 | ODP_ZAM katalog seed (fallback pro prostředí bez `pnpm run db:seed-catalog`): idempotentní INSERT 6 globálních partnerů + 6 reálných produktů + 6 escape-hatch řádků „Vlastní produkt (zadejte název)" pro segment ODP_ZAM. Bez této migrace měl portál poradce prázdný dropdown při volbě „Odpovědnost zaměstnance". Sanity report v závěru | [catalog-odp-zam-partners-seed-2026-04-22.sql](../packages/db/migrations/catalog-odp-zam-partners-seed-2026-04-22.sql) |
 | 2026-04-22 | Doplnění reálných produktů do 41 (partner, segment) kombinací (viz [catalog-product-fills-2026-04-22.md](catalog-product-fills-2026-04-22.md)) + přejmenování escape-hatche: UPDATE products SET name='Vlastní produkt (zadejte název)' WHERE name='Ostatní (doplnit z dropdownu)' + is_tbd=FALSE. Nové reálné produkty doplní `pnpm run db:seed-catalog` z aktualizovaného `catalog.json` (Allianz FIRMA_POJ / ATRIS INV / Avant INV / Cyrrus INV / ČPP 5× / ČSOB UVER / ČSOB Hypoteční banka HYPO / ČSOB pojišťovna 3× / Direct 5× / J&T INV / Komerční banka UVER / Kooperativa 5× / Maxima 3× / mBank 2× / Moventum INV / Oberbank 2× / Pillow 2× / Raiffeisen Leasing UVER / Raiffeisenbank UVER / RSTS HYPO / UNIQA FIRMA_POJ / Česká spořitelna UVER) | [catalog-fill-tbd-products-2026-04-22.sql](../packages/db/migrations/catalog-fill-tbd-products-2026-04-22.sql) |
 | 2026-04-22 | KPI „Měsíční investice" oprava: backfill `portfolio_attributes.paymentType` pro INV/DPS/DIP smlouvy, kde chyběl. Když `paymentFrequencyLabel`/`paymentFrequency` obsahuje „jednoráz"/„one time"/„single"/„lump" → `one_time`, jinak `regular`. Idempotentní (nepřepisuje existující hodnotu). Zastavuje halucinaci KPI pro jednorázové investice, které se do té doby počítaly jako měsíční | [portfolio-attributes-payment-type-backfill-2026-04-22.sql](../packages/db/migrations/portfolio-attributes-payment-type-backfill-2026-04-22.sql) |
 | 2026-04-22 | F5 v3 — institucionální platební účty (druhý audit): k v2 přidány sloupce `payment_accounts.constant_symbol`, `specific_symbol_template` (literál nebo placeholder {birthNumber}/{ico}/{yearMonth}), `symbol_rules_note`. Opraveny bankovní názvy: `/0800` je Česká spořitelna, ne ČSOB (Kooperativa, NN PS, KB PS, ČPP běžné + mimořádné, Conseq DPS extra/employer). Conseq DPS regular (sdružená platba účastníka 662266-{contractNumber}/2700) má nyní VS POVINNÝ = číslo smlouvy, KS = 558. Conseq DPS rozděleno na regular (účastník sdružená) / extra (mimořádný příspěvek účastníka, SS=99, KS=558) / employer (individuální zaměstnavatel, SS=IČ, KS=3552); hromadný employer (VS=IČ, SS=RRRRMM) dokumentovaný v `symbol_rules_note` pro ruční zadání. ČSOB PS dostává KS=3558 a SS={birthNumber}. Conseq DIP employer SS={ico}. Direct všechny řádky označeny jako FALLBACK v notes s alternativním účtem 2330257/0100. Přidány NN životní varianty: productCode `contract_10_digit` (1000588419/3500) a `contract_8_digit` (1010101010/3500) — zdroj https://www.nn.cz/poradna/pojistovna/platby.html. Seed migrace je destruktivní vůči `tenant_id IS NULL` (DELETE + reseed); tenant overrides ponechány. ZÁMĚRNĚ VYNECHÁNO: Generali Česká pojišťovna | [payment-accounts-institutional-defaults-2026-04-22.sql](../packages/db/migrations/payment-accounts-institutional-defaults-2026-04-22.sql) |
@@ -195,6 +196,36 @@ SELECT * FROM public.resolve_public_booking_v1('neplatny-token');      -- 0 rows
 SELECT * FROM public.lookup_invite_metadata_v1('neplatny', 'client');  -- 0 rows
 RESET role;
 ```
+
+</details>
+
+<details>
+<summary><strong>catalog-odp-zam-segment-2026-04-22.sql</strong> — Backfill `contracts.segment` + `client_payment_setups.segment` z `ODP` → `ODP_ZAM` pro řádky s „zaměstnanec" v produktu/partnerovi. Idempotentní, v transakci, s `RAISE NOTICE` reportem.</summary>
+
+Odkaz: [`packages/db/migrations/catalog-odp-zam-segment-2026-04-22.sql`](../packages/db/migrations/catalog-odp-zam-segment-2026-04-22.sql)
+
+Kritérium backfillu: `products.name` nebo `contracts.partner_name` (fallback) obsahuje `zaměstnanec` / `zamestnanec` (ILIKE, case/diacritic insensitive). Stejný predikát běží i na `client_payment_setups.product_name` / `provider_name` pokud tabulka/sloupec existuje.
+
+Nové globální partnery/produkty (Allianz pojišťovna, ČPP, ČSOB pojišťovna, Generali Česká pojišťovna, Kooperativa, UNIQA) doplní `pnpm run db:seed-catalog` z aktualizovaného `catalog.json` — nebo idempotentní fallback migrace `catalog-odp-zam-partners-seed-2026-04-22.sql`.
+
+</details>
+
+<details>
+<summary><strong>catalog-odp-zam-partners-seed-2026-04-22.sql</strong> — ODP_ZAM katalog seed (fallback pro prostředí bez `pnpm run db:seed-catalog`). Idempotentní INSERT 6 globálních partnerů + 6 reálných produktů + escape-hatch „Vlastní produkt (zadejte název)".</summary>
+
+Odkaz: [`packages/db/migrations/catalog-odp-zam-partners-seed-2026-04-22.sql`](../packages/db/migrations/catalog-odp-zam-partners-seed-2026-04-22.sql)
+
+Řeší UX blocker: při volbě segmentu „Odpovědnost zaměstnance" v portále poradce byl dropdown partnerů prázdný, protože seed script nebyl spuštěn na všech prostředích. Migrace vkládá pouze globální řádky (`tenant_id IS NULL`) — tenant overrides nezasahuje.
+
+Partner ↔ produkt mapování odpovídá `catalog.json` (v2026-04-22):
+- Allianz pojišťovna → „Pojištění profesní odpovědnosti zaměstnance"
+- ČPP → „Pojištění odpovědnosti zaměstnance za škodu"
+- ČSOB pojišťovna → „Pojištění odpovědnosti zaměstnance"
+- Generali Česká pojišťovna → „Pojištění odpovědnosti zaměstnance"
+- Kooperativa → „Pojištění odpovědnosti zaměstnance za škodu"
+- UNIQA → „Pojištění odpovědnosti zaměstnance"
+
+Závěrečný `RAISE NOTICE` reportuje počet partnerů/produktů po běhu.
 
 </details>
 

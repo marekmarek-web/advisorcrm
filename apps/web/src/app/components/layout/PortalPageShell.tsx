@@ -68,14 +68,13 @@ export function PortalPageShell({
     <div
       className={clsx(
         "min-h-screen bg-[color:var(--wp-main-scroll-bg)] text-[color:var(--wp-text)]",
-        "pb-8 md:pb-12",
         outerClassName,
       )}
     >
       <div
         className={clsx(
           "mx-auto w-full px-4 sm:px-6 md:px-8",
-          !flushTop && "pt-6 md:pt-8",
+          !flushTop && "pt-6 pb-6 md:pt-8 md:pb-8",
           MAX_WIDTH_CLASS[maxWidth],
           innerClassName,
         )}

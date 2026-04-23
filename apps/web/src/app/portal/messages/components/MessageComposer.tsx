@@ -59,12 +59,12 @@ export function MessageComposer({
     };
   }, [imagePreviewUrls]);
 
-  // Auto-grow textarea up to 200 px
+  // Auto-grow textarea up to 160 px
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
   }, [body]);
 
   function appendChip(text: string) {
@@ -72,7 +72,7 @@ export function MessageComposer({
   }
 
   return (
-    <div className="shrink-0 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-4 md:px-6">
+    <div className="shrink-0 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-2.5 md:px-6">
       <div className="mx-auto max-w-3xl">
         {sendError ? (
           <div className="mb-3 flex flex-col gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between dark:border-rose-900/40 dark:bg-rose-950/30">
@@ -131,8 +131,8 @@ export function MessageComposer({
           </div>
         ) : null}
 
-        <div className="rounded-[var(--wp-radius-card)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-2 shadow-sm">
-          <div className="flex items-end gap-2">
+        <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-1.5 shadow-sm">
+          <div className="flex items-end gap-1.5">
             <input
               type="file"
               ref={fileInputRef}
@@ -148,10 +148,10 @@ export function MessageComposer({
             <button
               type="button"
               onClick={onAttachClick}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]/80"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]/80"
               aria-label="Přidat přílohu"
             >
-              <Paperclip className="h-5 w-5" />
+              <Paperclip className="h-4 w-4" />
             </button>
 
             <textarea
@@ -159,9 +159,9 @@ export function MessageComposer({
               value={body}
               onChange={(e) => onBodyChange(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Napište zprávu… (Enter odešle, Shift+Enter nový řádek)"
+              placeholder="Napište zprávu…  (Enter odešle)"
               rows={1}
-              className="min-h-[52px] max-h-[200px] flex-1 resize-none overflow-y-auto rounded-2xl border-0 bg-[color:var(--wp-surface-muted)] px-4 py-3 text-sm leading-6 text-[color:var(--wp-text)] placeholder:text-[color:var(--wp-text-tertiary)] outline-none focus:ring-0"
+              className="min-h-[36px] max-h-[160px] flex-1 resize-none overflow-y-auto rounded-xl border-0 bg-[color:var(--wp-surface-muted)] px-3 py-2 text-[13.5px] leading-5 text-[color:var(--wp-text)] placeholder:text-[color:var(--wp-text-tertiary)] outline-none focus:ring-0"
             />
 
             <button
@@ -170,15 +170,15 @@ export function MessageComposer({
               disabled={isPending || !canSend}
               className={clsx(
                 portalPrimaryButtonClassName,
-                "inline-flex h-12 shrink-0 items-center gap-2 rounded-2xl px-5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50",
+                "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-50",
               )}
             >
-              <Send className="h-4 w-4" />
+              <Send className="h-3.5 w-3.5" />
               Odeslat
             </button>
           </div>
 
-          <div className="mt-2 flex flex-wrap gap-2 px-1 pb-1 pt-2">
+          <div className="mt-1 flex flex-wrap gap-1.5 px-1 pb-1 pt-1.5">
             {CHIPS.map((chip) => (
               <button
                 key={chip}
@@ -192,7 +192,7 @@ export function MessageComposer({
                     appendChip("Navrhuji následující krok:");
                   }
                 }}
-                className="rounded-full border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-3 py-1.5 text-xs font-medium text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-card)]"
+                className="rounded-full border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-2.5 py-1 text-[11.5px] font-medium text-[color:var(--wp-text-secondary)] transition hover:bg-[color:var(--wp-surface-card)]"
               >
                 {chip}
               </button>

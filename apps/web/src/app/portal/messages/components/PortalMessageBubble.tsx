@@ -47,7 +47,7 @@ export function PortalMessageBubble({
           </button>
         ) : null}
         <div
-          className={`rounded-[var(--wp-radius-card)] px-4 py-3.5 text-[15px] leading-7 shadow-sm ${
+          className={`rounded-2xl px-3.5 py-2 text-[13.5px] leading-[1.45] shadow-sm ${
             isOwn
               ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white"
               : "border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text)]"
@@ -78,7 +78,7 @@ export function PortalMessageBubble({
           ) : null}
         </div>
         <div
-          className={`mt-2 flex items-center gap-2 px-1 text-xs ${isOwn ? "justify-end text-[color:var(--wp-text-tertiary)]" : "justify-start text-[color:var(--wp-text-tertiary)]"}`}
+          className={`mt-0.5 flex items-center gap-1.5 px-1 text-[10.5px] ${isOwn ? "justify-end text-[color:var(--wp-text-tertiary)]" : "justify-start text-[color:var(--wp-text-tertiary)]"}`}
         >
           <span>
             {new Date(m.createdAt).toLocaleString("cs-CZ", {
@@ -88,7 +88,7 @@ export function PortalMessageBubble({
               minute: "2-digit",
             })}
           </span>
-          {isOwn ? <CheckCheck className="h-3.5 w-3.5 opacity-70" /> : null}
+          {isOwn ? <CheckCheck className="h-3 w-3 opacity-70" /> : null}
         </div>
       </div>
     </div>

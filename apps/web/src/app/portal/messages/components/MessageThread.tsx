@@ -32,7 +32,7 @@ export function MessageThread({
 }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.05),transparent_28%),linear-gradient(180deg,#fbfcff_0%,#f8fafc_100%)] px-4 py-5 md:px-6 md:py-6 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
-      <div className="mx-auto flex max-w-3xl flex-col gap-4">
+      <div className="mx-auto flex max-w-3xl flex-col gap-2">
         {loadError ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-center text-sm text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200">
             <p className="font-medium">{loadError}</p>

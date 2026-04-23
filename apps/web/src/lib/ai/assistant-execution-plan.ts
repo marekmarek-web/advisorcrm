@@ -436,6 +436,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   ZP: "Životní pojištění",
   MAJ: "Pojištění majetku",
   ODP: "Pojištění odpovědnosti",
+  ODP_ZAM: "Pojištění odpovědnosti zaměstnance",
   AUTO_PR: "Povinné ručení",
   AUTO_HAV: "Havarijní pojištění",
   CEST: "Cestovní pojištění",

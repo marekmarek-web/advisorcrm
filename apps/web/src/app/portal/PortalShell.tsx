@@ -447,8 +447,8 @@ function PortalShellInner({
                 : hidePortalTopHeader
                   ? isCalendarWorkspace
                     ? "flex flex-col flex-1 min-h-0 overflow-hidden p-0 m-0"
-                    : "flex flex-col flex-1 min-h-0 overflow-hidden px-4 pb-5 pt-2 md:px-5 md:pb-6 lg:px-4 lg:pb-5 lg:pt-2"
-                  : "px-4 pb-5 pt-4 md:px-5 md:pb-6 lg:px-4 lg:pb-5 lg:pt-3",
+                    : "flex flex-col flex-1 min-h-0 overflow-hidden px-4 pb-2 pt-2 md:px-5 md:pb-2 lg:px-4 lg:pb-2 lg:pt-2"
+                  : "px-4 pb-4 pt-4 md:px-5 md:pb-4 lg:px-4 lg:pb-3 lg:pt-3",
             )}>
               {children}
             </div>

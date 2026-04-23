@@ -166,6 +166,7 @@ function segmentToCategoryFallback(segment: string | null | undefined): ProductC
     case "MAJ":
       return "PROPERTY_INSURANCE";
     case "ODP":
+    case "ODP_ZAM":
       return "LIABILITY_INSURANCE";
     case "AUTO_PR":
     case "AUTO_HAV":
