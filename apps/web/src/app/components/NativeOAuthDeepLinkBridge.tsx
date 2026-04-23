@@ -165,11 +165,11 @@ export function NativeOAuthDeepLinkBridge() {
       };
 
       const closeBrowserAndAwaitDismissed = async (): Promise<void> => {
-        let handle: { remove: () => Promise<void> } | null = null;
+        const listenerRef: { current: { remove: () => Promise<void> } | null } = { current: null };
         const finishedPromise = new Promise<void>((resolve) => {
           Browser.addListener("browserFinished", () => resolve())
             .then((h) => {
-              handle = h;
+              listenerRef.current = h;
             })
             .catch(() => resolve());
         });
@@ -179,7 +179,7 @@ export function NativeOAuthDeepLinkBridge() {
           new Promise<void>((resolve) => setTimeout(resolve, 1200)),
         ]);
         try {
-          await handle?.remove();
+          await listenerRef.current?.remove();
         } catch {}
       };
 

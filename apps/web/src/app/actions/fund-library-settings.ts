@@ -84,7 +84,7 @@ export async function saveTenantFundAllowlist(allowedBaseFundKeys: string[] | nu
     // než setting změny propadnul do snapshotu. Tenant allowlist propaguje
     // do VŠECH advisorů tohoto tenantu → invalidujeme jen tenant-level tag;
     // per-advisor tagy se invalidují samy při příštím snapshotu.
-    revalidateTag(getFundLibraryCacheTag(auth.tenantId));
+    revalidateTag(getFundLibraryCacheTag(auth.tenantId), "default");
   });
 }
 
@@ -135,7 +135,7 @@ export async function saveAdvisorFundLibrary(prefs: AdvisorFundLibraryValue): Pr
     // B2.6 — per-advisor fund library ordering/enabled map je uložená v
     // `advisorPreferences`; invalidujeme jen cache tag tohoto advisora,
     // abychom okamžitě promítli změnu do UI (bez 60s stale state).
-    revalidateTag(getFundLibraryAdvisorCacheTag(auth.tenantId, auth.userId));
+    revalidateTag(getFundLibraryAdvisorCacheTag(auth.tenantId, auth.userId), "default");
   });
 }
 

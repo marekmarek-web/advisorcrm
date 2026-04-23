@@ -93,11 +93,11 @@ async function insertRecipientsAndQueue(
       contactId: emailCampaignRecipients.contactId,
     });
   const byContact = new Map(audience.map((c) => [c.id, c]));
-  const queueRows = recipients
-    .map((r: { id: string; contactId: string }) => {
-      const c = byContact.get(r.contactId);
-      if (!c) return null;
-      return {
+  const queueRows = recipients.flatMap((r: { id: string; contactId: string }) => {
+    const c = byContact.get(r.contactId);
+    if (!c) return [];
+    return [
+      {
         tenantId,
         campaignId,
         recipientId: r.id,
@@ -109,11 +109,9 @@ async function insertRecipientsAndQueue(
           lastName: c.lastName ?? "",
           email: (c.email ?? "").trim(),
         },
-      };
-    })
-    .filter(
-      (v: { recipientId: string } | null): v is NonNullable<typeof v> => v !== null,
-    );
+      },
+    ];
+  });
   if (queueRows.length > 0) {
     await tx.insert(emailSendQueue).values(queueRows);
   }

@@ -80,7 +80,7 @@ export async function generateCampaignDraft(input: {
         .where(
           and(
             eq(emailTemplates.kind, input.baseTemplateKind),
-            eq(emailTemplates.isActive, true),
+            eq(emailTemplates.isArchived, false),
           ),
         )
         .limit(1);

@@ -44,20 +44,13 @@ export async function runDueAutomations(): Promise<{
   perRule: AutomationRunResult[];
 }> {
   // Načti všechna aktivní pravidla napříč tenanty.
-  const rows = await dbService.execute(sql`
+  const rows = (await dbService.execute(sql`
     SELECT r.id, r.tenant_id AS "tenantId", r.name, r.trigger_type AS "triggerType",
            r.trigger_config AS "triggerConfig", r.template_id AS "templateId",
            r.schedule_offset_days AS "scheduleOffsetDays", r.send_hour AS "sendHour"
     FROM email_automation_rules r
     WHERE r.is_active = true
-  `);
-
-  const perRule: AutomationRunResult[] = [];
-  let totalQueued = 0;
-  let totalSkipped = 0;
-  let totalFailed = 0;
-
-  for (const row of rows.rows as Array<{
+  `)) as unknown as Array<{
     id: string;
     tenantId: string;
     name: string;
@@ -66,7 +59,14 @@ export async function runDueAutomations(): Promise<{
     templateId: string | null;
     scheduleOffsetDays: number;
     sendHour: number;
-  }>) {
+  }>;
+
+  const perRule: AutomationRunResult[] = [];
+  let totalQueued = 0;
+  let totalSkipped = 0;
+  let totalFailed = 0;
+
+  for (const row of rows) {
     try {
       const result = await runSingleRule(row);
       perRule.push(result);
@@ -95,7 +95,7 @@ export async function runDueAutomations(): Promise<{
   }
 
   return {
-    rulesProcessed: rows.rows.length,
+    rulesProcessed: rows.length,
     totalQueued,
     totalSkipped,
     totalFailed,
@@ -161,15 +161,13 @@ async function runSingleRule(rule: {
   // Idempotence: kontakty, které už mají run pro toto pravidlo v posledních X dnech,
   // přeskočíme. Pro opakovatelné triggery (birthday) stačí 300 dnů okno.
   const dedupeWindowDays = isAnnualTrigger(rule.triggerType) ? 300 : 90;
-  const dedupedRows = await dbService.execute(sql`
+  const dedupedRows = (await dbService.execute(sql`
     SELECT contact_id FROM email_automation_runs
     WHERE tenant_id = ${rule.tenantId}::uuid
       AND rule_id = ${rule.id}::uuid
       AND run_at >= now() - (${dedupeWindowDays}::int || ' days')::interval
-  `);
-  const alreadyRun = new Set(
-    (dedupedRows.rows as Array<{ contact_id: string }>).map((r) => r.contact_id),
-  );
+  `)) as unknown as Array<{ contact_id: string }>;
+  const alreadyRun = new Set(dedupedRows.map((r) => r.contact_id));
 
   const scheduledFor = computeScheduledFor(rule.scheduleOffsetDays, rule.sendHour);
 
@@ -287,8 +285,8 @@ async function resolveCandidates(rule: {
     }
   }
 
-  const res = await dbService.execute(query);
-  return res.rows as Candidate[];
+  const res = (await dbService.execute(query)) as unknown as Candidate[];
+  return res;
 }
 
 async function createAutomationCampaign(
@@ -336,23 +334,30 @@ async function createAutomationCampaign(
     const campaignId = created!.id;
     const token = mintTrackingToken();
 
-    await tx.insert(emailCampaignRecipients).values({
-      tenantId: rule.tenantId,
-      campaignId,
-      contactId: cand.contactId,
-      email: c.email,
-      trackingToken: token,
-      status: "queued",
-    });
+    const [recipientRow] = await tx
+      .insert(emailCampaignRecipients)
+      .values({
+        tenantId: rule.tenantId,
+        campaignId,
+        contactId: cand.contactId,
+        email: c.email,
+        trackingToken: token,
+        status: "queued",
+      })
+      .returning({ id: emailCampaignRecipients.id });
 
     await tx.insert(emailSendQueue).values({
       tenantId: rule.tenantId,
       campaignId,
-      contactId: cand.contactId,
-      email: c.email,
-      status: "pending",
+      recipientId: recipientRow!.id,
+      scheduledFor,
       nextAttemptAt: scheduledFor,
-      attempts: 0,
+      status: "pending",
+      payload: {
+        firstName: cand.firstName ?? "",
+        lastName: cand.lastName ?? "",
+        email: c.email.trim(),
+      },
     });
 
     return campaignId;

@@ -44,7 +44,7 @@ export async function generateYearInReviewDraft(input: {
       })
       .from(emailTemplates)
       .where(
-        and(eq(emailTemplates.kind, "year_in_review"), eq(emailTemplates.isActive, true)),
+        and(eq(emailTemplates.kind, "year_in_review"), eq(emailTemplates.isArchived, false)),
       )
       .limit(1);
     if (!template) {

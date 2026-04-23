@@ -27,7 +27,7 @@ export async function resolveReferralByToken(token: string): Promise<ReferralTok
   if (!/^[a-f0-9]{32}$/.test(cleaned)) return null;
 
   // Používáme service DB bez RLS — token je uniq a public.
-  const rows = await dbService.execute(sql`
+  const rows = (await dbService.execute(sql`
     SELECT
       r.id, r.tenant_id AS "tenantId",
       r.submitted_at AS "submittedAt",
@@ -40,18 +40,16 @@ export async function resolveReferralByToken(token: string): Promise<ReferralTok
     JOIN tenants t ON t.id = r.tenant_id
     WHERE r.token = ${cleaned}
     LIMIT 1
-  `);
-  const row = rows.rows[0] as
-    | {
-        id: string;
-        tenantId: string;
-        submittedAt: Date | null;
-        expiresAt: Date;
-        contactFirstName: string | null;
-        contactLastName: string | null;
-        tenantName: string;
-      }
-    | undefined;
+  `)) as unknown as Array<{
+    id: string;
+    tenantId: string;
+    submittedAt: Date | null;
+    expiresAt: Date;
+    contactFirstName: string | null;
+    contactLastName: string | null;
+    tenantName: string;
+  }>;
+  const row = rows[0];
   if (!row) return null;
 
   return {
@@ -101,15 +99,18 @@ export async function submitReferral(
   }
 
   // Najdi request
-  const rows = await dbService.execute(sql`
+  const rows = (await dbService.execute(sql`
     SELECT id, tenant_id AS "tenantId", submitted_at AS "submittedAt", expires_at AS "expiresAt"
     FROM referral_requests
     WHERE token = ${cleaned}
     LIMIT 1
-  `);
-  const row = rows.rows[0] as
-    | { id: string; tenantId: string; submittedAt: Date | null; expiresAt: Date }
-    | undefined;
+  `)) as unknown as Array<{
+    id: string;
+    tenantId: string;
+    submittedAt: Date | null;
+    expiresAt: Date;
+  }>;
+  const row = rows[0];
   if (!row) throw new Error("Odkaz nebyl nalezen.");
   if (row.submittedAt) throw new Error("Doporučení již bylo odesláno.");
   if (row.expiresAt.getTime() < Date.now()) throw new Error("Odkaz vypršel.");

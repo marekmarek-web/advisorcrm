@@ -80,7 +80,7 @@ export async function createReferralRequest(input: {
       const [template] = await tx
         .select()
         .from(emailTemplates)
-        .where(and(eq(emailTemplates.kind, "referral_ask"), eq(emailTemplates.isActive, true)))
+        .where(and(eq(emailTemplates.kind, "referral_ask"), eq(emailTemplates.isArchived, false)))
         .limit(1);
 
       if (template) {
@@ -102,22 +102,30 @@ export async function createReferralRequest(input: {
           .returning({ id: emailCampaigns.id });
 
         const recipientToken = mintTrackingToken();
-        await tx.insert(emailCampaignRecipients).values({
-          tenantId: auth.tenantId,
-          campaignId: campaign!.id,
-          contactId: contact.id,
-          email: contact.email,
-          trackingToken: recipientToken,
-          status: "queued",
-        });
+        const now = new Date();
+        const [recipientRow] = await tx
+          .insert(emailCampaignRecipients)
+          .values({
+            tenantId: auth.tenantId,
+            campaignId: campaign!.id,
+            contactId: contact.id,
+            email: contact.email,
+            trackingToken: recipientToken,
+            status: "queued",
+          })
+          .returning({ id: emailCampaignRecipients.id });
         await tx.insert(emailSendQueue).values({
           tenantId: auth.tenantId,
           campaignId: campaign!.id,
-          contactId: contact.id,
-          email: contact.email,
+          recipientId: recipientRow!.id,
+          scheduledFor: now,
+          nextAttemptAt: now,
           status: "pending",
-          nextAttemptAt: new Date(),
-          attempts: 0,
+          payload: {
+            firstName: contact.firstName ?? "",
+            lastName: contact.lastName ?? "",
+            email: contact.email.trim(),
+          },
         });
 
         await tx

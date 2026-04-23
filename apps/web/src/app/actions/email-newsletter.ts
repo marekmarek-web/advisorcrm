@@ -36,7 +36,7 @@ export async function generateNewsletterDraft(input: {
         bodyHtml: emailTemplates.bodyHtml,
       })
       .from(emailTemplates)
-      .where(and(eq(emailTemplates.kind, "newsletter"), eq(emailTemplates.isActive, true)))
+      .where(and(eq(emailTemplates.kind, "newsletter"), eq(emailTemplates.isArchived, false)))
       .limit(1);
     if (!template) throw new Error("Šablona 'newsletter' nebyla nalezena.");
 

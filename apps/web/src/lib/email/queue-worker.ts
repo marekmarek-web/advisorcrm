@@ -118,7 +118,7 @@ export async function processEmailQueueBatch(options?: {
         q.max_attempts AS "maxAttempts",
         q.payload
     `);
-    return rows.rows as Array<{
+    return rows as unknown as Array<{
       id: string;
       tenantId: string;
       campaignId: string;
@@ -374,7 +374,7 @@ export async function finalizeCompletedCampaigns(): Promise<number> {
   `);
 
   let count = 0;
-  for (const r of rows.rows as Array<{
+  for (const r of rows as unknown as Array<{
     id: string;
     tenantId: string;
     sent: number;
@@ -404,7 +404,7 @@ export async function activateDueScheduledCampaigns(): Promise<number> {
     WHERE status = 'scheduled' AND scheduled_at <= now()
     RETURNING id, tenant_id AS "tenantId"
   `);
-  const updated = rows.rows as Array<{ id: string; tenantId: string }>;
+  const updated = rows as unknown as Array<{ id: string; tenantId: string }>;
   for (const c of updated) {
     await withServiceTenantContext({ tenantId: c.tenantId }, async (tx) => {
       await tx
@@ -431,5 +431,5 @@ export async function reapStuckQueueJobs(olderThanMinutes = 10): Promise<number>
       AND locked_at < ${cutoff}
     RETURNING id
   `);
-  return res.rows.length;
+  return (res as unknown as Array<{ id: string }>).length;
 }

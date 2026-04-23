@@ -13,6 +13,7 @@ export type NativeScanErrorCodeForTelemetry =
   | "permission_denied"
   | "plugin_unavailable"
   | "ml_kit_unavailable"
+  | "no_usable_files"
   | "unknown";
 
 export type ScanTier = "web" | "web_mobile" | "native_capacitor" | "unknown";

@@ -184,9 +184,9 @@ export async function getCampaignDetail(campaignId: string): Promise<CampaignDet
       GROUP BY 1
       ORDER BY 1 ASC
     `);
-    const sparkline = (sparklineRows.rows as Array<{ day: string; opens: number; clicks: number }>).map(
-      (r) => ({ date: r.day, opens: r.opens, clicks: r.clicks }),
-    );
+    const sparkline = (
+      sparklineRows as unknown as Array<{ day: string; opens: number; clicks: number }>
+    ).map((r) => ({ date: r.day, opens: r.opens, clicks: r.clicks }));
 
     return { ...campaign, kpis, recipients, sparkline };
   });
