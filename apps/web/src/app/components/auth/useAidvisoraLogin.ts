@@ -16,6 +16,7 @@ import {
   parseStaffInviteTokenFromUrl,
   buildStaffInviteRegisterCompletePath,
 } from "@/lib/auth/staff-invite-url";
+import { getNativeWebAppBaseUrl } from "@/lib/url/native-web-app-base";
 
 export type LoginRole = "advisor" | "client";
 
@@ -402,7 +403,15 @@ export function useAidvisoraLogin() {
         return;
       }
       const supabase = createClient();
-      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+      const isNative = forceNative || isNativeRuntime();
+      // WKWebView often reports capacitor://localhost — Supabase then rejects
+      // redirect_to and falls back to Site URL (aidvisora.cz), which triggers
+      // Universal Links / „Open in Aidvisora?“ and breaks OAuth before Google loads.
+      const baseUrl = isNative
+        ? getNativeWebAppBaseUrl()
+        : typeof window !== "undefined"
+          ? window.location.origin
+          : "";
       const nextPath =
         role === "client"
           ? clientNextPath
@@ -410,7 +419,6 @@ export function useAidvisoraLogin() {
             ? buildStaffInviteRegisterCompletePath(staffInviteToken, advisorNextPath)
             : advisorNextPath;
       const encodedNext = encodeURIComponent(nextPath);
-      const isNative = forceNative || isNativeRuntime();
 
       if (isNative) {
         // Native flow: redirect to the bridge route which passes the auth code
