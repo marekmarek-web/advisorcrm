@@ -145,10 +145,11 @@ export const BATCH_A_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetAsOf: '2026-02-28',
     verifiedAt: '2026-04-05',
     logo: '/logos/funds/ishares_brand.png',
+    heroImage: '/report-assets/funds/ishares_core_msci_world/hero.svg',
     galleryImages: [
-      '/report-assets/funds/ishares_core_msci_world/msci1.png',
-      '/report-assets/funds/ishares_core_msci_world/msci2.png',
-      '/report-assets/funds/ishares_core_msci_world/msci3.png',
+      '/report-assets/funds/ishares_core_msci_world/gallery-1.svg',
+      '/report-assets/funds/ishares_core_msci_world/gallery-2.svg',
+      '/report-assets/funds/ishares_core_msci_world/gallery-3.svg',
     ],
     sources: [
       {

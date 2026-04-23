@@ -198,6 +198,11 @@ describe("WS-2 Batch 6 — dbService import whitelist", () => {
     /^apps\/web\/src\/lib\/ai\/assistant-conversation-repository\.ts$/,
     /^apps\/web\/src\/lib\/assistant\//,
     /^apps\/web\/src\/lib\/documents\/processing\//,
+    /** Veřejné tracking API (open/click) — bez user session, service DB. */
+    /^apps\/web\/src\/app\/api\/t\//,
+    /** E-mail worker / A+B finalize / veřejné referral — service tenant kontext. */
+    /^apps\/web\/src\/lib\/email\/(ab-finalize-worker|automation-worker|queue-worker)\.ts$/,
+    /^apps\/web\/src\/lib\/referrals\/public\.ts$/,
   ];
 
   it("žádný soubor mimo whitelist neimportuje dbService / withServiceTenantContext", () => {
