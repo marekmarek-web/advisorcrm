@@ -280,12 +280,49 @@ export function NativeOAuthDeepLinkBridge() {
               } catch {}
 
               /**
-               * Tohle je primární cesta. WebView si necháme navigovat na
-               * server-side route, která má v requestu všechna cookie
-               * (včetně `-code-verifier`), udělá PKCE exchange, nastaví
-               * `Set-Cookie` na session tokeny a 307 redirectne na `next`.
-               * MFA, error mapping a rate-limit řeší už ten handler.
+               * Primárně zkusíme client-side PKCE exchange přímo přes
+               * supabase-js v tomhle WebView. Browser klient má code_verifier
+               * v cookie/storage adapteru @supabase/ssr, takže nepotřebujeme
+               * spoléhat na cookie traversal při navigaci.
+               *
+               * Pokud client-side exchange selže (různé race condition po
+               * SFSafariViewController, MFA edge cases), fallbackujeme na
+               * server-side route `/auth/callback`, která má kompletní
+               * request cookies a umí si s tím poradit sama.
                */
+              try {
+                const supabase = createClient();
+                const { data: exchangeData, error: exchangeError } =
+                  await supabase.auth.exchangeCodeForSession(code);
+                if (!exchangeError && exchangeData?.session) {
+                  logNativeOAuthDebug(
+                    "[NativeOAuthDeepLinkBridge] client-side exchange OK, navigating to portal",
+                  );
+                  writeConsumedCode(code, { outcome: "ok" });
+                  try {
+                    const { data: aal } =
+                      await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+                    if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
+                      safeReplaceLocation(
+                        `${origin}/prihlaseni?pending_mfa=1&next=${encodeURIComponent("/portal/today")}`,
+                      );
+                      return;
+                    }
+                  } catch {}
+                  safeReplaceLocation(`${origin}/portal/today`);
+                  return;
+                }
+                logNativeOAuthDebug(
+                  "[NativeOAuthDeepLinkBridge] client-side exchange failed, falling back to server:",
+                  exchangeError?.message,
+                );
+              } catch (clientExchangeErr) {
+                logNativeOAuthDebug(
+                  "[NativeOAuthDeepLinkBridge] client-side exchange threw, falling back to server:",
+                  clientExchangeErr,
+                );
+              }
+
               const target = buildServerExchangeUrl(origin, code, "/portal/today");
               logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] delegating exchange to server:", target);
               writeConsumedCode(code, { outcome: "ok" });
