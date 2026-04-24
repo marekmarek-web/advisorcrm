@@ -206,7 +206,13 @@ export function NativeOAuthDeepLinkBridge() {
           return;
         }
 
-        if (parsed.protocol !== "aidvisor:" && parsed.protocol !== "aidvisora:") {
+        const isCustomScheme =
+          parsed.protocol === "aidvisor:" || parsed.protocol === "aidvisora:";
+        const isAidvisoraUniversalLink =
+          (parsed.protocol === "https:" || parsed.protocol === "http:") &&
+          (parsed.hostname === "aidvisora.cz" || parsed.hostname === "www.aidvisora.cz");
+
+        if (!isCustomScheme && !isAidvisoraUniversalLink) {
           handlerInFlight = false;
           return;
         }
@@ -220,7 +226,12 @@ export function NativeOAuthDeepLinkBridge() {
           const origin = getNativeWebAppBaseUrl();
           logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] resolved origin:", origin, "| window.location.origin:", typeof window !== "undefined" ? window.location.origin : "N/A");
 
-          if (parsed.host === "auth" && parsed.pathname.startsWith("/callback")) {
+          const isNativeBridgeUniversalLink =
+            isAidvisoraUniversalLink && parsed.pathname === "/auth/native-bridge";
+          const isAuthCallbackDeepLink =
+            parsed.host === "auth" && parsed.pathname.startsWith("/callback");
+
+          if (isNativeBridgeUniversalLink || isAuthCallbackDeepLink) {
             const code = parsed.searchParams.get("code");
             if (code) {
               const previousCode = readConsumedCode();
@@ -281,9 +292,27 @@ export function NativeOAuthDeepLinkBridge() {
               safeReplaceLocation(target);
               return;
             }
-            logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] auth/callback without code, navigating to portal");
+            logNativeOAuthDebug(
+              "[NativeOAuthDeepLinkBridge] auth callback/native bridge without code, navigating to portal",
+            );
             safeReplaceLocation(`${origin}/portal/today`);
             return;
+          }
+
+          const isAuthErrorDeepLink = parsed.host === "auth" && parsed.pathname === "/error";
+          const isNativeBridgeErrorUniversalLink =
+            isAidvisoraUniversalLink && parsed.pathname === "/auth/native-bridge";
+          if (isAuthErrorDeepLink || isNativeBridgeErrorUniversalLink) {
+            const msg =
+              parsed.searchParams.get("message") ||
+              parsed.searchParams.get("error_description") ||
+              parsed.searchParams.get("error_code") ||
+              "auth_failed";
+            if (parsed.searchParams.has("message") || parsed.searchParams.has("error_code")) {
+              console.warn("[NativeOAuthDeepLinkBridge] auth error deep link:", msg);
+              safeReplaceLocation(`${origin}/prihlaseni?error=${encodeURIComponent(msg)}`);
+              return;
+            }
           }
 
           if (parsed.host === "auth" && parsed.pathname === "/error") {

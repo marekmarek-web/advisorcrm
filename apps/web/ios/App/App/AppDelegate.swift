@@ -18,6 +18,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     let shareStore = ShareStore.store
 
+    @discardableResult
+    func handleIncomingURL(
+        _ url: URL,
+        app: UIApplication,
+        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+    ) -> Bool {
+        let success = ApplicationDelegateProxy.shared.application(app, open: url, options: options)
+        processSharedItems(from: url)
+        return success
+    }
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // FCM: configure only when GoogleService-Info.plist is copied into the
         // app target (see docs/runbook-push.md). The file is gitignored; without
@@ -61,14 +72,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        var success = true
-        if CAPBridge.handleOpenUrl(url, options) {
-            success = ApplicationDelegateProxy.shared.application(app, open: url, options: options)
-        }
+        return handleIncomingURL(url, app: app, options: options)
+    }
 
+    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        // Called when the app was launched with an activity, including Universal Links.
+        // Feel free to add additional processing here, but if you want the App API to support
+        // tracking app url opens, make sure to keep this call
+        return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
+    }
+
+    private func processSharedItems(from url: URL) {
         guard let components = NSURLComponents(url: url, resolvingAgainstBaseURL: true),
               let params = components.queryItems else {
-            return success
+            return
         }
 
         let titles = params.filter { $0.name == "title" }
@@ -90,14 +107,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         shareStore.processed = false
         NotificationCenter.default.post(name: Notification.Name("triggerSendIntent"), object: nil)
-        return success
-    }
-
-    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        // Called when the app was launched with an activity, including Universal Links.
-        // Feel free to add additional processing here, but if you want the App API to support
-        // tracking app url opens, make sure to keep this call
-        return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
 }

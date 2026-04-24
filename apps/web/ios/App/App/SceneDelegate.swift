@@ -16,13 +16,22 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.rootViewController = storyboard.instantiateInitialViewController()
         window?.makeKeyAndVisible()
 
-        forwardOpenURLContexts(connectionOptions.urlContexts)
+        // Cold-start deep links can arrive before the Capacitor bridge is fully
+        // ready. Hopping to the next run loop preserves the launch URL for the
+        // App plugin and prevents OAuth callbacks from getting lost.
+        if !connectionOptions.urlContexts.isEmpty {
+            DispatchQueue.main.async { [weak self] in
+                self?.forwardOpenURLContexts(connectionOptions.urlContexts)
+            }
+        }
         if let activity = connectionOptions.userActivities.first {
-            _ = ApplicationDelegateProxy.shared.application(
-                UIApplication.shared,
-                continue: activity,
-                restorationHandler: { _ in }
-            )
+            DispatchQueue.main.async {
+                _ = ApplicationDelegateProxy.shared.application(
+                    UIApplication.shared,
+                    continue: activity,
+                    restorationHandler: { _ in }
+                )
+            }
         }
     }
 
@@ -42,7 +51,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     private func forwardOpenURLContexts(_ contexts: Set<UIOpenURLContext>) {
         guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else { return }
         for context in contexts {
-            _ = appDelegate.application(UIApplication.shared, open: context.url, options: [:])
+            _ = appDelegate.handleIncomingURL(context.url, app: UIApplication.shared)
         }
     }
 }
