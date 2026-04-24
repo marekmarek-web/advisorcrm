@@ -421,24 +421,39 @@ export function useAidvisoraLogin() {
       const encodedNext = encodeURIComponent(nextPath);
 
       if (isNative) {
-        // Native flow: redirect to the bridge route which passes the auth code
-        // back to the app via deep link. The code is exchanged CLIENT-SIDE in
-        // the WebView (NativeOAuthDeepLinkBridge) so the session ends up in the
-        // correct cookie store.
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider,
-          options: {
-            redirectTo: `${baseUrl}/auth/native-bridge`,
-            skipBrowserRedirect: true,
-          },
-        });
-        if (error) {
-          setMessage(error.message);
+        /**
+         * Native OAuth: prefer direct custom-scheme callback to avoid visible
+         * stop on https://www.aidvisora.cz/auth/native-bridge in SFSafariViewController.
+         * If Supabase project redirect allow-list doesn't include the custom
+         * scheme yet, gracefully fall back to the HTTPS bridge route.
+         */
+        const nativeRedirectTargets = [
+          "aidvisora://auth/callback",
+          `${baseUrl}/auth/native-bridge`,
+        ];
+
+        let authUrl: string | null = null;
+        let lastErrorMessage = "";
+        for (const redirectTo of nativeRedirectTargets) {
+          const { data, error } = await supabase.auth.signInWithOAuth({
+            provider,
+            options: {
+              redirectTo,
+              skipBrowserRedirect: true,
+            },
+          });
+          if (!error && data?.url) {
+            authUrl = data.url;
+            break;
+          }
+          lastErrorMessage = error?.message ?? "OAuth init failed";
+        }
+
+        if (!authUrl) {
+          setMessage(lastErrorMessage || "OAuth přihlášení se nepodařilo spustit.");
           return;
         }
-        if (data?.url) {
-          await Browser.open({ url: data.url, windowName: "_self" });
-        }
+        await Browser.open({ url: authUrl, windowName: "_self" });
         return;
       }
 
