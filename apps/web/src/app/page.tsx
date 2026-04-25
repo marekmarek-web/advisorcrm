@@ -11,11 +11,11 @@ import PremiumLandingPage from "./components/PremiumLandingPage";
 import { LANDING_FAQS } from "@/data/landing-faq";
 
 /**
- * Dev: `force-dynamic` — vždy aktuální markup z editoru (žádné „zaseknuté“ statické HTML).
- * Prod: ISR; kratší interval, ať se po deployi rychle projeví změny na doméně.
+ * Musí být statické literály (Turbopack / segment config); podmíněný export podle NODE_ENV build zablokuje.
+ * ISR ~300s v produkci. V `next dev` se změny promítají přes Fast Refresh i bez `force-dynamic`.
  */
-export const dynamic = process.env.NODE_ENV === "development" ? "force-dynamic" : "force-static";
-export const revalidate = process.env.NODE_ENV === "development" ? 0 : 300;
+export const dynamic = "force-static";
+export const revalidate = 300;
 
 function LandingFaqJsonLd() {
   const schema = {
