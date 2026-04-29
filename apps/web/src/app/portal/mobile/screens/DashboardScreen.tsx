@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, type ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   Calendar,
@@ -16,8 +17,6 @@ import {
   ArrowRight,
   Users,
   MessageSquare,
-  Target,
-  TrendingUp,
   StickyNote,
   CheckCircle2,
   LayoutDashboard,
@@ -32,25 +31,61 @@ import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
 import { formatMeetingNoteDomainLabel } from "@/lib/meeting-notes/domain-labels";
 import { meetingNoteContentTitle as noteContentTitle } from "@/lib/meeting-notes/meeting-note-content";
 import type { FinancialAnalysisListItem } from "@/app/actions/financial-analyses";
-import type { ProductionSummary } from "@/app/actions/production";
-import type { BusinessPlanWidgetData } from "@/app/portal/today/DashboardEditable";
 import { TodayInCalendarWidget } from "@/app/components/dashboard/TodayInCalendarWidget";
 import { getServiceCtaHref } from "@/lib/service-engine/cta";
 import {
   MobileCard,
-  MobileSection,
   MobileSectionHeader,
-  MetricCard,
   StatusBadge,
   MobileLoadingState,
   ErrorState,
 } from "@/app/shared/mobile-ui/primitives";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
-import type { DashboardSummary, SuggestedAction } from "@/lib/ai/dashboard-types";
+import type { DashboardSummary } from "@/lib/ai/dashboard-types";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+function formatCount(count: number, one: string, few: string, many: string): string {
+  if (count === 1) return `1 ${one}`;
+  if (count >= 2 && count <= 4) return `${count} ${few}`;
+  return `${count} ${many}`;
+}
+
+function firstNameFromAdvisor(advisorName: string): string {
+  const first = advisorName.trim().split(/\s+/)[0];
+  return first || "poradce";
+}
+
+function AccentCard({
+  tone,
+  children,
+  className,
+}: {
+  tone: "indigo" | "rose" | "emerald" | "amber" | "slate";
+  children: ReactNode;
+  className?: string;
+}) {
+  const topBorder = {
+    indigo: "border-t-4 border-t-indigo-500",
+    rose: "border-t-4 border-t-rose-500",
+    emerald: "border-t-4 border-t-emerald-500",
+    amber: "border-t-4 border-t-amber-500",
+    slate: "border-t-4 border-t-slate-500",
+  }[tone];
+  return (
+    <section
+      className={cx(
+        "relative overflow-hidden rounded-[30px] border border-[color:var(--wp-surface-card-border)] bg-white shadow-[0_18px_44px_-34px_rgba(15,23,42,.32)]",
+        topBorder,
+        className,
+      )}
+    >
+      {children}
+    </section>
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -67,17 +102,17 @@ const QUICK_ACTIONS: QuickActionItem[] = [
   { icon: Calendar, label: "Nová schůzka", href: "/portal/calendar?new=1" },
   { icon: Briefcase, label: "Nový případ", action: "newOpportunity" },
   { icon: MessageSquare, label: "Zpráva", href: "/portal/messages" },
-  { icon: LayoutDashboard, label: "Board", href: "/portal/board" },
+  { icon: LayoutDashboard, label: "Tabule", href: "/portal/board" },
   { icon: Calculator, label: "Kalkulačky", href: "/portal/calculators" },
   { icon: PieChart, label: "Analýza", href: "/portal/analyses/financial" },
-  { brandAi: true, label: "AI Smlouvy", href: "/portal/contracts/review" },
+  { brandAi: true, label: "Kontrola smluv", href: "/portal/contracts/review" },
 ];
 
 /* ------------------------------------------------------------------ */
 /*  Shared widget card wrapper                                         */
 /* ------------------------------------------------------------------ */
 
-function WidgetCard({
+function _WidgetCard({
   icon: Icon,
   title,
   href,
@@ -113,25 +148,6 @@ function WidgetCard({
 /* ------------------------------------------------------------------ */
 /*  Per-widget renderers                                               */
 /* ------------------------------------------------------------------ */
-
-function suggestedActionHref(a: SuggestedAction): string {
-  const p = a.payload as Record<string, string | undefined>;
-  switch (a.type) {
-    case "open_review":
-      return `/portal/contracts/review/${encodeURIComponent(p.reviewId ?? "")}`;
-    case "view_client":
-      return `/portal/contacts/${encodeURIComponent(p.clientId ?? "")}`;
-    case "draft_email":
-      return p.clientId
-        ? `/portal/messages?contact=${encodeURIComponent(p.clientId)}`
-        : "/portal/messages";
-    case "open_task":
-    case "create_task":
-      return "/portal/tasks";
-    default:
-      return "/portal/today";
-  }
-}
 
 function useAIDashboardSummary() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -189,12 +205,12 @@ function useAIDashboardSummary() {
   return { summary, loading, fetchError, retry };
 }
 
-function HeroDashboardCard() {
+function _HeroDashboardCard() {
   return (
     <div
       className={cx(
-        "relative overflow-hidden rounded-[1.35rem] border border-white/10 px-5 py-5 text-white shadow-[0_20px_50px_rgba(10,15,41,0.35)]",
-        "bg-gradient-to-br from-[#060a1c] via-[#0a0f29] to-indigo-950",
+        "relative overflow-hidden rounded-[2rem] border border-white/10 px-5 py-5 text-white shadow-[0_20px_50px_rgba(10,15,41,0.32)]",
+        "bg-gradient-to-br from-[color:var(--wp-text)] via-[color:var(--wp-text)] to-indigo-950",
       )}
     >
       <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-violet-500/20 blur-3xl" aria-hidden />
@@ -207,49 +223,6 @@ function HeroDashboardCard() {
         </p>
       </div>
     </div>
-  );
-}
-
-function QuickSignalTile({
-  label,
-  value,
-  href,
-  loading,
-  valueTone = "default",
-}: {
-  label: string;
-  value: string | number;
-  href: string;
-  loading?: boolean;
-  valueTone?: "default" | "danger" | "warning";
-}) {
-  const inner = (
-    <>
-      <p className="text-[9px] font-black uppercase tracking-[0.1em] text-[color:var(--wp-text-secondary)] leading-tight line-clamp-2">
-        {label}
-      </p>
-      {loading ? (
-        <div className="mt-2 h-7 w-10 animate-pulse rounded-lg bg-[color:var(--wp-surface-muted)]" />
-      ) : (
-        <p
-          className={cx(
-            "mt-1.5 text-xl font-black tabular-nums tracking-tight",
-            valueTone === "danger" && "text-rose-600",
-            valueTone === "warning" && "text-amber-600",
-            valueTone === "default" && "text-[color:var(--wp-text)]",
-          )}
-        >
-          {value}
-        </p>
-      )}
-    </>
-  );
-  return (
-    <MobileCard className="min-w-0 p-3">
-      <Link href={href} className="block min-h-[44px] min-w-0 active:opacity-90">
-        {inner}
-      </Link>
-    </MobileCard>
   );
 }
 
@@ -270,7 +243,7 @@ function PriorityLinkRow({
     <MobileCard className="overflow-hidden p-0 shadow-[var(--aidv-mobile-shadow-card-premium,var(--aidv-shadow-card-sm))]">
       <Link href={href} className="flex min-h-[44px] items-start gap-3 px-4 py-3.5 active:bg-black/[0.025]">
         <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-50 to-violet-50 ring-1 ring-indigo-100/80">
-          <Icon size={18} className="text-[#0a0f29]" strokeWidth={2} />
+          <Icon size={18} className="text-[color:var(--wp-text)]" strokeWidth={2} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -370,7 +343,7 @@ function buildPriorityRows(
   return deduped;
 }
 
-function KpiClientsStrip({
+function _KpiClientsStrip({
   serviceRecommendations,
   kpis,
 }: {
@@ -425,13 +398,14 @@ function AiInsightsPanel({
   fetchError: string | null;
   onRetry: () => void;
 }) {
-  const suggested = (summary?.suggestedActions ?? []).slice(0, 4);
+  /** Jen fronta AI review smluv — ne `suggestedActions` (tam jsou i úkoly a klienti). */
+  const contractQueue = (summary?.contractsWaitingForReview ?? []).slice(0, 5);
   const prose = summary?.assistantSummaryText?.trim();
 
   if (loading) {
     return (
       <MobileCard className="border-indigo-100/80">
-        <MobileLoadingState rows={3} variant="row" label="Načítám interní AI náhled" />
+        <MobileLoadingState rows={3} variant="row" label="Načítám interní kontrolní náhled" />
       </MobileCard>
     );
   }
@@ -439,7 +413,7 @@ function AiInsightsPanel({
   if (fetchError) {
     return (
       <ErrorState
-        title="Interní AI náhled"
+        title="Interní kontrolní náhled"
         description={fetchError}
         onRetry={onRetry}
         homeHref={false}
@@ -455,7 +429,7 @@ function AiInsightsPanel({
     );
   }
 
-  const hasBody = suggested.length > 0 || Boolean(prose);
+  const hasBody = contractQueue.length > 0 || Boolean(prose);
   if (!hasBody) {
     return (
       <MobileCard className="border-indigo-50 bg-gradient-to-br from-white to-indigo-50/30">
@@ -469,7 +443,7 @@ function AiInsightsPanel({
           href="/portal/contracts/review"
           className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 text-sm font-bold text-white"
         >
-          <AiAssistantBrandIcon size={16} /> AI Smlouvy <ArrowRight size={14} />
+          <AiAssistantBrandIcon size={16} /> Kontrola smluv <ArrowRight size={14} />
         </Link>
       </MobileCard>
     );
@@ -479,22 +453,22 @@ function AiInsightsPanel({
     <MobileCard className="border-indigo-100/80 bg-gradient-to-br from-white to-violet-50/25">
       <div className="flex items-center gap-2 mb-3">
         <AiAssistantBrandIcon size={22} className="shrink-0" />
-        <h3 className="text-sm font-black tracking-tight text-[#0a0f29]">Interní AI náhled</h3>
+        <h3 className="text-sm font-black tracking-tight text-[color:var(--wp-text)]">Interní kontrolní náhled</h3>
       </div>
-      {suggested.length > 0 ? (
+      {contractQueue.length > 0 ? (
         <div className="space-y-2">
           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[color:var(--wp-text-tertiary)]">
-            Podněty k prověření
+            Čeká na interní kontrolu
           </p>
           <div className="space-y-1.5">
-            {suggested.map((a, i) => (
+            {contractQueue.map((c) => (
               <Link
-                key={`${a.type}-${i}`}
-                href={suggestedActionHref(a)}
+                key={c.id}
+                href={`/portal/contracts/review/${encodeURIComponent(c.id)}`}
                 className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl border border-violet-100 bg-violet-50/40 px-3 py-2.5 text-sm font-semibold text-[color:var(--wp-text)] active:scale-[0.99]"
               >
-                <span className="min-w-0 flex-1 truncate">{a.label}</span>
-                <ArrowRight size={14} className="shrink-0 text-violet-500" />
+                <span className="min-w-0 flex-1 truncate">{c.fileName?.trim() || "Soubor ke kontrole"}</span>
+                <ArrowRight size={14} className="shrink-0 text-violet-500" aria-hidden />
               </Link>
             ))}
           </div>
@@ -512,13 +486,13 @@ function AiInsightsPanel({
         href="/portal/contracts/review"
         className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 text-sm font-bold text-white"
       >
-        <AiAssistantBrandIcon size={16} /> Otevřít AI Smlouvy <ArrowRight size={14} />
+        <AiAssistantBrandIcon size={16} /> Otevřít kontrolu smluv <ArrowRight size={14} />
       </Link>
     </MobileCard>
   );
 }
 
-function TasksWidget({ kpis }: { kpis: DashboardKpis }) {
+function _TasksWidget({ kpis }: { kpis: DashboardKpis }) {
   const all = [...kpis.overdueTasks, ...(kpis.tasksDueToday ?? [])].slice(0, 5);
   const todayStr = new Date().toISOString().slice(0, 10);
   const isOverdue = (d: string) => d < todayStr;
@@ -596,12 +570,12 @@ function ActiveDealsWidget({ kpis }: { kpis: DashboardKpis }) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {atRisk.map((o) => (
         <Link
           key={o.id}
           href={`/portal/pipeline/${o.id}`}
-          className="block p-2.5 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50 hover:bg-[color:var(--wp-surface-card)] transition-colors"
+          className="block rounded-[22px] border border-white/80 bg-white/86 p-3.5 shadow-[0_12px_28px_-24px_rgba(15,23,42,.25)] ring-1 ring-[color:var(--wp-surface-card-border)]/35 active:scale-[0.99]"
         >
           <span className="text-[10px] font-black uppercase tracking-widest text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
             Ohrožení
@@ -616,7 +590,7 @@ function ActiveDealsWidget({ kpis }: { kpis: DashboardKpis }) {
         <Link
           key={o.id}
           href={`/portal/pipeline/${o.id}`}
-          className="block p-2.5 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50 hover:bg-[color:var(--wp-surface-card)] transition-colors"
+          className="block rounded-[22px] border border-white/80 bg-white/86 p-3.5 shadow-[0_12px_28px_-24px_rgba(15,23,42,.25)] ring-1 ring-[color:var(--wp-surface-card-border)]/35 active:scale-[0.99]"
         >
           <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
             {o.stageName}
@@ -637,121 +611,7 @@ function ActiveDealsWidget({ kpis }: { kpis: DashboardKpis }) {
   );
 }
 
-function ProductionWidget({
-  productionSummary,
-  productionError,
-}: {
-  productionSummary: ProductionSummary | null;
-  productionError: string | null;
-}) {
-  if (productionError) {
-    return (
-      <div className="text-center py-4">
-        <p className="text-sm text-rose-600 mb-2">{productionError}</p>
-        <Link href="/portal/production" className="text-xs font-bold text-indigo-600 hover:underline">
-          Otevřít produkci →
-        </Link>
-      </div>
-    );
-  }
-  if (!productionSummary) {
-    return (
-      <div className="animate-pulse space-y-3 py-2 min-h-[80px] flex flex-col justify-center">
-        <div className="h-3 bg-[color:var(--wp-surface-card-border)] rounded w-2/3 mx-auto" />
-        <div className="h-8 bg-[color:var(--wp-surface-card-border)] rounded-lg w-3/4 mx-auto" />
-        <div className="h-3 bg-[color:var(--wp-surface-muted)] rounded w-1/2 mx-auto" />
-      </div>
-    );
-  }
-  if (productionSummary.totalCount === 0) {
-    return (
-      <div className="flex flex-col items-center text-center py-4">
-        <div className="w-12 h-12 bg-[color:var(--wp-surface-muted)] rounded-xl flex items-center justify-center text-[color:var(--wp-text-tertiary)] mb-2 border border-[color:var(--wp-surface-card-border)]">
-          <PieChart size={24} />
-        </div>
-        <p className="text-sm font-medium text-[color:var(--wp-text-secondary)]">Žádná produkce za tento měsíc.</p>
-      </div>
-    );
-  }
-  return (
-    <div className="text-center py-2">
-      <span className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] block mb-1">
-        Produkce {productionSummary.periodLabel}
-      </span>
-      <div className="text-2xl font-black text-[color:var(--wp-text)]">
-        {productionSummary.totalPremium.toLocaleString("cs-CZ")} Kč
-      </div>
-      <div className="text-xs font-bold text-[color:var(--wp-text-secondary)] mt-1">
-        Roční: {productionSummary.totalAnnual.toLocaleString("cs-CZ")} Kč · {productionSummary.totalCount} smluv
-      </div>
-      <Link
-        href="/portal/production"
-        className="text-xs font-bold text-indigo-600 hover:underline mt-3 inline-flex items-center gap-1"
-      >
-        Detail <ChevronRight size={12} />
-      </Link>
-    </div>
-  );
-}
-
-function BusinessPlanWidget({ data }: { data: BusinessPlanWidgetData | null }) {
-  const HEALTH_LABELS: Record<string, string> = {
-    achieved: "Splněno",
-    exceeded: "Překročeno",
-    on_track: "Podle plánu",
-    slight_slip: "Mírný skluz",
-    significant_slip: "Výrazný skluz",
-    no_data: "—",
-    not_applicable: "—",
-  };
-  const formatVal = (v: number, unit: string) =>
-    unit === "czk" ? `${Math.round(v).toLocaleString("cs-CZ")} Kč` : String(Math.round(v));
-
-  if (!data) {
-    return (
-      <div className="py-4">
-        <p className="text-sm text-[color:var(--wp-text-secondary)] mb-2">Zatím nemáte nastavený business plán.</p>
-        <Link
-          href="/portal/business-plan"
-          className="text-sm font-semibold text-indigo-600 hover:underline min-h-[44px] inline-flex items-center"
-        >
-          Nastavit plán →
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="py-1">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
-          {data.periodLabel}
-        </span>
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]">
-          {HEALTH_LABELS[data.overallHealth] ?? data.overallHealth}
-        </span>
-      </div>
-      <div className="space-y-2">
-        {data.metrics.map((m) => (
-          <div key={m.metricType} className="flex justify-between items-center text-sm">
-            <span className="font-medium text-[color:var(--wp-text-secondary)] truncate">{m.label}</span>
-            <span className="text-[color:var(--wp-text-secondary)] shrink-0 ml-2 text-xs">
-              {formatVal(m.actual, m.unit)} / {formatVal(m.target, m.unit)}
-            </span>
-          </div>
-        ))}
-      </div>
-      <Link
-        href="/portal/business-plan"
-        className="text-xs font-bold text-indigo-600 hover:underline mt-3 inline-flex items-center gap-1"
-      >
-        Otevřít plán <ChevronRight size={12} />
-      </Link>
-    </div>
-  );
-}
-
-function ClientCareWidget({
+function _ClientCareWidget({
   serviceRecommendations,
   kpis,
 }: {
@@ -852,7 +712,7 @@ function ClientCareWidget({
 function FinancialAnalysesWidget({ analyses }: { analyses: FinancialAnalysisListItem[] }) {
   const formatAgo = (d: Date | string) => {
     const t = new Date(d).getTime();
-    const diff = Math.floor((Date.now() - t) / 86400000);
+    const diff = Math.floor((new Date().getTime() - t) / 86400000);
     if (diff === 0) return "Dnes";
     if (diff === 1) return "Včera";
     if (diff < 7) return `Před ${diff} dny`;
@@ -989,6 +849,255 @@ function NotesWidget({ notes }: { notes: MeetingNoteForBoard[] }) {
   );
 }
 
+function MobileDashboardHero({
+  dateLabel,
+  overdueCount,
+  reviewCount,
+  agendaCount,
+  priorityCount,
+}: {
+  dateLabel: string;
+  overdueCount: number;
+  reviewCount: number;
+  agendaCount: number;
+  priorityCount: number;
+}) {
+  const hasAiReview = reviewCount > 0;
+  const headline =
+    overdueCount > 0 || hasAiReview
+      ? `Dnes řešíte hlavně ${overdueCount > 0 ? "zpožděné úkoly" : "dnešní agendu"}${hasAiReview ? " a kontrolu smluv" : ""}.`
+      : "Dnes je prostor projít agendu a posunout otevřené priority.";
+  return (
+    <section className="relative overflow-hidden rounded-[36px] bg-[color:var(--wp-text)] p-5 text-white shadow-[0_26px_70px_-24px_rgba(15,23,42,.58)]">
+      <div className="absolute -bottom-28 left-4 h-72 w-72 rounded-full bg-violet-500/22 blur-[70px]" aria-hidden />
+
+      <div className="relative">
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-white shadow-[0_12px_24px_-14px_rgba(15,23,42,.4)] ring-1 ring-black/10">
+              <Image
+                src="/logos/ai-button.png"
+                alt=""
+                width={128}
+                height={128}
+                sizes="48px"
+                className="h-full w-full object-contain"
+                priority={false}
+              />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/55">Dnešní priority</p>
+              <p className="mt-1 text-[13px] font-semibold text-white/64">{dateLabel}</p>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-black text-white/78 backdrop-blur-md">
+            {formatCount(priorityCount, "priorita", "priority", "priorit")}
+          </span>
+        </div>
+
+        <h2 className="max-w-[285px] text-[30px] font-black leading-[1.04] tracking-tight">{headline}</h2>
+        <p className="mt-4 max-w-[300px] text-[14px] font-semibold leading-6 text-white/58">
+          Pracovní nástěnka vytahuje jen věci, které mají dopad na dnešní postup.
+        </p>
+
+        <div className="mt-6 grid grid-cols-3 gap-2.5">
+          <div className="rounded-[22px] border border-white/10 bg-white/8 p-3 backdrop-blur-md">
+            <p className="text-[26px] font-black leading-none">{overdueCount}</p>
+            <p className="mt-2 text-[10px] font-bold leading-4 text-white/60">úkolů po termínu</p>
+          </div>
+          <div className="rounded-[22px] border border-white/10 bg-white/8 p-3 backdrop-blur-md">
+            <p className="text-[26px] font-black leading-none">{reviewCount}</p>
+            <p className="mt-2 text-[10px] font-bold leading-4 text-white/60">smluv k revizi</p>
+          </div>
+          <div className="rounded-[22px] border border-white/10 bg-white/8 p-3 backdrop-blur-md">
+            <p className="text-[26px] font-black leading-none">{agendaCount}</p>
+            <p className="mt-2 text-[10px] font-bold leading-4 text-white/60">body agendy</p>
+          </div>
+        </div>
+
+        <Link
+          href={hasAiReview ? "/portal/contracts/review" : "/portal/tasks"}
+          className="mt-5 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[20px] bg-gradient-to-r from-indigo-500 to-violet-600 text-[14px] font-black text-white shadow-[0_18px_34px_-18px_rgba(99,102,241,.82)] active:scale-[.98]"
+        >
+          <Sparkles size={18} />
+          {hasAiReview ? "Otevřít kontrolu smluv" : "Otevřít priority"}
+          <ArrowRight size={18} />
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function MobileDashboardAlert({ kpis }: { kpis: DashboardKpis }) {
+  const risk = kpis.pipelineAtRisk[0] ?? null;
+  if (!risk) {
+    return (
+      <AccentCard tone="emerald" className="p-5">
+        <div className="flex items-center gap-3">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[18px] bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+            <CheckCircle2 size={22} />
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-[18px] font-black text-[color:var(--wp-text)]">Bez urgentního obchodu</h3>
+            <p className="mt-1 text-[13px] font-semibold text-[color:var(--wp-text-secondary)]">V aktuálním výřezu není obchod po termínu.</p>
+          </div>
+        </div>
+      </AccentCard>
+    );
+  }
+
+  return (
+    <AccentCard tone="rose" className="p-5">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-rose-500">Vyžaduje pozornost</p>
+          <h3 className="mt-1 text-[20px] font-black tracking-tight text-[color:var(--wp-text)]">Obchodní případ po termínu</h3>
+        </div>
+        <span className="shrink-0 rounded-full bg-rose-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] text-rose-600 ring-1 ring-rose-100">
+          Po termínu
+        </span>
+      </div>
+
+      <div className="rounded-[24px] border border-rose-100 bg-gradient-to-br from-white to-rose-50/70 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="line-clamp-2 text-[16px] font-black leading-snug text-[color:var(--wp-text)]">{risk.title}</p>
+            <p className="mt-1 text-[13px] font-semibold text-[color:var(--wp-text-secondary)]">{risk.contactName ?? "Bez klienta"}</p>
+            <p className="mt-2 text-[12px] font-bold text-rose-600">Termín: {formatDisplayDateCs(risk.expectedCloseDate) ?? risk.expectedCloseDate}</p>
+          </div>
+          <p className="shrink-0 text-right text-[12px] font-black text-[color:var(--wp-text-secondary)]">
+            Hodnota<br />není v přehledu
+          </p>
+        </div>
+      </div>
+
+      <Link href={`/portal/pipeline/${risk.id}`} className="mt-4 flex min-h-[48px] items-center justify-center gap-2 rounded-[18px] bg-[color:var(--wp-text)] text-sm font-black text-white active:scale-[.98]">
+        Otevřít detail <ArrowRight size={16} />
+      </Link>
+    </AccentCard>
+  );
+}
+
+function MobileClientCareWidget({
+  serviceRecommendations,
+  kpis,
+}: {
+  serviceRecommendations: ServiceRecommendationWithContact[];
+  kpis: DashboardKpis;
+}) {
+  const items = serviceRecommendations.slice(0, 3).map((r) => {
+    const name = [r.contactFirstName, r.contactLastName].filter(Boolean).join(" ").trim() || "Klient";
+    const cta = getServiceCtaHref(r, r.contactId);
+    return { key: r.id, name, reason: r.title, href: cta.href, status: r.urgency === "overdue" ? "Po termínu" : "Servis" };
+  });
+  if (items.length === 0) {
+    for (const c of kpis.serviceDueContacts.slice(0, 3)) {
+      items.push({
+        key: c.id,
+        name: `${c.firstName} ${c.lastName}`.trim() || "Klient",
+        reason: `Servis ${formatDisplayDateCs(c.nextServiceDue) ?? c.nextServiceDue}`,
+        href: `/portal/contacts/${c.id}`,
+        status: "Servis",
+      });
+    }
+  }
+  if (items.length === 0) {
+    for (const c of kpis.upcomingAnniversaries.slice(0, 2)) {
+      items.push({
+        key: c.id,
+        name: c.partnerName ?? c.contactName ?? "Klient",
+        reason: `Výročí ${formatDisplayDateCs(c.anniversaryDate) ?? c.anniversaryDate}`,
+        href: `/portal/contacts/${c.contactId}`,
+        status: "Výročí",
+      });
+    }
+  }
+
+  return (
+    <section>
+      <MobileSectionHeader title="Péče o klienty" subtitle="Klienti, u kterých je potřeba udržet návaznost." />
+      {items.length === 0 ? (
+        <MobileCard className="p-5 text-center">
+          <p className="text-sm font-semibold text-[color:var(--wp-text-secondary)]">Žádná aktivní péče k zobrazení.</p>
+        </MobileCard>
+      ) : (
+        <div className="space-y-3">
+          {items.map((item) => (
+            <Link key={item.key} href={item.href} className="flex min-h-[82px] items-center gap-3 rounded-[26px] border border-white/75 bg-white/84 p-3.5 shadow-[0_16px_34px_-28px_rgba(15,23,42,.3)] ring-1 ring-[color:var(--wp-surface-card-border)]/45 active:scale-[.99]">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[18px] bg-rose-50 text-rose-500 ring-1 ring-rose-100">
+                <Users size={21} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-black text-[color:var(--wp-text)]">{item.name}</span>
+                <span className="mt-1 block truncate text-[12px] font-semibold text-[color:var(--wp-text-secondary)]">{item.reason}</span>
+                <span className="mt-2 inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-rose-600">{item.status}</span>
+              </span>
+              <span className="shrink-0 text-right text-[11px] font-black text-rose-600">
+                Naplánovat<br />schůzku
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MobileQuickActions({
+  actionCallbacks,
+}: {
+  actionCallbacks: Record<string, () => void>;
+}) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-[12px] font-black uppercase tracking-[0.16em] text-[color:var(--wp-text-secondary)]">
+            Rychlé akce
+          </p>
+          <p className="mt-1 text-[12px] font-semibold text-[color:var(--wp-text-secondary)]">
+            Nejčastější kroky hned po otevření nástěnky.
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-2.5">
+        {QUICK_ACTIONS.slice(0, 4).map((qa, i) => {
+          const cls =
+            "flex min-h-[78px] flex-col items-center justify-center gap-2 rounded-[24px] border border-white/85 bg-white/90 px-2 text-center text-[10px] font-black text-[color:var(--wp-text-secondary)] shadow-[0_14px_30px_-26px_rgba(15,23,42,.26)] ring-1 ring-[color:var(--wp-surface-card-border)]/35 backdrop-blur-xl active:scale-95";
+          const iconEl =
+            "brandAi" in qa && qa.brandAi ? (
+              <AiAssistantBrandIcon size={20} className="shrink-0" />
+            ) : (
+              (() => {
+                const QIcon = (qa as Extract<QuickActionItem, { icon: LucideIcon }>).icon;
+                return <QIcon size={20} className="shrink-0" />;
+              })()
+            );
+          if (qa.href) {
+            return (
+              <Link key={i} href={qa.href} className={cls}>
+                {iconEl}
+                <span className="leading-tight">{qa.label}</span>
+              </Link>
+            );
+          }
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => "action" in qa && qa.action && actionCallbacks[qa.action]?.()}
+              className={cls}
+            >
+              {iconEl}
+              <span className="leading-tight">{qa.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Main DashboardScreen                                               */
 /* ------------------------------------------------------------------ */
@@ -999,9 +1108,6 @@ export interface DashboardScreenProps {
   serviceRecommendations: ServiceRecommendationWithContact[];
   initialNotes: MeetingNoteForBoard[];
   initialAnalyses: FinancialAnalysisListItem[];
-  productionSummary: ProductionSummary | null;
-  productionError: string | null;
-  businessPlanWidgetData: BusinessPlanWidgetData | null;
   deviceClass: DeviceClass;
   onNewTask: () => void;
   onNewClient: () => void;
@@ -1014,21 +1120,23 @@ export function DashboardScreen({
   serviceRecommendations,
   initialNotes,
   initialAnalyses,
-  productionSummary,
-  productionError,
-  businessPlanWidgetData,
   deviceClass,
   onNewTask,
   onNewClient,
   onNewOpportunity,
 }: DashboardScreenProps) {
   const ai = useAIDashboardSummary();
-  const dateLabel = new Date().toLocaleDateString("cs-CZ", {
+  const pragueDate = new Date(`${kpis.pragueTodayYmd}T12:00:00`);
+  const dateLabelRaw = new Intl.DateTimeFormat("cs-CZ", {
     weekday: "long",
     day: "numeric",
     month: "long",
-  });
-  const isTablet = deviceClass === "tablet";
+  }).format(pragueDate);
+  const dateLabel = dateLabelRaw
+    .split(/\s+/)
+    .map((part) => part.toLocaleUpperCase("cs-CZ"))
+    .join(" ");
+  void deviceClass;
   const todayAgendaCount = kpis.todayEvents.length + kpis.tasksDueToday.length;
   const todayAgendaLabel =
     todayAgendaCount === 0
@@ -1046,349 +1154,131 @@ export function DashboardScreen({
 
   const reviewHref = (id: string) => `/portal/contracts/review/${encodeURIComponent(id)}`;
   const priorityRows = buildPriorityRows(kpis, ai.summary, reviewHref);
-
-  const formatPremiumShort = (n: number) => {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")} mil.`;
-    if (n >= 1000) return `${Math.round(n / 1000)} tis.`;
-    return `${n}`;
-  };
+  const reviewCount = ai.fetchError ? 0 : (ai.summary?.contractsWaitingForReview?.length ?? 0);
+  const priorityCount = kpis.overdueTasks.length + reviewCount + todayAgendaCount;
 
   return (
-    <div className="w-full min-w-0 overflow-x-hidden space-y-5">
-      {/* Datum + greeting — premium hierarchie */}
-      <div className="space-y-1">
-        <p className="text-[11px] font-black uppercase tracking-[0.12em] text-[color:var(--wp-text-secondary)] first-letter:uppercase">
-          {dateLabel}
-        </p>
-        <h1 className="text-[1.65rem] font-black leading-[1.15] tracking-tight text-[#0a0f29]">
-          Dobrý den, {advisorName.split(" ")[0]}
-        </h1>
-      </div>
+      <div className="-mx-5 -mt-3 min-h-full w-[calc(100%+2.5rem)] min-w-0 space-y-7 overflow-x-hidden bg-white px-5 pb-7 pt-3">
+        <section className="space-y-2 pt-2">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[color:var(--wp-text-secondary)]">{dateLabel}</p>
+          <h1 className="text-[32px] font-black leading-tight tracking-tight text-[color:var(--wp-text)]">
+            Dobrý den, {firstNameFromAdvisor(advisorName)}
+          </h1>
+        </section>
 
-      <HeroDashboardCard />
+        <MobileQuickActions actionCallbacks={actionCallbacks} />
 
-      {/* Rychlé signály — bez horizontálního scrollu */}
-      <div className="grid grid-cols-3 gap-2 min-w-0">
-        <QuickSignalTile
-          label="AI kontrola čeká"
-          value={
-            ai.loading ? 0 : ai.fetchError ? "—" : (ai.summary?.contractsWaitingForReview?.length ?? 0)
-          }
-          href="/portal/contracts/review"
-          loading={ai.loading}
-          valueTone={
-            !ai.loading && !ai.fetchError && (ai.summary?.contractsWaitingForReview?.length ?? 0) > 0
-              ? "warning"
-              : "default"
-          }
+        <MobileDashboardHero
+          dateLabel={dateLabelRaw}
+          overdueCount={kpis.overdueTasks.length}
+          reviewCount={reviewCount}
+          agendaCount={todayAgendaCount}
+          priorityCount={priorityCount}
         />
-        <QuickSignalTile
-          label="Po termínu"
-          value={kpis.overdueTasks.length}
-          href="/portal/tasks?filter=overdue"
-          valueTone={kpis.overdueTasks.length > 0 ? "danger" : "default"}
-        />
-        <QuickSignalTile
-          label="Dnes v agendě"
-          value={todayAgendaCount}
-          href="/portal/calendar"
-        />
-      </div>
 
-      {/* KPI dlaždice — Produkce / Úkoly / AI Review */}
-      <MobileSectionHeader
-        title="Klíčové metriky"
-        subtitle="Z produkčních dat CRM — interní přehled pro poradce."
-      />
-      <div className="grid grid-cols-3 gap-2 min-w-0">
-        {productionError ? (
-          <MobileCard className="min-w-0 p-3 border-rose-200/90 bg-rose-50/40">
-            <p className="text-[9px] font-black uppercase tracking-wide text-rose-800">Produkce</p>
-            <p className="mt-2 text-[11px] font-semibold leading-snug text-rose-700 line-clamp-3">Nepodařilo se načíst produkci.</p>
-            <Link href="/portal/production" className="mt-2 inline-flex text-[11px] font-black text-indigo-700">
-              Otevřít →
-            </Link>
-          </MobileCard>
-        ) : !productionSummary ? (
-          <MobileCard className="min-w-0 p-3">
-            <p className="text-[9px] font-black uppercase text-[color:var(--wp-text-secondary)]">Produkce</p>
-            <div className="mt-3">
-              <MobileLoadingState rows={2} variant="row" />
+        <MobileDashboardAlert kpis={kpis} />
+
+        <MobileClientCareWidget serviceRecommendations={serviceRecommendations} kpis={kpis} />
+
+        <section className="space-y-4">
+          <MobileSectionHeader
+            title="Priority"
+            subtitle="Interní práce podle CRM — ověřte detaily před sdělením klientovi."
+            action={
+              <Link href="/portal/tasks" className="text-[11px] font-black uppercase tracking-wide text-indigo-600">
+                Úkoly →
+              </Link>
+            }
+          />
+          {priorityRows.length === 0 ? (
+            <AccentCard tone="indigo" className="p-5 text-center">
+              <p className="text-sm font-semibold text-[color:var(--wp-text-secondary)]">
+                Žádné položky v prioritní frontě podle aktuálního CRM výřezu.
+              </p>
+              <Link href="/portal/tasks" className="mt-4 inline-flex min-h-[44px] items-center rounded-[16px] bg-[color:var(--wp-text)] px-5 text-xs font-black uppercase tracking-wide text-white">
+                Otevřít úkoly
+              </Link>
+            </AccentCard>
+          ) : (
+            <div className="space-y-3">
+              {priorityRows.slice(0, 6).map((row) => (
+                <PriorityLinkRow
+                  key={row.key}
+                  href={row.href}
+                  title={row.title}
+                  description={row.description}
+                  badge={row.badge}
+                  icon={row.icon}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="space-y-4">
+          <MobileSectionHeader title="Kontrola smluv" subtitle="Jen položky, které čekají na poradce. Bez technických hlášek." />
+          <AiInsightsPanel summary={ai.summary} loading={ai.loading} fetchError={ai.fetchError} onRetry={ai.retry} />
+        </section>
+
+        <section className="space-y-4">
+          <MobileSectionHeader title="Obchodní příležitosti" subtitle="Rizika a nejbližší obchodní krok podle CRM." />
+          <AccentCard tone="indigo" className="p-4">
+            <ActiveDealsWidget kpis={kpis} />
+          </AccentCard>
+        </section>
+
+        <section className="space-y-4">
+          <MobileSectionHeader title="Dnes v kalendáři" subtitle="Časové body, které ovlivní dnešní práci." />
+          <TodayInCalendarWidget
+            czPublicHolidayToday={kpis.czPublicHolidayToday}
+            czNameDaysToday={kpis.czNameDaysToday}
+            birthdaysToday={kpis.birthdaysToday}
+            pragueTodayYmd={kpis.pragueTodayYmd}
+          />
+          <MobileCard className="border-indigo-100/80 bg-gradient-to-br from-white to-indigo-50/40 p-5">
+            <p className="text-[17px] font-black text-[color:var(--wp-text)]">
+              {todayAgendaCount === 0 ? "Dnes nic naplánováno" : `${todayAgendaLabel} v agendě`}
+            </p>
+            <p className="mt-1 text-[13px] font-semibold text-[color:var(--wp-text-secondary)]">
+              Otevřete kalendář nebo dnešní úkoly.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Link href="/portal/calendar" className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[16px] bg-indigo-600 px-4 text-xs font-black uppercase tracking-wide text-white active:scale-[0.99]">
+                <Calendar size={16} aria-hidden />
+                Kalendář
+              </Link>
+              <Link href="/portal/tasks?filter=today" className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[16px] border border-[color:var(--wp-surface-card-border)] bg-white px-4 text-xs font-bold text-[color:var(--wp-text-secondary)] active:scale-[0.99]">
+                <CheckSquare size={16} aria-hidden />
+                Úkoly dnes
+              </Link>
             </div>
           </MobileCard>
-        ) : productionSummary.totalCount === 0 ? (
-          <Link href="/portal/production" className="block min-w-0">
-            <MetricCard label="Produkce" value="—" tone="default" />
-          </Link>
-        ) : (
-          <Link href="/portal/production" className="block min-w-0 [&_.text-xl]:text-lg [&_.text-xl]:truncate">
-            <MetricCard
-              label="Produkce"
-              value={`${formatPremiumShort(productionSummary.totalPremium)} Kč`}
-              tone="default"
-            />
-          </Link>
-        )}
-        <Link href="/portal/tasks" className="block min-w-0 [&_.text-xl]:text-lg">
-          <MetricCard
-            label="Úkoly"
-            value={kpis.tasksOpen}
-            tone={kpis.overdueTasks.length > 0 ? "warning" : "default"}
-          />
-        </Link>
-        <Link href="/portal/contracts/review" className="block min-w-0 [&_.text-xl]:text-lg">
-          {ai.loading ? (
-            <MobileCard className="p-3">
-              <p className="text-[9px] font-black uppercase text-[color:var(--wp-text-secondary)]">AI Review</p>
-              <div className="mt-3">
-                <MobileLoadingState rows={1} variant="row" />
-              </div>
-            </MobileCard>
-          ) : ai.fetchError ? (
-            <MobileCard className="p-3 border-amber-100 bg-amber-50/40">
-              <p className="text-[9px] font-black uppercase text-amber-900">AI Review</p>
-              <p className="mt-2 text-[11px] font-medium text-amber-900/90">Nepodařilo se načíst stav.</p>
-              <span className="mt-2 block text-xl font-black text-[color:var(--wp-text)]">—</span>
-            </MobileCard>
-          ) : (
-            <MetricCard
-              label="AI Review"
-              value={ai.summary?.contractsWaitingForReview?.length ?? 0}
-              tone={(ai.summary?.contractsWaitingForReview?.length ?? 0) > 0 ? "warning" : "default"}
-            />
-          )}
-        </Link>
-      </div>
+        </section>
 
-      {/* Klienti / péče — strip */}
-      <MobileSection title="Klienti v záběru">
-        <MobileCard className="pt-4">
-          <KpiClientsStrip serviceRecommendations={serviceRecommendations} kpis={kpis} />
-        </MobileCard>
-      </MobileSection>
-
-      {/* Priority list */}
-      <MobileSectionHeader
-        title="Priority"
-        subtitle="Interní práce podle CRM — ověřte detaily před sdělením klientovi."
-        action={
-          <Link href="/portal/tasks" className="text-[11px] font-black uppercase tracking-wide text-indigo-600">
-            Úkoly →
-          </Link>
-        }
-      />
-      {priorityRows.length === 0 ? (
-        <MobileCard className="text-center py-10">
-          <p className="text-sm font-medium text-[color:var(--wp-text-secondary)]">
-            Žádné položky v prioritní frontě podle výřezu právě teď — obnovte úkoly nebo kalendář.
-          </p>
-          <div className="mt-5 flex flex-wrap justify-center gap-2">
-            <Link
-              href="/portal/tasks"
-              className="inline-flex min-h-[44px] items-center rounded-xl bg-indigo-600 px-5 text-xs font-black uppercase tracking-wide text-white"
-            >
-              Úkoly
-            </Link>
-            <Link
-              href="/portal/calendar"
-              className="inline-flex min-h-[44px] items-center rounded-xl border border-[color:var(--wp-surface-card-border)] px-5 text-xs font-bold text-[color:var(--wp-text-secondary)]"
-            >
-              Kalendář
-            </Link>
-          </div>
-        </MobileCard>
-      ) : (
-        <div className="space-y-2">
-          {priorityRows.map((row) => (
-            <PriorityLinkRow
-              key={row.key}
-              href={row.href}
-              title={row.title}
-              description={row.description}
-              badge={row.badge}
-              icon={row.icon}
-            />
-          ))}
-        </div>
-      )}
-
-      <AiInsightsPanel summary={ai.summary} loading={ai.loading} fetchError={ai.fetchError} onRetry={ai.retry} />
-
-      {/* Quick Actions — pouze wrap, žádný horizontální scroll */}
-      <MobileSection title="Rychlé akce">
-        <div className="flex flex-wrap gap-2">
-        {QUICK_ACTIONS.map((qa, i) => {
-          const cls =
-            "flex items-center gap-1.5 px-3 py-2 bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] rounded-xl text-xs font-bold text-[color:var(--wp-text-secondary)] min-h-[40px] active:scale-95 transition-transform max-w-[100%]";
-          const iconEl =
-            "brandAi" in qa && qa.brandAi ? (
-              <AiAssistantBrandIcon size={14} className="opacity-70 shrink-0" />
-            ) : (
-              (() => {
-                const QIcon = (qa as Extract<QuickActionItem, { icon: LucideIcon }>).icon;
-                return <QIcon size={14} className="opacity-70" />;
-              })()
-            );
-          if (qa.href) {
-            return (
-              <Link key={i} href={qa.href} className={cls}>
-                {iconEl}
-                {qa.label}
-              </Link>
-            );
-          }
-          return (
-            <button
-              key={i}
-              type="button"
-              onClick={() => "action" in qa && qa.action && actionCallbacks[qa.action]?.()}
-              className={cls}
-            >
-              {iconEl}
-              {qa.label}
-            </button>
-          );
-        })}
-        </div>
-      </MobileSection>
-
-      <TodayInCalendarWidget
-        czPublicHolidayToday={kpis.czPublicHolidayToday}
-        czNameDaysToday={kpis.czNameDaysToday}
-        birthdaysToday={kpis.birthdaysToday}
-        pragueTodayYmd={kpis.pragueTodayYmd}
-      />
-
-      <MobileSection title="Agenda dnes">
-        <MobileCard className="border-indigo-100/80 bg-gradient-to-br from-white to-indigo-50/40">
-          <p className="text-sm font-bold text-[color:var(--wp-text)]">
-            {todayAgendaCount === 0 ? "Dnes nic naplánováno" : `${todayAgendaLabel} — schůzky a úkoly`}
-          </p>
-          <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">Otevřete kalendář nebo dnešní úkoly.</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Link
-              href="/portal/calendar"
-              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-xs font-black uppercase tracking-wide text-white active:scale-[0.99] sm:flex-none"
-            >
-              <Calendar size={16} aria-hidden />
-              Kalendář
-            </Link>
-            <Link
-              href="/portal/tasks?filter=today"
-              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 text-xs font-bold text-[color:var(--wp-text-secondary)] active:scale-[0.99] sm:flex-none"
-            >
-              <CheckSquare size={16} aria-hidden />
-              Úkoly dnes
-            </Link>
-          </div>
-        </MobileCard>
-      </MobileSection>
-
-      {/* Widget Grid — min-heights reduce layout shift as async widgets resolve */}
-      <div className={cx("grid gap-3", isTablet ? "grid-cols-2" : "grid-cols-1")}>
-        <div className="min-h-[120px]">
-          <WidgetCard
-            icon={CheckSquare}
-            title="Moje úkoly"
-            href="/portal/tasks"
-            iconColor="text-amber-500"
-            borderColor="border-t-4 border-t-emerald-500"
-          >
-            <TasksWidget kpis={kpis} />
-          </WidgetCard>
-        </div>
-
-        <div className="min-h-[120px]">
-          <WidgetCard
-            icon={Briefcase}
-            title="Aktivní obchody"
-            href="/portal/pipeline"
-            iconColor="text-purple-500"
-            borderColor="border-t-4 border-t-blue-500"
-          >
-            <ActiveDealsWidget kpis={kpis} />
-          </WidgetCard>
-        </div>
-
-        <div className="min-h-[120px]">
-          <WidgetCard
-            icon={TrendingUp}
-            title="Produkce"
-            href="/portal/production"
-            iconColor="text-indigo-400"
-            borderColor="border-t-4 border-t-blue-500"
-          >
-            <ProductionWidget
-              productionSummary={productionSummary}
-              productionError={productionError}
-            />
-          </WidgetCard>
-        </div>
-
-        <div className="min-h-[120px]">
-          <WidgetCard
-            icon={Target}
-            title="Plnění plánu"
-            href="/portal/business-plan"
-            iconColor="text-blue-500"
-            borderColor="border-t-4 border-t-blue-500"
-          >
-            <BusinessPlanWidget data={businessPlanWidgetData} />
-          </WidgetCard>
-        </div>
-
-        <div className="min-h-[120px]">
-          <WidgetCard
-            icon={AlertCircle}
-            title="Péče o klienty"
-            href="/portal/contacts"
-            iconColor="text-violet-500"
-            borderColor="border-t-4 border-t-violet-500"
-          >
-            <ClientCareWidget
-              serviceRecommendations={serviceRecommendations}
-              kpis={kpis}
-            />
-          </WidgetCard>
-        </div>
-
-        <div className="min-h-[120px]">
-          <WidgetCard
-            icon={FileText}
+        <section className="space-y-4">
+          <MobileSectionHeader
             title="Finanční analýzy"
-            href="/portal/analyses"
-            iconColor="text-blue-600"
-            borderColor="border-t-4 border-t-[color:var(--wp-text-tertiary)]"
-          >
+            subtitle="Rozpracované výstupy a klientské podklady."
+            action={
+              <Link href="/portal/analyses" className="text-[11px] font-black uppercase tracking-wide text-indigo-600">
+                Vše →
+              </Link>
+            }
+          />
+          <AccentCard tone="indigo" className="p-5">
             <FinancialAnalysesWidget analyses={initialAnalyses} />
-          </WidgetCard>
-        </div>
+          </AccentCard>
+        </section>
 
-        <div className="min-h-[60px]">
-          <WidgetCard
-            icon={MessageSquare}
-            title="Zprávy"
-            href="/portal/messages"
-            iconColor="text-emerald-500"
-            borderColor="border-t-4 border-t-emerald-500"
-          >
+        <section className="space-y-4">
+          <MobileSectionHeader title="Zprávy a zápisky" subtitle="Komunikace a poslední interní poznámky." />
+          <AccentCard tone="emerald" className="p-5">
             <MessagesWidget />
-          </WidgetCard>
-        </div>
-
-        {/* Notes -- spans full width on tablet */}
-        <div className={cx("min-h-[120px]", isTablet ? "col-span-2" : "")}>
-          <WidgetCard
-            icon={StickyNote}
-            title="Zápisky"
-            href="/portal/notes"
-            iconColor="text-amber-500"
-            borderColor="border-t-4 border-t-[color:var(--wp-text-tertiary)]"
-          >
+          </AccentCard>
+          <AccentCard tone="amber" className="p-5">
             <NotesWidget notes={initialNotes} />
-          </WidgetCard>
-        </div>
+          </AccentCard>
+        </section>
       </div>
-    </div>
   );
 }

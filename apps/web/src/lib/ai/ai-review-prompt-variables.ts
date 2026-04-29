@@ -222,9 +222,24 @@ export type BuildExtractionPromptVariablesParams = {
    *   - bundle_section_context (formatted summary of all available sections)
    */
   bundleSectionTexts?: import("@/lib/ai/combined-extraction").BundleSectionTexts | null;
+  /** Tenant-scoped, PII-safe hints mined from accepted advisor corrections. */
+  correctionHints?: string[];
 };
 
 const SECTION_VAR_MAX = 15_000;
+
+export function formatCorrectionHintsPromptSection(correctionHints: string[] | undefined): string {
+  const hints = (correctionHints ?? [])
+    .map((hint) => hint.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+  if (!hints.length) return "";
+  return [
+    "Known extraction hints from approved advisor corrections:",
+    ...hints.map((hint) => `- ${hint}`),
+    "These hints are anonymized. Use them only when supported by evidence in the current document. Never invent missing values. If the current document contradicts a hint, follow the current document and add a review warning.",
+  ].join("\n");
+}
 
 /** Format a bundle section context block for Prompt Builder variables. */
 function buildBundleSectionContextVar(
@@ -278,6 +293,11 @@ export function buildAiReviewExtractionPromptVariables(
   out.extractedText = out.extracted_text;
   out.classificationReasons = out.classification_reasons;
   out.adobeSignals = out.adobe_signals;
+  const correctionHintsSection = formatCorrectionHintsPromptSection(params.correctionHints);
+  if (correctionHintsSection) {
+    out.correction_hints = correctionHintsSection;
+    out.correctionHints = correctionHintsSection;
+  }
 
   // Section-specific variables — always populated to avoid OpenAI 400 "Missing prompt variables"
   // when the stored Prompt Builder template references these as template variables.

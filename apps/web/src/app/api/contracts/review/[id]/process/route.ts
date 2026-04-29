@@ -194,6 +194,7 @@ export async function POST(
             storagePath,
             requestContext,
             processingStartedAtMs,
+            userDeclaredDocumentIntent: review.userDeclaredDocumentIntent,
           });
           return "done" as const;
         } catch (err) {

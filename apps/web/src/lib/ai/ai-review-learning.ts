@@ -10,6 +10,8 @@ import {
 } from "db";
 import { withServiceTenantContext } from "@/lib/db/service-db";
 import type { ContractReviewRow } from "./review-queue-repository";
+import type { NewAiReviewCorrectionEvent } from "db";
+import { logAiReviewLearningEvent } from "./ai-review-learning-observability";
 
 export type CorrectionType =
   | "missing_field_added"
@@ -51,6 +53,18 @@ export type CorrectionHints = {
   validatorHints: Record<string, unknown>[];
   patternIds: string[];
 };
+
+export function buildCorrectionHintsTrace(hints: CorrectionHints): {
+  learningHintsUsed: boolean;
+  learningPatternIds: string[];
+  learningHintCount: number;
+} {
+  return {
+    learningHintsUsed: hints.promptHints.length > 0,
+    learningPatternIds: hints.patternIds,
+    learningHintCount: hints.promptHints.length,
+  };
+}
 
 const CRITICAL_FIELD_PATTERNS = [
   /^policyHolder(\.|$)|fullName$/i,
@@ -151,7 +165,7 @@ export function buildCorrectionEventValues(params: {
   correctedPayload: unknown;
   correctedFields: string[];
   correctedBy: string;
-}) {
+}): NewAiReviewCorrectionEvent[] {
   const originalPayload = params.row.extractedPayload;
   const metadata = extractMetadata(params.row, params.correctedPayload);
   return params.correctedFields.map((fieldPath) => {
@@ -178,7 +192,7 @@ export function buildCorrectionEventValues(params: {
       modelName: metadata.modelName,
       pipelineVersion: metadata.pipelineVersion,
       createdBy: params.correctedBy,
-      piiLevel: "contains_customer_data",
+      piiLevel: "contains_customer_data" as const,
     };
   });
 }
@@ -229,7 +243,9 @@ function patternKey(pattern: Pick<LearningPatternDraft, "scope" | "institutionNa
 }
 
 function confidenceFromSupport(supportCount: number): number {
-  return Math.min(0.95, 0.5 + supportCount * 0.1);
+  if (supportCount >= 4) return 0.85;
+  if (supportCount >= 2) return 0.70;
+  return 0.55;
 }
 
 export function mineLearningPatternDrafts(events: Array<{
@@ -242,12 +258,13 @@ export function mineLearningPatternDrafts(events: Array<{
 }>): LearningPatternDraft[] {
   const grouped = new Map<string, Array<typeof events[number]>>();
   for (const event of events) {
+    const patternKind = patternKindForCorrection(event);
     const groupKey = [
       event.institutionName ?? "",
       event.productName ?? "",
       event.documentType ?? "",
-      event.fieldPath,
-      event.correctionType,
+      patternKind,
+      patternKind === "field_alias" ? event.fieldPath : "",
     ].join("|");
     grouped.set(groupKey, [...(grouped.get(groupKey) ?? []), event]);
   }
@@ -260,67 +277,131 @@ export function mineLearningPatternDrafts(events: Array<{
     const sample = bucket[0];
     const supportCount = bucket.length;
     const sourceCorrectionIds = bucket.map((event) => event.id);
-    const scope: LearningPatternDraft["scope"] = sample.productName ? "product" : sample.institutionName ? "institution" : "tenant";
+    const patternType = patternKindForCorrection(sample);
+    if (patternType === "field_alias" && supportCount < 2) continue;
+    const severity = severityForPattern(patternType, sample.fieldPath);
+    const scope = scopeForCorrection(sample);
     const base = {
       scope,
       institutionName: sample.institutionName,
       productName: sample.productName,
       documentType: sample.documentType,
-      fieldPath: sample.fieldPath,
+      fieldPath: patternType === "field_alias" || patternType === "extraction_hint" ? sample.fieldPath : null,
       supportCount,
       confidence: confidenceFromSupport(supportCount),
       sourceCorrectionIds,
+      severity,
     };
 
-    if (sample.correctionType === "wrong_premium_aggregation" || sample.fieldPath.includes("premium.totalMonthlyPremium")) {
+    if (patternType === "premium_aggregation_rule") {
       add({
         ...base,
-        patternType: "premium_aggregation_rule",
-        ruleText: "Repeated advisor corrections changed total premium, likely requiring per-insured premium aggregation.",
-        promptHint: "For this institution/product, inspect all numbered insured person sections. Per-insured premium rows must be summed to contract total unless an explicit whole-contract total exists.",
-        validatorHintJson: { rule: "sum_numbered_insured_premiums", fieldPath: sample.fieldPath },
-        severity: "high",
+        patternType,
+        ruleText: "Accepted advisor corrections show that total monthly premium must be validated against numbered insured-person premium rows.",
+        promptHint: "U tohoto produktu vždy projdi všechny očíslované bloky pojištěných osob. Řádky typu 'Celkové běžné měsíční pojistné pro N. pojištěného' jsou pojistné dané osoby. Celkové měsíční pojistné smlouvy je součet všech pojištěných, pokud dokument neobsahuje explicitní celkový součet celé smlouvy.",
+        validatorHintJson: {
+          rule: "sum_numbered_insured_premiums",
+          premiumLabels: ["Celkové běžné měsíční pojistné pro"],
+          requireAllNumberedInsuredBlocks: true,
+        },
       });
-    } else if (sample.correctionType === "wrong_entity_mapping" || /participants|insured/i.test(sample.fieldPath)) {
+    } else if (patternType === "participant_detection_rule") {
       add({
         ...base,
-        patternType: "participant_detection_rule",
-        ruleText: "Repeated advisor corrections added or remapped insured participants.",
-        promptHint: "Always search for numbered sections like '2. pojištěný', 'dítě', or 'spolupojištěný' before finalizing participants.",
-        validatorHintJson: { rule: "require_numbered_participants", fieldPath: sample.fieldPath },
-        severity: "high",
+        patternType,
+        ruleText: "Accepted advisor corrections show that additional insured participants are often present in numbered or child-insured sections.",
+        promptHint: "U tohoto produktu hledej všechny bloky '1. pojištěný', '2. pojištěný', 'dítě', 'spolupojištěný'. Nevracej pouze pojistníka, pokud dokument deklaruje více pojištěných.",
+        validatorHintJson: {
+          rule: "require_numbered_participants",
+          participantLabels: ["1. pojištěný", "2. pojištěný", "dítě", "spolupojištěný"],
+        },
       });
-    } else if (sample.correctionType === "wrong_publish_decision") {
+    } else if (patternType === "publish_decision_rule") {
       add({
         ...base,
-        patternType: "publish_decision_rule",
-        ruleText: "Repeated advisor corrections changed publish eligibility.",
-        promptHint: "AI classification may warn about proposal/modelation, but CRM publishing is controlled by upload intent and advisor approval.",
+        patternType,
+        ruleText: "Accepted advisor corrections show that publish eligibility is decided by advisor upload intent and approval, not by AI lifecycle wording alone.",
+        promptHint: "AI klasifikace může upozornit na návrh/modelaci, ale nesmí sama blokovat propsání do CRM. Rozhoduje upload intent poradce a schválení review.",
         validatorHintJson: { rule: "publish_from_upload_intent_and_approval" },
-        severity: "critical",
       });
-    } else if (sample.correctionType === "wrong_document_classification") {
+    } else if (patternType === "classification_hint") {
       add({
         ...base,
-        patternType: "classification_hint",
-        ruleText: "Repeated advisor corrections changed document classification.",
-        promptHint: "Check lifecycle labels and document titles carefully; do not treat the word 'návrh' alone as a publish blocker.",
-        validatorHintJson: { rule: "classification_evidence_required" },
-        severity: "medium",
+        patternType,
+        ruleText: "Accepted advisor corrections changed document classification or lifecycle for this context.",
+        promptHint: "Ověř typ dokumentu a lifecycle podle nadpisu, účelu dokumentu a upload intentu poradce. Samotné slovo 'návrh' nepoužívej jako důvod k blokaci propsání.",
+        validatorHintJson: { rule: "classification_evidence_required", fields: ["documentClassification.primaryType", "documentClassification.lifecycleStatus"] },
+      });
+    } else if (patternType === "field_alias") {
+      add({
+        ...base,
+        patternType,
+        ruleText: `Accepted advisor corrections repeatedly touched field alias mapping for ${sample.fieldPath}.`,
+        promptHint: `U pole ${sample.fieldPath} ověř alternativní popisky a terminologii v dokumentu; hodnotu opři jen o aktuální dokument.`,
+        validatorHintJson: {
+          rule: "field_alias_attention",
+          fieldPath: sample.fieldPath,
+          aliases: [sample.fieldPath.split(".").pop() ?? sample.fieldPath],
+        },
       });
     } else {
       add({
         ...base,
-        patternType: "extraction_hint",
-        ruleText: `Repeated advisor corrections touched ${sample.fieldPath}.`,
-        promptHint: `Pay special attention to ${sample.fieldPath}; use only evidence present in the current document.`,
+        patternType,
+        ruleText: `Accepted advisor corrections repeatedly touched ${sample.fieldPath}.`,
+        promptHint: `Věnuj zvýšenou pozornost poli ${sample.fieldPath}; použij pouze důkaz v aktuálním dokumentu.`,
         validatorHintJson: { rule: "field_attention", fieldPath: sample.fieldPath },
-        severity: "medium",
       });
     }
   }
 
   return [...drafts.values()];
+}
+
+function patternKindForCorrection(event: { fieldPath: string; correctionType: string }): PatternType {
+  const fieldPath = event.fieldPath;
+  const lower = fieldPath.toLowerCase();
+  if (
+    event.correctionType === "wrong_premium_aggregation" &&
+    (lower.includes("premium.totalmonthlypremium") || lower.includes("premium.perinsured"))
+  ) {
+    return "premium_aggregation_rule";
+  }
+  if (
+    event.correctionType === "wrong_entity_mapping" ||
+    /participants\[[1-9]\]|insuredpersons\[[1-9]\]|child_insured|second_insured|spolupojištěn|dítě/i.test(fieldPath)
+  ) {
+    return "participant_detection_rule";
+  }
+  if (event.correctionType === "wrong_publish_decision" || /^publish/i.test(fieldPath)) {
+    return "publish_decision_rule";
+  }
+  if (
+    event.correctionType === "wrong_document_classification" ||
+    /documentclassification\.(primarytype|lifecyclestatus)|lifecyclestatus/i.test(fieldPath)
+  ) {
+    return "classification_hint";
+  }
+  if (
+    event.correctionType === "formatting_normalization" ||
+    event.correctionType === "wrong_value_replaced"
+  ) {
+    return "field_alias";
+  }
+  return "extraction_hint";
+}
+
+function severityForPattern(patternType: PatternType, fieldPath: string): LearningPatternDraft["severity"] {
+  if (patternType === "publish_decision_rule") return "critical";
+  if (isCriticalCorrectionField(fieldPath)) return "high";
+  if (patternType === "premium_aggregation_rule" || patternType === "participant_detection_rule") return "high";
+  return "medium";
+}
+
+function scopeForCorrection(event: { institutionName: string | null; productName: string | null }): LearningPatternDraft["scope"] {
+  if (event.productName) return "product";
+  if (event.institutionName) return "institution";
+  return "tenant";
 }
 
 export async function buildAiReviewLearningPatterns(params: {
@@ -353,7 +434,17 @@ export async function buildAiReviewLearningPatterns(params: {
     (!params.documentType || row.documentType === params.documentType)
   );
   const drafts = mineLearningPatternDrafts(relevant);
-  if (!drafts.length) return drafts;
+  if (!drafts.length) {
+    logAiReviewLearningEvent("learning_patterns_rebuilt", {
+      tenantId: params.tenantId,
+      institutionName: params.institutionName ?? null,
+      productName: params.productName ?? null,
+      documentType: params.documentType ?? null,
+      patternCount: 0,
+      patternTypes: [],
+    });
+    return drafts;
+  }
 
   await withServiceTenantContext({ tenantId: params.tenantId }, async (tx) => {
     const now = new Date();
@@ -408,11 +499,40 @@ export async function buildAiReviewLearningPatterns(params: {
     }
   });
 
+  logAiReviewLearningEvent("learning_patterns_rebuilt", {
+    tenantId: params.tenantId,
+    institutionName: params.institutionName ?? null,
+    productName: params.productName ?? null,
+    documentType: params.documentType ?? null,
+    patternCount: drafts.length,
+    patternTypes: drafts.map((draft) => draft.patternType),
+  });
   return drafts;
 }
 
 function hintIsSafe(hint: string): boolean {
   return hint.length <= 500 && !/[\w.+-]+@[\w.-]+\.[a-z]{2,}|(\+?\d[\d\s]{7,})|\b\d{6}\/?\d{3,4}\b/i.test(hint);
+}
+
+function hintSimilarityKey(hint: string): string {
+  return hint
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .split(" ")
+    .filter((word) => word.length > 3)
+    .slice(0, 12)
+    .join(" ");
+}
+
+function confidenceAsNumber(value: unknown): number {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
 }
 
 export async function getCorrectionHints(params: {
@@ -424,9 +544,6 @@ export async function getCorrectionHints(params: {
   maxHints?: number;
 }): Promise<CorrectionHints> {
   const maxHints = params.maxHints ?? 8;
-  const currentText = (params.documentText ?? "").toLowerCase();
-  const textContains = (value: string | null): boolean =>
-    Boolean(value && currentText.includes(value.toLowerCase()));
   const rows = await withServiceTenantContext({ tenantId: params.tenantId }, async (tx) => {
     return await tx
       .select({
@@ -439,6 +556,7 @@ export async function getCorrectionHints(params: {
         validatorHintJson: aiReviewLearningPatterns.validatorHintJson,
         confidence: aiReviewLearningPatterns.confidence,
         supportCount: aiReviewLearningPatterns.supportCount,
+        updatedAt: aiReviewLearningPatterns.updatedAt,
       })
       .from(aiReviewLearningPatterns)
       .where(and(
@@ -448,24 +566,68 @@ export async function getCorrectionHints(params: {
       .orderBy(desc(aiReviewLearningPatterns.supportCount), desc(aiReviewLearningPatterns.updatedAt));
   });
 
-  const relevant = rows.filter((row) => {
-    const institutionOk =
-      !row.institutionName ||
-      row.institutionName === params.institutionName ||
-      (!params.institutionName && textContains(row.institutionName));
-    const productOk =
-      !row.productName ||
-      row.productName === params.productName ||
-      (!params.productName && textContains(row.productName));
-    const typeOk = !row.documentType || !params.documentType || row.documentType === params.documentType;
-    return institutionOk && productOk && typeOk;
-  }).slice(0, maxHints);
+  const rank = (row: typeof rows[number]): number | null => {
+    if (confidenceAsNumber(row.confidence) < 0.5) return null;
+    if (
+      row.scope === "product" &&
+      row.institutionName === params.institutionName &&
+      row.productName === params.productName &&
+      (!row.documentType || row.documentType === params.documentType)
+    ) return 1;
+    if (
+      row.scope === "institution" &&
+      row.institutionName === params.institutionName &&
+      !row.productName
+    ) return 2;
+    if (
+      row.scope === "document_type" &&
+      row.documentType === params.documentType &&
+      !row.institutionName &&
+      !row.productName
+    ) return 3;
+    if (
+      row.scope === "tenant" &&
+      !row.institutionName &&
+      !row.productName &&
+      (!row.documentType || row.documentType === params.documentType)
+    ) return 4;
+    if (row.scope === "global_safe") return 5;
+    return null;
+  };
 
-  return {
-    promptHints: relevant.map((row) => row.promptHint).filter((hint): hint is string => Boolean(hint && hintIsSafe(hint))),
+  const seen = new Set<string>();
+  const relevant = rows
+    .map((row) => ({ row, rank: rank(row) }))
+    .filter((entry): entry is { row: typeof rows[number]; rank: number } => entry.rank != null)
+    .sort((a, b) =>
+      a.rank - b.rank ||
+      (b.row.supportCount ?? 0) - (a.row.supportCount ?? 0) ||
+      confidenceAsNumber(b.row.confidence) - confidenceAsNumber(a.row.confidence)
+    )
+    .filter(({ row }) => {
+      if (!row.promptHint || !hintIsSafe(row.promptHint)) return false;
+      const key = hintSimilarityKey(row.promptHint);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, maxHints)
+    .map(({ row }) => row);
+
+  const result = {
+    promptHints: relevant.map((row) => row.promptHint).filter((hint): hint is string => Boolean(hint)),
     validatorHints: relevant.map((row) => row.validatorHintJson).filter((hint): hint is Record<string, unknown> => isRecord(hint)),
     patternIds: relevant.map((row) => row.id),
   };
+  logAiReviewLearningEvent("learning_hints_loaded", {
+    tenantId: params.tenantId,
+    institutionName: params.institutionName ?? null,
+    productName: params.productName ?? null,
+    documentType: params.documentType ?? null,
+    hintCount: result.promptHints.length,
+    patternIds: result.patternIds,
+  });
+  return result;
 }
 
 export async function createEvalCaseDraftsForAcceptedCorrections(params: {
@@ -545,11 +707,22 @@ export function scoreAiReviewEvalCase(params: {
   actualOutput: unknown;
   criticalFields: string[];
 }) {
+  const scoreValue = (payload: unknown, fieldPath: string): unknown => {
+    if (fieldPath.endsWith(".length")) {
+      const value = getValueByPath(payload, fieldPath.slice(0, -".length".length));
+      return Array.isArray(value) ? value.length : undefined;
+    }
+    return getValueByPath(payload, fieldPath);
+  };
+  const asNumber = (value: unknown): number => {
+    if (typeof value === "number") return value;
+    return Number.parseFloat(String(value ?? "").replace(/\s/g, "").replace(",", "."));
+  };
   const criticalResults = params.criticalFields.map((fieldPath) => {
-    const expected = getValueByPath(params.expectedOutput, fieldPath);
-    const actual = getValueByPath(params.actualOutput, fieldPath);
-    const expectedNumber = typeof expected === "number" ? expected : Number.parseFloat(String(expected ?? "").replace(",", "."));
-    const actualNumber = typeof actual === "number" ? actual : Number.parseFloat(String(actual ?? "").replace(",", "."));
+    const expected = scoreValue(params.expectedOutput, fieldPath);
+    const actual = scoreValue(params.actualOutput, fieldPath);
+    const expectedNumber = asNumber(expected);
+    const actualNumber = asNumber(actual);
     const numeric = Number.isFinite(expectedNumber) && Number.isFinite(actualNumber);
     const match = numeric
       ? Math.abs(expectedNumber - actualNumber) <= 0.01
@@ -564,17 +737,59 @@ export function scoreAiReviewEvalCase(params: {
   const participantCount = Array.isArray(expectedParticipants) && Array.isArray(actualParticipants)
     ? expectedParticipants.length === actualParticipants.length
     : true;
-  const expectedPublish = getValueByPath(params.expectedOutput, "publishHints.contractPublishable");
-  const actualPublish = getValueByPath(params.actualOutput, "publishHints.contractPublishable");
+  const expectedPublish =
+    getValueByPath(params.expectedOutput, "publishIntent.shouldPublishToCrm") ??
+    getValueByPath(params.expectedOutput, "publishHints.contractPublishable");
+  const actualPublish =
+    getValueByPath(params.actualOutput, "publishIntent.shouldPublishToCrm") ??
+    getValueByPath(params.actualOutput, "publishHints.contractPublishable");
   const publishDecision = expectedPublish == null || expectedPublish === actualPublish;
+  const classificationPrimary = (
+    getValueByPath(params.expectedOutput, "documentClassification.primaryType") == null ||
+    getValueByPath(params.expectedOutput, "documentClassification.primaryType") === getValueByPath(params.actualOutput, "documentClassification.primaryType")
+  );
+  const classificationLifecycle = (
+    getValueByPath(params.expectedOutput, "documentClassification.lifecycleStatus") == null ||
+    getValueByPath(params.expectedOutput, "documentClassification.lifecycleStatus") === getValueByPath(params.actualOutput, "documentClassification.lifecycleStatus")
+  );
   return {
     criticalExact,
     numericPremium,
     participantCount,
     premiumAggregation: criticalResults.find((r) => r.fieldPath === "premium.totalMonthlyPremium")?.match ?? true,
     publishDecision,
-    schemaValid: true,
+    classificationMatch: classificationPrimary && classificationLifecycle,
+    schemaValid: isRecord(params.actualOutput),
     criticalResults,
+  };
+}
+
+export function buildAiReviewLearningScorecard(results: Array<ReturnType<typeof scoreAiReviewEvalCase>>) {
+  const avg = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
+  const scorecard = {
+    cases: results.length,
+    schemaValid: avg(results.map((result) => result.schemaValid ? 1 : 0)),
+    criticalExactMatch: avg(results.map((result) => result.criticalExact)),
+    numericToleranceMatch: avg(results.map((result) => result.numericPremium)),
+    participantCountMatch: avg(results.map((result) => result.participantCount ? 1 : 0)),
+    premiumAggregationMatch: avg(results.map((result) => result.premiumAggregation ? 1 : 0)),
+    publishDecisionMatch: avg(results.map((result) => result.publishDecision ? 1 : 0)),
+    classificationMatch: avg(results.map((result) => result.classificationMatch ? 1 : 0)),
+  };
+  const thresholds = {
+    schemaValid: 1,
+    publishDecisionMatch: 1,
+    numericToleranceMatch: 0.99,
+    criticalExactMatch: 0.98,
+  };
+  return {
+    ...scorecard,
+    thresholds,
+    pass:
+      scorecard.schemaValid >= thresholds.schemaValid &&
+      scorecard.publishDecisionMatch >= thresholds.publishDecisionMatch &&
+      scorecard.numericToleranceMatch >= thresholds.numericToleranceMatch &&
+      scorecard.criticalExactMatch >= thresholds.criticalExactMatch,
   };
 }
 

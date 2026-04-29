@@ -73,9 +73,6 @@ export async function MobilePortalClientLoader({
       serviceRecommendations={[]}
       initialNotes={[]}
       initialAnalyses={[]}
-      productionSummary={null}
-      productionError={null}
-      businessPlanWidgetData={null}
       canWriteCalendar={canWriteCalendar}
       roleName={roleName}
       deferDataHydration

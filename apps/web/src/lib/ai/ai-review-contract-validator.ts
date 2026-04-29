@@ -1,5 +1,10 @@
 import type { DocumentReviewEnvelope } from "./document-review-types";
 import { parseMoneyInput } from "./contract-draft-premiums";
+import {
+  applyValidatorHints,
+  validateCriticalFields as validateLearningCriticalFields,
+  validateParticipantCount as validateLearningParticipantCount,
+} from "./ai-review-learning-validators";
 
 export type UserDeclaredDocumentIntent = {
   isModelation: boolean;
@@ -133,6 +138,60 @@ function fallbackPersonsFromFlatFields(env: DocumentReviewEnvelope): Array<Recor
   return people.filter((p): p is NonNullable<typeof p> => Boolean(p));
 }
 
+function normalizeDocumentText(text: string): string {
+  return text.replace(/\u00a0/g, " ").replace(/\r/g, "\n");
+}
+
+function normalizeCzechDate(raw: string | null): string | undefined {
+  if (!raw) return undefined;
+  const m = /(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})/.exec(raw);
+  if (!m) return raw.trim();
+  return `${m[1].padStart(2, "0")}.${m[2].padStart(2, "0")}.${m[3]}`;
+}
+
+function extractInsuredPersonsFromDocumentText(documentText: string): Array<Record<string, unknown>> {
+  const text = normalizeDocumentText(documentText);
+  if (!text.trim()) return [];
+
+  const orderToPremium = new Map<number, number>();
+  const premiumPattern = /Celkové\s+běžné\s+měsíční\s+pojistné\s+pro\s+(\d+)\.\s*pojištěného\s+([\d\s.,]+)\s*Kč/gi;
+  for (const match of text.matchAll(premiumPattern)) {
+    const order = Number(match[1]);
+    const amount = parseMoneyInput(match[2]);
+    if (Number.isFinite(order) && amount != null) orderToPremium.set(order, amount);
+  }
+
+  const persons: Array<Record<string, unknown>> = [];
+  for (const [order, monthlyPremium] of [...orderToPremium.entries()].sort(([a], [b]) => a - b)) {
+    const premiumNeedle = `Celkové běžné měsíční pojistné pro ${order}. pojištěného`;
+    const premiumIndex = text.indexOf(premiumNeedle);
+    const headingIndex = premiumIndex >= 0 ? text.lastIndexOf(`${order}. pojištěný`, premiumIndex) : -1;
+    const window = headingIndex >= 0
+      ? text.slice(headingIndex, premiumIndex + 2200)
+      : text.slice(Math.max(0, premiumIndex - 2200), premiumIndex + 2200);
+
+    const name =
+      /Titul,\s*jméno\s+a\s+příjmení:\s*([^\n]+)/i.exec(window)?.[1]?.trim() ??
+      /Jméno\s+a\s+příjmení:\s*([^\n]+)/i.exec(window)?.[1]?.trim();
+    const birthNumber = /Rodné\s+číslo:\s*([0-9/]+)/i.exec(window)?.[1]?.trim();
+    const birthDate = normalizeCzechDate(/Datum\s+narození:\s*([0-9.\s]+)/i.exec(window)?.[1]?.trim() ?? null);
+    const address = /Trvalé\s+bydliště:\s*([^\n]+)/i.exec(window)?.[1]?.trim();
+    const occupation = /Zaměstnání:\s*([^\n]+)/i.exec(window)?.[1]?.trim();
+
+    persons.push({
+      order,
+      role: order === 1 ? "primary_insured" : "insured",
+      fullName: name,
+      birthNumber,
+      birthDate,
+      address,
+      occupation,
+      monthlyPremium,
+    });
+  }
+  return persons.filter((p) => p.fullName || p.monthlyPremium != null);
+}
+
 function normalizePerson(raw: Record<string, unknown>, index: number): Record<string, unknown> {
   const coverages = Array.isArray(raw.coverages)
     ? raw.coverages
@@ -158,13 +217,21 @@ function normalizePerson(raw: Record<string, unknown>, index: number): Record<st
   };
 }
 
-export function validatePremiumAggregation(env: DocumentReviewEnvelope): void {
+export function validatePremiumAggregation(env: DocumentReviewEnvelope, documentText = ""): void {
   env.extractedFields = env.extractedFields ?? {};
+  const textCount = /Počet\s+pojištěných:\s*([^\n]+)/i.exec(normalizeDocumentText(documentText))?.[1];
   const declaredInsuredCount =
-    parseCount(fieldValue(env, "insuredCount") ?? fieldValue(env, "insuredPersonsCount") ?? fieldValue(env, "numberOfInsuredPersons"));
+    parseCount(fieldValue(env, "insuredCount") ?? fieldValue(env, "insuredPersonsCount") ?? fieldValue(env, "numberOfInsuredPersons") ?? textCount);
+  if (textCount && !fieldValue(env, "insuredCount")) {
+    setField(env, "insuredCount", textCount, 0.95);
+  }
   const sourcePersons = extractStructuredPersons(env);
   const fallbackPersons = sourcePersons.length > 0 ? [] : fallbackPersonsFromFlatFields(env);
-  const insuredPersons = [...sourcePersons, ...fallbackPersons].map(normalizePerson).filter((p) => p.fullName || p.monthlyPremium != null);
+  const textPersons = extractInsuredPersonsFromDocumentText(documentText);
+  const personSource = textPersons.length >= sourcePersons.length && textPersons.length > 0
+    ? textPersons
+    : [...sourcePersons, ...fallbackPersons];
+  const insuredPersons = personSource.map(normalizePerson).filter((p) => p.fullName || p.monthlyPremium != null);
 
   if (insuredPersons.length > 0) {
     (env as unknown as { insuredPersons: unknown }).insuredPersons = insuredPersons;
@@ -283,9 +350,14 @@ export function validateListSummaryHasData(env: DocumentReviewEnvelope): void {
 export function runAiReviewDeterministicValidators(
   env: DocumentReviewEnvelope,
   intentRaw: unknown,
+  documentText = "",
+  validatorHints: Record<string, unknown>[] = [],
 ): DocumentReviewEnvelope {
   const intent = normalizeUserDeclaredDocumentIntent(intentRaw);
-  validatePremiumAggregation(env);
+  validatePremiumAggregation(env, documentText);
+  validateLearningParticipantCount(env, documentText);
+  validateLearningCriticalFields(env);
+  applyValidatorHints(env, validatorHints);
   validatePublishEligibility(env, intent);
   validateRequiredFieldsForCrm(env);
   validateListSummaryHasData(env);

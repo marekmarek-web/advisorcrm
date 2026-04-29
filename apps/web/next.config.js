@@ -145,9 +145,9 @@ const nextConfig = {
       { protocol: "https", hostname: "i.vimeocdn.com", pathname: "/**" },
       { protocol: "https", hostname: "vumbnail.com", pathname: "/**" },
     ],
-    // Perf — AVIF první (lepší komprese), WebP fallback pro starší browsery.
-    // Next image optimizer vybere nejlepší formát podle `Accept` hlavičky.
-    formats: ["image/avif", "image/webp"],
+    // WebP jen — na WebKit/macOS někdy padá dekódování AVIF z `_next/image` (`initImage … err=-39`).
+    // WebP zůstává výrazná úspora oproti původním PNG/JPEG.
+    formats: ["image/webp"],
     minimumCacheTTL: 31536000,
     deviceSizes: [360, 420, 640, 768, 1024, 1280, 1536],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],

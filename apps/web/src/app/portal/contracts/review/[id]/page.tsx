@@ -15,6 +15,7 @@ import {
   confirmAllPendingFields,
   persistFinalContractOverride,
   persistManualReviewWarningState,
+  trackContractReviewFieldCorrection,
 } from "@/app/actions/contract-review";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/components/ConfirmDialog";
@@ -588,6 +589,24 @@ export default function ContractReviewDetailPage() {
     [id, load]
   );
 
+  const handleTrackFieldCorrection = useCallback(
+    async (input: {
+      fieldId: string;
+      fieldPath?: string | null;
+      correctedValue: string;
+      fieldLabel?: string | null;
+      originalAiValue?: string | null;
+      sourcePage?: number | null;
+      evidenceSnippet?: string | null;
+    }) => {
+      const result = await trackContractReviewFieldCorrection(id, input);
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+    },
+    [id]
+  );
+
   /** Fáze 11: Per-field pending confirmation handler */
   const handleConfirmPendingField = useCallback(
     async (fieldKey: string, scope: "contact" | "contract" | "payment") => {
@@ -759,6 +778,7 @@ export default function ContractReviewDetailPage() {
         onApproveAndApply={handleApproveAndApply}
         onReject={handleReject}
         onApply={handleApply}
+        onTrackFieldCorrection={handleTrackFieldCorrection}
         onSelectClient={handleSelectClient}
         onConfirmCreateNew={handleConfirmCreateNew}
         onConfirmFinalContract={handleConfirmFinalContract}

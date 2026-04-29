@@ -452,8 +452,12 @@ export type DocumentReviewEnvelope = z.infer<typeof documentReviewEnvelopeSchema
    */
   insuredPersons?: Array<{
     order?: number;
+    role?: string | null;
     fullName?: string | null;
+    birthNumber?: string | null;
     birthDate?: string | null;
+    address?: string | null;
+    occupation?: string | null;
     monthlyPremium?: string | number | null;
   }> | null;
   /**

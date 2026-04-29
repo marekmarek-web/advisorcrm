@@ -181,7 +181,7 @@ export function resolvePublishHintBannerState(
   ph: PublishHintsFlags,
 ): PublishHintBannerState {
   // Finality rule (business decision): "Návrh pojistné smlouvy" se v 99 % případů
-  // rovná finální smlouvě. Místo blokujícího "Nepublikuje smlouvu" ukážeme info
+  // rovná finální smlouvě. Místo blokující publish hlášky ukážeme info
   // banner, kde poradce potvrdí, že jde o finální verzi a dokument se propíše.
   const reasons = ph.reasons ?? [];
   const isProposalAwaitingConfirmation =
@@ -234,15 +234,14 @@ function PublishHintsSection({ ph }: { ph: PublishHintsFlags }) {
       <Section
         icon={XCircle}
         title="Stav dokumentu"
-        badgeVariant="error"
-        badge="Nepublikuje smlouvu"
+        badgeVariant="warning"
+        badge="Vyžaduje ověření"
       >
         <div className="flex items-start gap-2 text-xs text-slate-700">
-          <XCircle size={12} className="mt-0.5 shrink-0" />
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" />
           <span>
-            Dokument byl klasifikován jako podpůrný / příloha — po schválení se
-            nepropíše jako smlouva do CRM. Nahrajte smlouvu samotnou, pokud má
-            vzniknout smluvní záznam.
+            Dokument obsahuje znaky podkladové části nebo přílohy. Ověřte
+            před schválením, zda má vzniknout smluvní záznam.
           </span>
         </div>
       </Section>

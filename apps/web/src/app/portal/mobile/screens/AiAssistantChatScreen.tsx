@@ -10,12 +10,14 @@ import {
   User,
   FileText,
   Paperclip,
+  History,
   Mail,
   Copy,
   Check,
   X,
   Pencil,
   Trash2,
+  Plus,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -65,8 +67,6 @@ import type { AdvisorAssistantHistoryMessageDto } from "@/lib/ai/assistant-histo
 import { AssistantUserMessageImages } from "@/app/components/AssistantUserMessageImages";
 
 const AI_ASSISTANT_API_SESSION_KEY = "aidvisora_ai_assistant_api_session_id";
-
-const MAX_ASSISTANT_CHAT_IMAGES = 4;
 
 function imageMimeForAssistantFile(file: File): string {
   if (file.type && file.type.startsWith("image/")) return file.type;
@@ -189,11 +189,36 @@ interface ReferencedEntity {
 /* ------------------------------------------------------------------ */
 
 const QUICK_STARTERS = [
-  { emoji: "📋", label: "Jaké úkoly mám dnes?" },
-  { emoji: "⚠️", label: "Co je urgentní v mém portfoliu?" },
-  { emoji: "📞", label: "Kteří klienti potřebují pozornost?" },
-  { emoji: "💼", label: "Přehled aktivních obchodů" },
-  { emoji: "📄", label: "Nejnovější smlouvy ke kontrole" },
+  {
+    label: "Úkoly na dnes",
+    prompt: "Jaké úkoly mám dnes a co mám řešit jako první?",
+    icon: CheckSquare,
+    iconClass: "bg-violet-50 text-violet-600 ring-violet-100",
+  },
+  {
+    label: "Urgentní věci",
+    prompt: "Co je dnes urgentní v mém portfoliu?",
+    icon: Mail,
+    iconClass: "bg-amber-50 text-amber-600 ring-amber-100",
+  },
+  {
+    label: "Klienti k řešení",
+    prompt: "Kteří klienti potřebují moji pozornost?",
+    icon: User,
+    iconClass: "bg-emerald-50 text-emerald-600 ring-emerald-100",
+  },
+  {
+    label: "Aktivní obchody",
+    prompt: "Ukaž mi přehled aktivních obchodů a další kroky.",
+    icon: ChevronRight,
+    iconClass: "bg-indigo-50 text-indigo-600 ring-indigo-100",
+  },
+  {
+    label: "Smlouvy ke kontrole",
+    prompt: "Jaké smlouvy čekají na kontrolu?",
+    icon: FileText,
+    iconClass: "bg-slate-100 text-slate-500 ring-slate-200",
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -284,10 +309,10 @@ function MessageBubble({
   }
 
   return (
-    <div className={cx("flex gap-2.5", isUser ? "justify-end" : "justify-start")}>
+    <div className={cx("flex gap-3", isUser ? "justify-end" : "justify-start")}>
       {!isUser ? (
-        <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm p-1">
-          <AiAssistantBrandIcon size={18} className="max-w-full max-h-full" />
+        <div className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-[14px] border border-indigo-100 bg-white p-1 shadow-[0_14px_28px_-22px_rgba(79,70,229,.38)]">
+          <AiAssistantBrandIcon size={24} variant="colorOnWhite" className="max-h-full max-w-full" />
         </div>
       ) : null}
 
@@ -295,13 +320,16 @@ function MessageBubble({
         {/* Main bubble */}
         <div
           className={cx(
-            "rounded-2xl px-3.5 py-2.5",
+            "px-4 py-3 shadow-[0_18px_34px_-30px_rgba(15,23,42,.34)]",
             isUser
-              ? "bg-indigo-600 text-white rounded-tr-sm"
-              : "bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text)] rounded-tl-sm shadow-sm"
+              ? "rounded-[22px] rounded-br-[10px] border border-indigo-100 bg-indigo-50 text-indigo-950"
+              : "relative overflow-hidden rounded-[24px] border border-white/85 bg-white/95 text-slate-700 ring-1 ring-slate-200/40 backdrop-blur-xl"
           )}
         >
-          <p className={cx("text-sm leading-relaxed whitespace-pre-wrap", isUser ? "text-white" : "text-[color:var(--wp-text)]")}>
+          {!isUser ? (
+            <div className="absolute inset-x-0 top-0 h-[5px] rounded-t-[24px] bg-gradient-to-r from-violet-400 via-indigo-400 to-emerald-300" />
+          ) : null}
+          <p className={cx("whitespace-pre-wrap text-[13px] font-semibold leading-6", isUser ? "text-indigo-950" : "text-slate-600")}>
             {msg.text}
           </p>
           {isUser &&
@@ -361,7 +389,7 @@ function MessageBubble({
               />
             </div>
           ) : null}
-          <p className={cx("text-[10px] mt-1", isUser ? "text-indigo-200" : "text-[color:var(--wp-text-tertiary)]")}>
+          <p className={cx("mt-2 text-[10px] font-bold", isUser ? "text-indigo-300" : "text-slate-400")}>
             {msg.timestamp.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })}
           </p>
         </div>
@@ -431,8 +459,8 @@ function MessageBubble({
       </div>
 
       {isUser ? (
-        <div className="w-7 h-7 rounded-xl bg-[color:var(--wp-surface-card-border)] flex items-center justify-center flex-shrink-0 mt-0.5">
-          <User size={13} className="text-[color:var(--wp-text-secondary)]" />
+        <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] bg-slate-200 text-slate-500">
+          <User size={14} />
         </div>
       ) : null}
     </div>
@@ -445,11 +473,11 @@ function MessageBubble({
 
 function TypingIndicator() {
   return (
-    <div className="flex gap-2.5 justify-start">
-      <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm p-1">
-        <AiAssistantBrandIcon size={18} className="max-w-full max-h-full" />
+    <div className="flex justify-start gap-3">
+      <div className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-[14px] border border-indigo-100 bg-white p-1 shadow-[0_14px_28px_-22px_rgba(79,70,229,.38)]">
+        <AiAssistantBrandIcon size={24} variant="colorOnWhite" className="max-h-full max-w-full" />
       </div>
-      <div className="bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+      <div className="rounded-[24px] border border-white/85 bg-white/95 px-4 py-3 shadow-[0_18px_34px_-30px_rgba(15,23,42,.34)] ring-1 ring-slate-200/40 backdrop-blur-xl">
         <div className="flex gap-1 items-center h-4">
           {[0, 1, 2].map((i) => (
             <div
@@ -562,6 +590,7 @@ export function AiAssistantChatScreen() {
   >([]);
   const [conversationPickerLoading, setConversationPickerLoading] = useState(false);
   const [historyHydrationLoading, setHistoryHydrationLoading] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   /** 6C: výběr kroků pro potvrzení podle planId (parita s AiAssistantDrawer). */
   const [stepSelectionByPlanId, setStepSelectionByPlanId] = useState<
@@ -1370,8 +1399,41 @@ export function AiAssistantChatScreen() {
     }
   }, [assistantSessionId, confirm, startNewAssistantConversation]);
 
+  const selectAssistantConversation = useCallback(
+    async (value: string) => {
+      setHistoryOpen(false);
+      if (value === "__new__") {
+        startNewAssistantConversation();
+        return;
+      }
+      setAssistantSessionId(value);
+      try {
+        sessionStorage.setItem(AI_ASSISTANT_API_SESSION_KEY, value);
+      } catch {
+        /* ignore */
+      }
+      setHistoryHydrationLoading(true);
+      const hist = await loadAdvisorAssistantConversationHistory(value);
+      setHistoryHydrationLoading(false);
+      if (hist.ok) {
+        setMessages(historyDtoToMobileMessages(hist.messages));
+      } else {
+        setError(hist.error);
+      }
+    },
+    [startNewAssistantConversation],
+  );
+
   function clearChat() {
     startNewAssistantConversation();
+  }
+
+  function closeAssistantChat() {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.replace("/portal/today");
   }
 
   const isEmpty = messages.length === 0;
@@ -1384,39 +1446,191 @@ export function AiAssistantChatScreen() {
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[#f6f8fb]">
+      <div className="pointer-events-none absolute -right-24 -top-20 h-64 w-64 rounded-full bg-indigo-200/40 blur-[80px]" />
+      <div className="pointer-events-none absolute -left-28 top-56 h-72 w-72 rounded-full bg-emerald-100/50 blur-[80px]" />
+      <div className="pointer-events-none absolute inset-x-10 top-28 h-28 rounded-full bg-white/65 blur-3xl" />
+
+      <header className="relative z-40 shrink-0 border-b border-white/80 px-4 pb-4 pt-[calc(var(--safe-area-top,0px)+0.75rem)]">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[18px] border border-white/80 bg-white/80 p-1.5 text-violet-600 shadow-[0_16px_34px_-26px_rgba(79,70,229,.45)] ring-1 ring-slate-200/45 backdrop-blur-xl">
+              <AiAssistantBrandIcon size={34} variant="colorOnWhite" className="max-h-full max-w-full" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[18px] font-black tracking-tight text-slate-950">
+                Aidvisora Chat
+              </p>
+              <p className="truncate text-[12px] font-semibold text-slate-500">
+                Interní podklad pro poradce
+              </p>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen((value) => !value)}
+              className={cx(
+                "grid min-h-[44px] min-w-[44px] place-items-center rounded-[18px] border shadow-[0_12px_28px_-24px_rgba(15,23,42,.3)] ring-1 backdrop-blur-xl active:scale-95",
+                historyOpen
+                  ? "border-indigo-200 bg-indigo-50 text-indigo-600 ring-indigo-100"
+                  : "border-white/80 bg-white/76 text-slate-700 ring-slate-200/45",
+              )}
+              aria-label="Historie chatu"
+            >
+              <History size={20} />
+            </button>
+            <button
+              type="button"
+              onClick={closeAssistantChat}
+              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-[18px] border border-white/80 bg-white/76 text-slate-900 shadow-[0_12px_28px_-24px_rgba(15,23,42,.3)] ring-1 ring-slate-200/45 backdrop-blur-xl active:scale-95"
+              aria-label="Zavřít AI chat"
+            >
+              <X size={21} />
+            </button>
+          </div>
+        </div>
+      </header>
+      <div
+        className={cx(
+          "absolute left-4 right-4 top-[calc(var(--safe-area-top,0px)+5.75rem)] z-50 overflow-hidden rounded-[26px] border border-white/80 bg-white/95 shadow-[0_30px_70px_-36px_rgba(15,23,42,.45)] ring-1 ring-slate-200/50 backdrop-blur-2xl transition-all duration-300",
+          historyOpen
+            ? "translate-y-0 scale-100 opacity-100"
+            : "pointer-events-none -translate-y-3 scale-[0.98] opacity-0",
+        )}
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100/90 px-4 py-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+              Historie
+            </p>
+            <p className="mt-1 text-[14px] font-black text-slate-900">
+              Poslední konverzace
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void selectAssistantConversation("__new__")}
+            className="grid h-10 w-10 place-items-center rounded-[15px] bg-indigo-600 text-white shadow-[0_12px_24px_-14px_rgba(79,70,229,.72)] active:scale-95"
+            aria-label="Nová konverzace"
+          >
+            <Plus size={18} />
+          </button>
+        </div>
+        <div className="max-h-[280px] space-y-1.5 overflow-y-auto p-2.5">
+          {conversationPickerLoading ? (
+            <div className="flex items-center gap-2 px-3 py-4 text-[13px] font-bold text-slate-500">
+              <Loader2 size={15} className="animate-spin text-indigo-500" />
+              Načítám historii…
+            </div>
+          ) : assistantConversationsList.length > 0 ? (
+            assistantConversationsList.map((item) => {
+              const active = item.id === assistantSessionId;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => void selectAssistantConversation(item.id)}
+                  className={cx(
+                    "flex w-full items-start gap-3 rounded-[18px] px-3 py-3 text-left transition active:scale-[.99]",
+                    active ? "bg-indigo-50" : "hover:bg-slate-50",
+                  )}
+                >
+                  <div
+                    className={cx(
+                      "mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-[14px]",
+                      active ? "bg-white text-indigo-600" : "bg-slate-100 text-slate-500",
+                    )}
+                  >
+                    {active ? <Check size={17} /> : <History size={17} />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13px] font-black leading-5 text-slate-800">
+                      {formatAdvisorAssistantConversationListLabel(item)}
+                    </div>
+                    <div className="mt-0.5 text-[11px] font-semibold leading-4 text-slate-500">
+                      Uložená konverzace
+                    </div>
+                  </div>
+                  <ChevronRight size={15} className="mt-1 shrink-0 text-slate-400" />
+                </button>
+              );
+            })
+          ) : (
+            <p className="px-3 py-4 text-[13px] font-semibold text-slate-500">
+              Zatím tu nejsou žádné uložené konverzace.
+            </p>
+          )}
+        </div>
+      </div>
+      {historyOpen ? (
+        <button
+          type="button"
+          className="absolute inset-0 z-40 bg-transparent"
+          onClick={() => setHistoryOpen(false)}
+          aria-label="Zavřít historii"
+        />
+      ) : null}
       {/* Message list */}
       <div
-        className={`flex-1 min-h-0 overflow-y-auto px-2 py-2 sm:px-4 sm:py-4 space-y-4 ${historyHydrationLoading ? "opacity-60 pointer-events-none" : ""}`}
+        className={`relative z-10 min-h-0 flex-1 space-y-5 overflow-y-auto px-5 pb-4 pt-4 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden ${historyHydrationLoading ? "opacity-60 pointer-events-none" : ""}`}
       >
         {isEmpty ? (
-          <div className="space-y-4 pt-1 sm:space-y-6 sm:pt-4">
-            <div className="text-center space-y-2">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center mx-auto shadow-lg p-2">
-                <AiAssistantBrandIcon size={36} className="max-w-full max-h-full" />
+          <div className="space-y-8 px-1 pt-8">
+            <div className="text-center">
+              <div className="relative mx-auto grid h-[84px] w-[84px] place-items-center rounded-[30px] bg-white/90 p-2 shadow-[0_28px_60px_-34px_rgba(109,40,217,.85)] ring-1 ring-violet-100">
+                <AiAssistantBrandIcon size={60} variant="colorOnWhite" className="relative max-h-full max-w-full" />
               </div>
-              <h2 className="text-base font-black text-[color:var(--wp-text)]">AI Asistent</h2>
-              <p className="text-sm text-[color:var(--wp-text-secondary)] max-w-xs mx-auto leading-relaxed">
-                Zeptejte se na cokoliv z vašeho CRM. Asistent zná vaše kontakty, úkoly, obchody a smlouvy.
+              <h2 className="mt-5 text-[24px] font-black tracking-tight text-slate-800">
+                AI Asistent
+              </h2>
+              <p className="mx-auto mt-4 max-w-[330px] text-[15px] font-medium leading-7 text-slate-500">
+                Zeptejte se na cokoliv z vašeho CRM. Asistent zná kontakty, úkoly,
+                obchody i smlouvy.
               </p>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] text-center">
+            <div>
+              <p className="mb-3 text-center text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
                 Rychlé otázky
               </p>
-              {QUICK_STARTERS.map((starter) => (
+              <div className="grid grid-cols-2 gap-2.5">
+                {QUICK_STARTERS.slice(0, 4).map((starter) => {
+                  const StarterIcon = starter.icon;
+                  return (
+                    <button
+                      key={starter.label}
+                      type="button"
+                      onClick={() => void sendMessage(starter.prompt)}
+                      className="group flex min-h-[52px] w-full items-center gap-2.5 rounded-[18px] border border-white/80 bg-white/75 px-3 py-2.5 text-left shadow-[0_12px_24px_-24px_rgba(15,23,42,.34)] ring-1 ring-slate-200/40 backdrop-blur-xl active:scale-[.99]"
+                    >
+                      <span className={cx("grid h-8 w-8 shrink-0 place-items-center rounded-[13px] ring-1", starter.iconClass)}>
+                        <StarterIcon size={16} />
+                      </span>
+                      <span className="min-w-0 flex-1 text-[12px] font-black leading-4 text-slate-700">
+                        {starter.label}
+                      </span>
+                      <ChevronRight size={15} className="shrink-0 text-slate-400" />
+                    </button>
+                  );
+                })}
+              </div>
+              {QUICK_STARTERS[4] ? (
                 <button
-                  key={starter.label}
                   type="button"
-                  onClick={() => void sendMessage(starter.label)}
-                  className="w-full text-left min-h-[48px] flex items-center gap-3 px-4 py-3 bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] rounded-2xl active:border-indigo-200 active:bg-indigo-50/40 transition-colors"
+                  onClick={() => void sendMessage(QUICK_STARTERS[4].prompt)}
+                  className="mt-2.5 flex min-h-[52px] w-full items-center gap-2.5 rounded-[18px] border border-white/80 bg-white/75 px-3 py-2.5 text-left shadow-[0_12px_24px_-24px_rgba(15,23,42,.34)] ring-1 ring-slate-200/40 backdrop-blur-xl active:scale-[.99]"
                 >
-                  <span className="text-xl flex-shrink-0">{starter.emoji}</span>
-                  <span className="text-sm font-semibold text-[color:var(--wp-text-secondary)] flex-1">{starter.label}</span>
-                  <ChevronRight size={15} className="text-[color:var(--wp-text-tertiary)] flex-shrink-0" />
+                  <span className={cx("grid h-8 w-8 shrink-0 place-items-center rounded-[13px] ring-1", QUICK_STARTERS[4].iconClass)}>
+                    <FileText size={16} />
+                  </span>
+                  <span className="min-w-0 flex-1 text-[12px] font-black leading-4 text-slate-700">
+                    {QUICK_STARTERS[4].label}
+                  </span>
+                  <ChevronRight size={15} className="shrink-0 text-slate-400" />
                 </button>
-              ))}
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -1481,36 +1695,18 @@ export function AiAssistantChatScreen() {
       </div>
 
       {/* Input bar */}
-      <div className="flex-shrink-0 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 pt-2 pb-[max(0.75rem,var(--safe-area-bottom))]">
+      <div className="relative z-10 shrink-0 border-t border-white/80 bg-white/80 px-4 pb-[max(1rem,var(--safe-area-bottom))] pt-3 backdrop-blur-2xl">
         <div className="flex flex-wrap items-center gap-2 mb-2">
-          <label htmlFor="aidv-mobile-assistant-conv" className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] shrink-0">
+          <label htmlFor="aidv-mobile-assistant-conv" className="shrink-0 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
             Konverzace (7 dní)
           </label>
           <select
             id="aidv-mobile-assistant-conv"
-            className="flex-1 min-w-0 min-h-[36px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-2 py-1 text-[11px] font-medium text-[color:var(--wp-text)]"
+            className="min-h-[36px] min-w-0 flex-1 rounded-xl border border-white/80 bg-white/85 px-2 py-1 text-[11px] font-semibold text-slate-700 shadow-[0_10px_22px_-22px_rgba(15,23,42,.34)] ring-1 ring-slate-200/40"
             disabled={conversationPickerLoading || isTyping}
             value={assistantSessionId ?? "__new__"}
             onChange={async (e) => {
-              const v = e.target.value;
-              if (v === "__new__") {
-                startNewAssistantConversation();
-                return;
-              }
-              setAssistantSessionId(v);
-              try {
-                sessionStorage.setItem(AI_ASSISTANT_API_SESSION_KEY, v);
-              } catch {
-                /* ignore */
-              }
-              setHistoryHydrationLoading(true);
-              const hist = await loadAdvisorAssistantConversationHistory(v);
-              setHistoryHydrationLoading(false);
-              if (hist.ok) {
-                setMessages(historyDtoToMobileMessages(hist.messages));
-              } else {
-                setError(hist.error);
-              }
+              await selectAssistantConversation(e.target.value);
             }}
           >
             <option value="__new__">Nová konverzace</option>
@@ -1528,7 +1724,7 @@ export function AiAssistantChatScreen() {
             type="button"
             onClick={() => void handleRenameAssistantConversation()}
             disabled={!assistantSessionId || conversationPickerLoading || isTyping}
-            className="shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] active:bg-[color:var(--wp-surface-muted)] disabled:opacity-40"
+            className="flex min-h-[36px] min-w-[36px] shrink-0 items-center justify-center rounded-xl border border-white/80 bg-white/85 text-slate-500 active:bg-slate-50 disabled:opacity-40"
             aria-label="Přejmenovat konverzaci"
             title="Přejmenovat konverzaci"
           >
@@ -1538,7 +1734,7 @@ export function AiAssistantChatScreen() {
             type="button"
             onClick={() => void handleDeleteAssistantConversation()}
             disabled={!assistantSessionId || conversationPickerLoading || isTyping}
-            className="shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-rose-600 active:bg-rose-50 disabled:opacity-40"
+            className="flex min-h-[36px] min-w-[36px] shrink-0 items-center justify-center rounded-xl border border-white/80 bg-white/85 text-rose-600 active:bg-rose-50 disabled:opacity-40"
             aria-label="Smazat konverzaci"
             title="Smazat konverzaci"
           >
@@ -1649,7 +1845,11 @@ export function AiAssistantChatScreen() {
           </div>
         ) : null}
 
-        <div className="flex items-end gap-2" onPaste={handlePasteOnComposer}>
+        <div
+          className="rounded-[28px] border border-white/75 bg-white/95 p-3 shadow-[0_-10px_28px_-24px_rgba(15,23,42,.25)] ring-1 ring-slate-200/40 backdrop-blur-2xl"
+          onPaste={handlePasteOnComposer}
+        >
+          <div className="flex items-end gap-2.5">
           <input
             type="file"
             ref={fileInputRef}
@@ -1687,7 +1887,7 @@ export function AiAssistantChatScreen() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="w-11 h-11 rounded-2xl border border-[color:var(--wp-surface-card-border)] flex items-center justify-center flex-shrink-0 text-[color:var(--wp-text-secondary)] active:bg-[color:var(--wp-surface-muted)]"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] border border-slate-200 bg-slate-50 text-slate-500 active:scale-95"
             aria-label="Nahrát soubor"
           >
             <Paperclip size={18} />
@@ -1706,10 +1906,10 @@ export function AiAssistantChatScreen() {
             placeholder={
               awaitingConfirmationFromLatestTurn
                 ? "Plán potvrďte tlačítkem výše, ne textem zde…"
-                : "Napište zprávu…"
+                : "S čím vám mohu pomoci?"
             }
             disabled={isTyping}
-            className="flex-1 resize-none min-h-[44px] max-h-[120px] rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-3.5 py-3 text-sm text-[color:var(--wp-text)] placeholder:text-[color:var(--wp-text-tertiary)] focus:outline-none focus:border-indigo-400 focus:bg-[color:var(--wp-surface-card)] transition-colors disabled:opacity-50"
+            className="min-h-[44px] max-h-[120px] min-w-0 flex-1 resize-none rounded-[15px] border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] font-semibold text-slate-900 outline-none placeholder:text-slate-400 transition-colors focus:border-indigo-300 focus:bg-white disabled:opacity-50"
           />
           <button
             type="button"
@@ -1719,10 +1919,12 @@ export function AiAssistantChatScreen() {
               void sendMessage(t, pendingImageAssets.length ? pendingImageAssets : undefined);
             }}
             disabled={(!input.trim() && pendingImageAssets.length === 0) || isTyping}
-            className="w-11 h-11 rounded-2xl bg-indigo-600 flex items-center justify-center flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] bg-indigo-600 text-white shadow-[0_12px_24px_-14px_rgba(79,70,229,.72)] transition-opacity active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Odeslat zprávu"
           >
-            <Send size={18} className="text-white" />
+            <Send size={18} />
           </button>
+          </div>
         </div>
 
         {error ? (

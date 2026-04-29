@@ -2,7 +2,7 @@
 
 import * as Sentry from "@sentry/nextjs";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type UIEvent } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -20,9 +20,6 @@ import { Capacitor } from "@capacitor/core";
 import type { DashboardKpis } from "@/app/actions/dashboard";
 import type { ServiceRecommendationWithContact } from "@/app/actions/service-engine";
 import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
-import type { FinancialAnalysisListItem } from "@/app/actions/financial-analyses";
-import type { ProductionSummary } from "@/app/actions/production";
-import type { BusinessPlanWidgetData } from "@/app/portal/today/DashboardEditable";
 import {
   completeTask,
   createTask,
@@ -43,9 +40,7 @@ import {
 } from "@/app/actions/pipeline";
 import { getServiceRecommendationsForDashboard } from "@/app/actions/service-engine";
 import { getMeetingNotesForBoard } from "@/app/actions/meeting-notes";
-import { listFinancialAnalyses } from "@/app/actions/financial-analyses";
-import { getProductionSummary } from "@/app/actions/production";
-import { getBusinessPlanWidgetData } from "@/app/actions/business-plan";
+import { listFinancialAnalyses, type FinancialAnalysisListItem } from "@/app/actions/financial-analyses";
 import { getPortalShellBadgeCounts } from "@/app/actions/portal-badges";
 import { defaultTaskDueDateYmd, localCalendarTodayYmd } from "@/lib/date/date-only";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
@@ -54,11 +49,11 @@ import {
   BottomSheet,
   EmptyState,
   ErrorState,
-  FloatingActionButton,
   FullscreenSheet,
   MobileAppShell,
   MobileBottomNav,
   MobileCard,
+  MobileCurrentSectionPill,
   MobileHeader,
   MobileScreen,
   MobileSection,
@@ -89,7 +84,7 @@ import { PortalFeedbackLauncher } from "@/app/portal/PortalFeedbackLauncher";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 import { PlaceholderScreen } from "./screens/PlaceholderScreen";
 import { QuickNewMobileSheet } from "./QuickNewMobileSheet";
-import type { RoleName } from "@/shared/rolePermissions";
+import { hasPermission, type RoleName } from "@/shared/rolePermissions";
 import { isPortalMultiPageScanEnabled } from "@/lib/portal/portal-scan-enabled";
 
 function RouteLoadingSkeleton() {
@@ -193,6 +188,7 @@ import {
   parseContactIdFromPath,
   parseOpportunityIdFromPath,
   parseHouseholdIdFromPath,
+  isPrimaryTabHubPath,
 } from "./route-helpers";
 
 type TaskFilter = "all" | "today" | "week" | "overdue" | "completed";
@@ -254,12 +250,21 @@ function resolveHeaderMeta(
   for (const entry of ROUTE_META) {
     if (entry.test(pathname)) return { title: entry.title, subtitle: entry.subtitle };
   }
-  const subtitle = tab === "none" ? `Menu • ${advisorName}` : `Advisor • ${advisorName}`;
+  const subtitle = tab === "none" ? `Menu • ${advisorName}` : `Advisor \u2022 ${advisorName}`;
   if (tab === "home") return { title: "Přehled", subtitle };
   if (tab === "tasks") return { title: "Úkoly", subtitle };
   if (tab === "clients") return { title: "Klienti", subtitle };
   if (tab === "pipeline") return { title: "Obchody", subtitle };
   return { title: "Aidvisora", subtitle };
+}
+
+function resolvePrimaryHubPillLabel(tab: TabId, pathname: string): string {
+  const currentTab = tab !== "none" ? tab : pathnameToBottomTab(pathname);
+  if (currentTab === "home") return "Nástěnka";
+  if (currentTab === "tasks") return "Úkoly";
+  if (currentTab === "clients") return "Klienti";
+  if (currentTab === "pipeline") return "Obchody";
+  return "Aidvisora";
 }
 
 export function MobilePortalClient({
@@ -273,9 +278,6 @@ export function MobilePortalClient({
   serviceRecommendations: initialServiceRecommendations = [],
   initialNotes: initialMeetingNotes = [],
   initialAnalyses: initialFinancialAnalyses = [],
-  productionSummary: initialProductionSummary = null,
-  productionError: initialProductionError = null,
-  businessPlanWidgetData: initialBusinessPlanWidget = null,
   canWriteCalendar = true,
   roleName = "Advisor",
   deferDataHydration = false,
@@ -290,9 +292,6 @@ export function MobilePortalClient({
   serviceRecommendations?: ServiceRecommendationWithContact[];
   initialNotes?: MeetingNoteForBoard[];
   initialAnalyses?: FinancialAnalysisListItem[];
-  productionSummary?: ProductionSummary | null;
-  productionError?: string | null;
-  businessPlanWidgetData?: BusinessPlanWidgetData | null;
   canWriteCalendar?: boolean;
   roleName?: RoleName;
   /** Načte úkoly, kontakty, pipeline a doplňková data po idle — rychlejší první paint shellu. */
@@ -318,9 +317,6 @@ export function MobilePortalClient({
   const [serviceRecommendations, setServiceRecommendations] = useState(initialServiceRecommendations);
   const [meetingNotes, setMeetingNotes] = useState(initialMeetingNotes);
   const [financialAnalyses, setFinancialAnalyses] = useState(initialFinancialAnalyses);
-  const [productionSummary, setProductionSummary] = useState(initialProductionSummary);
-  const [productionError, setProductionError] = useState(initialProductionError);
-  const [businessPlanWidgetData, setBusinessPlanWidgetData] = useState(initialBusinessPlanWidget);
   const [shellPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [notificationBadgeCount, setNotificationBadgeCount] = useState(0);
@@ -373,8 +369,6 @@ export function MobilePortalClient({
         serviceRes,
         notesRes,
         analysesRes,
-        productionRes,
-        businessPlanRes,
       ] = await Promise.allSettled([
         getTasksList("all"),
         getTasksCounts(),
@@ -383,8 +377,6 @@ export function MobilePortalClient({
         getServiceRecommendationsForDashboard(10),
         getMeetingNotesForBoard(),
         listFinancialAnalyses(),
-        getProductionSummary("month"),
-        getBusinessPlanWidgetData(),
       ]);
       if (cancelled) return;
       if (tasksRes.status === "fulfilled") setTasks(tasksRes.value);
@@ -394,17 +386,6 @@ export function MobilePortalClient({
       if (serviceRes.status === "fulfilled") setServiceRecommendations(serviceRes.value);
       if (notesRes.status === "fulfilled") setMeetingNotes(notesRes.value);
       if (analysesRes.status === "fulfilled") setFinancialAnalyses(analysesRes.value);
-      if (productionRes.status === "fulfilled") {
-        setProductionSummary(productionRes.value);
-        setProductionError(null);
-      } else {
-        setProductionError(
-          productionRes.reason instanceof Error
-            ? productionRes.reason.message
-            : "Nepodařilo se načíst produkci.",
-        );
-      }
-      if (businessPlanRes.status === "fulfilled") setBusinessPlanWidgetData(businessPlanRes.value);
     }
     void hydrate();
     return () => {
@@ -569,6 +550,11 @@ export function MobilePortalClient({
     [pathname, tab, advisorName, selectedContact],
   );
 
+  const headerTitleMode = useMemo(() => (isPrimaryTabHubPath(pathname) ? "accessibilityOnly" : "default"), [pathname]);
+
+  const chromeActionBtn =
+    "min-h-[48px] min-w-[48px] rounded-[20px] border border-white/70 bg-white/55 text-[color:var(--wp-text)] shadow-[0_12px_26px_rgba(15,23,42,0.07)] ring-1 ring-[color:var(--wp-surface-card-border)]/40 backdrop-blur-2xl grid place-items-center active:scale-95 transition-transform";
+
   const stageOptions = useMemo(() => pipeline.map((s) => ({ id: s.id, label: s.name })), [pipeline]);
   const pipelineContactOptions = useMemo(
     () =>
@@ -588,6 +574,37 @@ export function MobilePortalClient({
     else return;
     setTab(next);
   }
+
+  const mobileScrollLastY = useRef(0);
+  const [mobileScrollChrome, setMobileScrollChrome] = useState({
+    showBottomNav: true,
+    showSectionPill: false,
+  });
+
+  useEffect(() => {
+    mobileScrollLastY.current = 0;
+    setMobileScrollChrome({ showBottomNav: true, showSectionPill: false });
+  }, [pathname]);
+
+  function handleMobileMainScroll(e: UIEvent<HTMLElement>) {
+    const y = e.currentTarget.scrollTop;
+    const dy = y - mobileScrollLastY.current;
+    mobileScrollLastY.current = y;
+    setMobileScrollChrome((prev) => {
+      let nextBottom = prev.showBottomNav;
+      const nextPill = y >= 8;
+      if (y < 30) {
+        nextBottom = true;
+      } else {
+        if (dy > 8) nextBottom = false;
+        else if (dy < -8) nextBottom = true;
+      }
+      if (nextBottom === prev.showBottomNav && nextPill === prev.showSectionPill) return prev;
+      return { showBottomNav: nextBottom, showSectionPill: nextPill };
+    });
+  }
+
+  const primaryHubPillLabel = resolvePrimaryHubPillLabel(tab, pathname);
 
   const detailRouteActive = isDetailRoute(pathname);
 
@@ -766,6 +783,9 @@ export function MobilePortalClient({
     { id: "pipeline", label: "Obchody", icon: Briefcase },
   ];
 
+  const quickNewPreferScan =
+    hasPermission(roleName, "documents:read") && isPortalMultiPageScanEnabled();
+
   /** Exactly one screen mounts per render — no more overlapping conditionals. */
   function resolveActiveScreen(): React.ReactNode {
     const normalizedPath = normalizePortalPathname(pathname);
@@ -800,7 +820,7 @@ export function MobilePortalClient({
     if (onHouseholdsListRoute) return <HouseholdsListMobileScreen />;
     if (onMindmapHubRoute) return <MindmapHubMobileScreen />;
     if (onMessagesRoute) return <MessagesMobileScreen />;
-    if (onNotesRoute) return <NotesMobileScreen />;
+    if (onNotesRoute) return <NotesMobileScreen seededMeetingNotes={meetingNotes} />;
     if (onBoardRoute) return <BoardMobileScreen />;
     if (onColdContactsRoute) return <ColdContactsMobileScreen />;
     if (onContractsRoute) return <ContractsReviewScreen detailIdFromPath={selectedContractReviewId} />;
@@ -966,9 +986,6 @@ export function MobilePortalClient({
         serviceRecommendations={serviceRecommendations}
         initialNotes={meetingNotes}
         initialAnalyses={financialAnalyses}
-        productionSummary={productionSummary}
-        productionError={productionError}
-        businessPlanWidgetData={businessPlanWidgetData}
         deviceClass={deviceClass}
         onNewTask={() => setTaskCreateOpen(true)}
         onNewClient={() => setClientCreateOpen(true)}
@@ -988,98 +1005,113 @@ export function MobilePortalClient({
       <OfflineBanner />
       {toast ? <Toast message={toast.message} variant={toast.variant} onDismiss={dismissToast} /> : null}
 
-      <MobileHeader
-        title={headerMeta.title}
-        subtitle={headerMeta.subtitle}
-        deviceClass={deviceClass}
-        left={
-          detailRouteActive ? (
-            <button
-              type="button"
-              onClick={handleHeaderBack}
-              className="min-h-[44px] min-w-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] grid place-items-center active:scale-95 transition-transform"
-              aria-label="Zpět"
-            >
-              <ArrowLeft size={18} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              className="min-h-[44px] min-w-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] grid place-items-center active:scale-95 transition-transform"
-              aria-label="Otevřít menu"
-            >
-              <Menu size={20} />
-            </button>
-          )
-        }
-        right={
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setGlobalSearchOpen(true)}
-              className="min-h-[44px] min-w-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] grid place-items-center active:scale-95 transition-transform"
-              aria-label="Hledat"
-            >
-              <Search size={18} />
-            </button>
+      {!onAiRoute ? (
+        <div className="sticky top-0 z-40 shrink-0">
+          <MobileHeader
+            title={headerMeta.title}
+            subtitle={headerMeta.subtitle}
+            deviceClass={deviceClass}
+            titleMode={headerTitleMode}
+            left={
+              detailRouteActive ? (
+                <button
+                  type="button"
+                  onClick={handleHeaderBack}
+                  className={chromeActionBtn}
+                  aria-label="Zpět"
+                >
+                  <ArrowLeft size={18} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(true)}
+                  className={chromeActionBtn}
+                  aria-label="Otevřít menu"
+                >
+                  <Menu size={20} />
+                </button>
+              )
+            }
+            right={
+              <div className="flex items-center gap-1">
+                <PortalFeedbackLauncher variant="mobileHeader" />
+                <button
+                  type="button"
+                  onClick={() => setGlobalSearchOpen(true)}
+                  className={chromeActionBtn}
+                  aria-label="Hledat"
+                >
+                  <Search size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    router.push("/portal/ai");
+                  }}
+                  className={`${chromeActionBtn} text-indigo-600`}
+                  aria-label="Zeptat se AI"
+                >
+                  <AiAssistantBrandIcon size={20} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/portal/notifications")}
+                  className={`${chromeActionBtn} relative`}
+                  aria-label="Klientské požadavky"
+                >
+                  <Bell size={18} />
+                  {notificationBadgeCount > 0 ? (
+                    <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] leading-4 text-center">
+                      {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
+            }
+          />
+          {isPrimaryTabHubPath(pathname) && !detailRouteActive ? (
+            <MobileCurrentSectionPill
+              label={primaryHubPillLabel}
+              visible={mobileScrollChrome.showSectionPill}
+              deviceClass={deviceClass}
+            />
+          ) : null}
+        </div>
+      ) : null}
+
+      {!onAiRoute ? (
+        <MobileSideDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          pathname={pathname}
+          onNavigate={(href) => {
+            setDrawerOpen(false);
+            router.push(href);
+          }}
+          showTeamOverview={showTeamOverview}
+          advisorName={advisorName}
+          deviceClass={deviceClass}
+          tasksBadge={taskCounts.overdue > 0 ? taskCounts.overdue : undefined}
+          messagesBadge={unreadMessagesCount > 0 ? unreadMessagesCount : undefined}
+          onOpenAi={() => router.push("/portal/ai")}
+          roleName={roleName}
+          searchSlot={
             <button
               type="button"
               onClick={() => {
                 setDrawerOpen(false);
-                router.push("/portal/ai");
+                setGlobalSearchOpen(true);
               }}
-              className="min-h-[44px] min-w-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] grid place-items-center active:scale-95 transition-transform text-indigo-600"
-              aria-label="Zeptat se AI"
+              className="w-full flex items-center gap-2 min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-3 text-sm font-semibold text-[color:var(--wp-text-secondary)] text-left active:scale-[0.99] transition-transform"
             >
-              <AiAssistantBrandIcon size={20} />
+              <Search size={16} className="shrink-0 text-[color:var(--wp-text-tertiary)]" />
+              <span className="truncate">Hledat v Aidvisory…</span>
             </button>
-            <button
-              type="button"
-              onClick={() => router.push("/portal/notifications")}
-              className="relative min-h-[44px] min-w-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] grid place-items-center active:scale-95 transition-transform"
-              aria-label="Klientské požadavky"
-            >
-              <Bell size={18} />
-              {notificationBadgeCount > 0 ? (
-                <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] leading-4 text-center">
-                  {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
-                </span>
-              ) : null}
-            </button>
-          </div>
-        }
-      />
-
-      <MobileSideDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        pathname={pathname}
-        onNavigate={(href) => {
-          setDrawerOpen(false);
-          router.push(href);
-        }}
-        showTeamOverview={showTeamOverview}
-        advisorName={advisorName}
-        deviceClass={deviceClass}
-        tasksBadge={taskCounts.overdue > 0 ? taskCounts.overdue : undefined}
-        messagesBadge={unreadMessagesCount > 0 ? unreadMessagesCount : undefined}
-        onOpenAi={() => router.push("/portal/ai")}
-        roleName={roleName}
-        searchSlot={
-          <button
-            type="button"
-            onClick={() => {
-              setDrawerOpen(false);
-              setGlobalSearchOpen(true);
-            }}
-            className="w-full flex items-center gap-2 min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-3 text-sm font-semibold text-[color:var(--wp-text-secondary)] text-left active:scale-[0.99] transition-transform"
-          >
-            <Search size={16} className="shrink-0 text-[color:var(--wp-text-tertiary)]" />
-            <span className="truncate">Hledat v Aidvisory…</span>
-          </button>
-        }
-      />
+          }
+        />
+      ) : null}
 
       <MobileGlobalSearchOverlay open={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
 
@@ -1091,6 +1123,7 @@ export function MobilePortalClient({
         need to react to route changes.
       */}
       <MobileScreen
+        onScroll={onAiRoute ? undefined : handleMobileMainScroll}
         className={`page-enter${
           onCalendarRoute
             ? " !min-h-0 flex flex-1 flex-col px-0 !space-y-0 pt-2"
@@ -1109,16 +1142,6 @@ export function MobilePortalClient({
           {resolveActiveScreen()}
         </MobileShellErrorBoundary>
       </MobileScreen>
-
-      {!detailRouteActive && tab === "tasks" ? (
-        <FloatingActionButton onClick={() => setTaskCreateOpen(true)} label="Nový úkol" />
-      ) : null}
-      {!detailRouteActive && tab === "clients" ? (
-        <FloatingActionButton onClick={() => setClientCreateOpen(true)} label="Nový klient" />
-      ) : null}
-      {!detailRouteActive && tab === "pipeline" ? (
-        <FloatingActionButton onClick={() => setOpportunityCreateOpen(true)} label="Nový případ" />
-      ) : null}
 
       <BottomSheet open={taskCreateOpen} onClose={() => setTaskCreateOpen(false)} title="Nový úkol">
         <StepWizard step={taskWizardStep} total={3}>
@@ -1387,23 +1410,32 @@ export function MobilePortalClient({
         )}
       </FullscreenSheet>
 
-      <QuickNewMobileSheet open={quickNewOpen} onClose={() => setQuickNewOpen(false)} />
-
-      <MobileBottomNav
-        items={navItems}
-        activeId={tab === "none" ? null : tab}
-        onSelect={(id) => navigateTab(id as TabId)}
-        deviceClass={deviceClass}
-        centerFab={{
-          onClick: () => {
-            setDrawerOpen(false);
-            setQuickNewOpen(true);
-          },
-          ariaLabel: "Nový – rychlé akce",
-        }}
+      <QuickNewMobileSheet
+        open={quickNewOpen}
+        onClose={() => setQuickNewOpen(false)}
+        onNewTask={() => setTaskCreateOpen(true)}
+        onNewClient={() => setClientCreateOpen(true)}
+        onNewOpportunity={() => setOpportunityCreateOpen(true)}
+        showScanShortcut={quickNewPreferScan}
       />
+
+      {!onAiRoute ? (
+        <MobileBottomNav
+          items={navItems}
+          activeId={tab === "none" ? null : tab}
+          onSelect={(id) => navigateTab(id as TabId)}
+          deviceClass={deviceClass}
+          visible={mobileScrollChrome.showBottomNav}
+          centerFab={{
+            onClick: () => {
+              setDrawerOpen(false);
+              setQuickNewOpen(true);
+            },
+            ariaLabel: "Nový – rychlé akce",
+          }}
+        />
+      ) : null}
     </MobileAppShell>
-    <PortalFeedbackLauncher variant="mobile" />
     </AdvisorInAppNotificationsProvider>
     </ToastProvider>
   );

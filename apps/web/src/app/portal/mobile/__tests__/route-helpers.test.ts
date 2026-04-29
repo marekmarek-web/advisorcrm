@@ -5,6 +5,7 @@ import {
   WEB_ONLY_MOBILE_PORTAL_ROUTES,
   classifyMobilePortalRoute,
   decideHeaderBackAction,
+  isPrimaryTabHubPath,
   isDetailRoute,
   normalizePortalPathname,
   parseContactIdFromPath,
@@ -65,6 +66,25 @@ describe("classifyMobilePortalRoute", () => {
   it("documents web-only table stays aligned with product copy", () => {
     expect(WEB_ONLY_MOBILE_PORTAL_ROUTES.every((row) => row.prefix.startsWith("/portal"))).toBe(true);
     expect(HANDLED_MOBILE_SHELL_ROUTE_PREFIXES.every((p) => p.startsWith("/portal/"))).toBe(true);
+  });
+});
+
+describe("isPrimaryTabHubPath", () => {
+  it("is true for primary tab hub roots (content-first title)", () => {
+    expect(isPrimaryTabHubPath("/portal")).toBe(true);
+    expect(isPrimaryTabHubPath("/portal/today")).toBe(true);
+    expect(isPrimaryTabHubPath("/portal/today/anything")).toBe(true);
+    expect(isPrimaryTabHubPath("/portal/tasks")).toBe(true);
+    expect(isPrimaryTabHubPath("/portal/contacts")).toBe(true);
+    expect(isPrimaryTabHubPath("/portal/pipeline")).toBe(true);
+  });
+
+  it("is false on detail routes or non-primary shell paths", () => {
+    expect(isPrimaryTabHubPath("/portal/contacts/abc-123")).toBe(false);
+    expect(isPrimaryTabHubPath("/portal/pipeline/deal-7")).toBe(false);
+    expect(isPrimaryTabHubPath("/portal/calendar")).toBe(false);
+    expect(isPrimaryTabHubPath("/portal/ai")).toBe(false);
+    expect(isPrimaryTabHubPath("/portal/messages")).toBe(false);
   });
 });
 

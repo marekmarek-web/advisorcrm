@@ -11,6 +11,10 @@ import {
 } from "@/lib/ai/review-queue-repository";
 import type { ContractReviewRow } from "@/lib/ai/review-queue-repository";
 import { mergeFieldEditsIntoExtractedPayload } from "@/lib/ai-review/mappers";
+import { buildManualCorrectionEventInput } from "@/lib/ai/ai-review-correction-events";
+import { createDraftCorrectionEvent } from "@/lib/ai/ai-review-learning-repository";
+import { handleAiReviewApprovalLearning } from "@/lib/ai/ai-review-approval-learning";
+import { runAiReviewDeterministicValidators } from "@/lib/ai/ai-review-contract-validator";
 import { applyContractReview } from "@/lib/ai/apply-contract-review";
 import { isSupportingDocumentOnly } from "@/lib/ai/apply-policy-enforcement";
 import { mapContractReviewToBridgePayload, computePublishOutcome } from "@/lib/ai/write-through-contract";
@@ -40,6 +44,10 @@ export type ContractReviewActionResult =
       warning?: { code: string; message: string };
     }
   | { ok: false; error: string; blockedReasons?: string[] };
+
+export type TrackContractReviewFieldCorrectionResult =
+  | { ok: true; created: boolean; fieldPath?: string; correctionEventId?: string }
+  | { ok: false; error: string };
 
 function canApproveOrReject(processingStatus: string): boolean {
   return (
@@ -74,6 +82,54 @@ function canResolveClientBeforeApply(reviewStatus: string | null): boolean {
   return reviewStatus === null || reviewStatus === "pending" || reviewStatus === "approved";
 }
 
+function canTrackDraftCorrection(reviewStatus: string | null): boolean {
+  return reviewStatus === null || reviewStatus === "pending" || reviewStatus === "approved";
+}
+
+export async function trackContractReviewFieldCorrection(
+  id: string,
+  input: {
+    fieldId: string;
+    correctedValue: unknown;
+    fieldPath?: string | null;
+    fieldLabel?: string | null;
+    originalAiValue?: unknown;
+    sourcePage?: number | null;
+    evidenceSnippet?: string | null;
+  }
+): Promise<TrackContractReviewFieldCorrectionResult> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "documents:write")) {
+    return { ok: false, error: "Nemáte oprávnění." };
+  }
+
+  const row = await getContractReviewById(id, auth.tenantId);
+  if (!row) return { ok: false, error: "Položka nenalezena." };
+  if (!canTrackDraftCorrection(row.reviewStatus ?? null)) {
+    return { ok: false, error: "Ruční opravy lze evidovat jen před dokončením revize." };
+  }
+
+  const eventInput = buildManualCorrectionEventInput(row, {
+    fieldId: input.fieldId,
+    fieldPath: input.fieldPath,
+    fieldLabel: input.fieldLabel,
+    originalAiValue: input.originalAiValue,
+    correctedValue: input.correctedValue,
+    sourcePage: input.sourcePage,
+    evidenceSnippet: input.evidenceSnippet,
+    createdBy: auth.userId,
+  });
+  if (!eventInput) return { ok: true, created: false };
+
+  const correctionEventId = await createDraftCorrectionEvent(eventInput);
+  return {
+    ok: true,
+    created: true,
+    fieldPath: eventInput.fieldPath,
+    correctionEventId,
+  };
+}
+
 export async function approveContractReview(
   id: string,
   options?: {
@@ -99,8 +155,13 @@ export async function approveContractReview(
 
   const edits = options?.fieldEdits ?? {};
   const raw = options?.rawExtractedPayload;
+  let expectedOutputJson: unknown = row.extractedPayload ?? {};
   if (raw && Object.keys(edits).length > 0) {
     const { merged, correctedFields } = mergeFieldEditsIntoExtractedPayload(raw, edits);
+    if (merged.documentClassification && merged.extractedFields) {
+      runAiReviewDeterministicValidators(merged as unknown as import("@/lib/ai/document-review-types").DocumentReviewEnvelope, row.userDeclaredDocumentIntent, "");
+    }
+    expectedOutputJson = merged;
     if (correctedFields.length > 0) {
       await saveContractCorrection(id, auth.tenantId, {
         correctedPayload: merged,
@@ -111,11 +172,23 @@ export async function approveContractReview(
     }
   }
 
+  const reviewedAt = new Date();
   await updateContractReview(id, auth.tenantId, {
     reviewStatus: "approved",
     reviewedBy: auth.userId,
-    reviewedAt: new Date(),
+    reviewedAt,
     rejectReason: null,
+  });
+  await handleAiReviewApprovalLearning({
+    tenantId: auth.tenantId,
+    reviewId: id,
+    acceptedAt: reviewedAt,
+    expectedOutputJson,
+  }).catch((error) => {
+    console.warn("[contract-review] approval learning hook failed", {
+      reviewId: id,
+      error: error instanceof Error ? error.message : String(error),
+    });
   });
   return { ok: true };
 }

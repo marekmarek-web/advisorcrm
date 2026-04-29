@@ -1,6 +1,12 @@
 import { pgTable, uuid, text, timestamp, bigint, jsonb } from "drizzle-orm/pg-core";
 import { contacts } from "./contacts";
 
+export type UserDeclaredDocumentIntent = {
+  isModelation: boolean;
+  declaredByAdvisor: true;
+  declaredAtUpload: string;
+};
+
 /** Processing status for contract upload pipeline. */
 export type ContractProcessingStatus =
   | "uploaded"
@@ -63,6 +69,8 @@ export const contractUploadReviews = pgTable("contract_upload_reviews", {
   lifecycleStatus: text("lifecycle_status"),
   /** Pipeline: intent derived from type + lifecycle. */
   documentIntent: text("document_intent"),
+  /** Advisor-declared upload intent; legacy null means final contract by default. */
+  userDeclaredDocumentIntent: jsonb("user_declared_document_intent").$type<UserDeclaredDocumentIntent>(),
   /** Pipeline: trace without document content (inputMode, documentType, classificationConfidence, extractionMode, warnings, failedStep). */
   extractionTrace: jsonb("extraction_trace"),
   /** Pipeline: validation warnings [{ code, message, field? }]. */

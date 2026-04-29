@@ -45,7 +45,7 @@ const REGISTRY: ReasonCode[] = [
   { code: "no_client_match", severity: "warning", humanMessage: "Klient nebyl nalezen v CRM. Potvrďte vytvoření nového záznamu, nebo vyberte existujícího.", retryRecommended: false },
 
   // Apply gates
-  { code: "proposal_not_final", severity: "warning", humanMessage: "Dokument vypadá jako návrh nebo modelace, ne jako finální smlouva.", retryRecommended: false },
+  { code: "proposal_not_final", severity: "warning", humanMessage: "AI našla znaky návrhu/modelace. Ověřte před schválením.", retryRecommended: false },
   { code: "envelope_classification_conflict", severity: "blocking", humanMessage: "Rozpoznaný typ neodpovídá obsahu dokumentu — zkontrolujte a opravte klasifikaci.", retryRecommended: false },
 
   // Pipeline
@@ -61,9 +61,9 @@ const REGISTRY: ReasonCode[] = [
   { code: "model_flagged", severity: "warning", humanMessage: "Dokument byl označen ke kontrole — ověřte klíčové údaje.", retryRecommended: false },
 
   // Document lifecycle
-  { code: "proposal_not_final_contract", severity: "warning", humanMessage: "Dokument je návrh smlouvy — nejde o finální podepsanou smlouvu.", retryRecommended: false },
-  { code: "offer_not_binding_contract", severity: "warning", humanMessage: "Dokument je nabídka — nejde o závaznou smlouvu.", retryRecommended: false },
-  { code: "proposal_or_modelation_not_final_contract", severity: "warning", humanMessage: "Jde o modelaci, kalkulaci nebo ilustraci — ne o finální smlouvu.", retryRecommended: false },
+  { code: "proposal_not_final_contract", severity: "warning", humanMessage: "AI našla znaky návrhu/modelace. Ověřte před schválením.", retryRecommended: false },
+  { code: "offer_not_binding_contract", severity: "warning", humanMessage: "AI našla znaky nabídky. Ověřte před schválením.", retryRecommended: false },
+  { code: "proposal_or_modelation_not_final_contract", severity: "warning", humanMessage: "AI našla znaky návrhu/modelace. Ověřte před schválením.", retryRecommended: false },
   { code: "supporting_document_review", severity: "info", humanMessage: "Podpůrný dokument — zkontrolujte, zda obsahuje relevantní informace.", retryRecommended: false },
 
   // Payment

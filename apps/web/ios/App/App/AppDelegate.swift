@@ -19,6 +19,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     let shareStore = ShareStore.store
     private let lastIncomingURLPreferencesKey = "CapacitorStorage.aidvisora.lastIncomingURL"
 
+    /// FCM: jen když je `GoogleService-Info.plist` v App target (`docs/runbook-push.md`).
+    /// **Ne** v `init()` — `UIApplication.shared.delegate` musí být nastavený, jinak GoogleUtilities
+    /// swizzler hlásí `I-SWZ001014` (App Delegate does not conform…) a swizzling selže.
+    private static func configureFirebaseIfNeeded() {
+        guard Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil else {
+            return
+        }
+        if FirebaseApp.app() != nil {
+            return
+        }
+        FirebaseApp.configure()
+    }
+
     @discardableResult
     func handleIncomingURL(
         _ url: URL,
@@ -32,14 +45,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // FCM: configure only when GoogleService-Info.plist is copied into the
-        // app target (see docs/runbook-push.md). The file is gitignored; without
-        // it, FirebaseApp.configure() aborts the process → black screen at launch.
-        if Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
-            if FirebaseApp.app() == nil {
-                FirebaseApp.configure()
-            }
-        } else {
+        // První řádek: delegate je již nastavený — Firebase Swizzler v `configure()` očekává platný `UIApplicationDelegate`.
+        Self.configureFirebaseIfNeeded()
+        if Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") == nil {
             NSLog(
                 "[Aidvisora] GoogleService-Info.plist missing from bundle — Firebase not configured; push disabled. Add plist to App target Copy Bundle Resources (runbook-push.md)."
             )

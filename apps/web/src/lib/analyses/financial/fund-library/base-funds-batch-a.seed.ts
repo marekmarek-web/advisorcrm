@@ -146,10 +146,11 @@ export const BATCH_A_SEED_ROWS: readonly BatchASeedRow[] = [
     verifiedAt: '2026-04-05',
     logo: '/logos/funds/ishares_brand.png',
     heroImage: '/report-assets/funds/ishares_core_msci_world/hero.svg',
+    galleryType: 'logo',
     galleryImages: [
-      '/report-assets/funds/ishares_core_msci_world/gallery-1.svg',
-      '/report-assets/funds/ishares_core_msci_world/gallery-2.svg',
-      '/report-assets/funds/ishares_core_msci_world/gallery-3.svg',
+      '/report-assets/msci/msci1.png',
+      '/report-assets/msci/msci2.png',
+      '/report-assets/msci/msci3.png',
     ],
     sources: [
       {
@@ -163,7 +164,7 @@ export const BATCH_A_SEED_ROWS: readonly BatchASeedRow[] = [
         kind: 'factsheet',
       },
     ],
-    assetTodo: ['logo', 'hero', 'gallery-1', 'gallery-2', 'gallery-3'],
+    assetTodo: ['logo', 'hero'],
     notes: [
       'World ETF alias mapovat pouze sem.',
       'BlackRock factsheet v parsovaném textu sice ukazuje sekce sektorů, ale nevyčetl jejich hodnoty; doplnit z product page holdings/analytics view nebo screenshotem.',

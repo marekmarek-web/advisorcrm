@@ -49,6 +49,8 @@ import {
   describeSubdocumentExtractionRoute,
 } from "@/lib/ai/subdocument-extraction-orchestrator";
 import { classifyProduct, safeProductNameFallback } from "@/lib/ai/product-categories";
+import { runAiReviewDeterministicValidators } from "@/lib/ai/ai-review-contract-validator";
+import type { UserDeclaredDocumentIntent } from "db";
 
 export type RunContractReviewProcessingParams = {
   id: string;
@@ -59,6 +61,7 @@ export type RunContractReviewProcessingParams = {
   storagePath: string;
   requestContext: AuditRequestContext;
   processingStartedAtMs: number;
+  userDeclaredDocumentIntent?: UserDeclaredDocumentIntent | null;
 };
 
 function maskForLog(value: unknown): string {
@@ -343,6 +346,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     structuredSource,
     bundleSectionTexts: pipelineBundleSectionTexts,
     pdfAcroFormFieldRows,
+    tenantId,
   });
   const pipelineDurationMs = Date.now() - pipelineStartedAt;
 
@@ -403,6 +407,24 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
   // ── Phase 3: Canonical normalisation ──────────────────────────────────────
   // Map flat extractedFields into structured participants[], insuredRisks[], etc.
   applyCanonicalNormalizationToEnvelope(data, packetMeta);
+  runAiReviewDeterministicValidators(
+    data,
+    params.userDeclaredDocumentIntent,
+    structuredSource?.fullText ?? adobePreprocessResult?.markdownContent ?? "",
+    pipelineResult.learningValidatorHints ?? [],
+  );
+  const validatorWarnings = (data.reviewWarnings ?? [])
+    .map((warning) => warning.code ?? warning.field)
+    .filter((value): value is string => Boolean(value));
+  const validatorAutoFixes = (data.reviewWarnings ?? [])
+    .filter((warning) => warning.code === "premium_total_autofixed_from_insured_sum")
+    .map(() => "premium.totalMonthlyPremium=sum_of_insured_persons");
+  if (validatorWarnings.length > 0) {
+    (pipelineResult.extractionTrace as Record<string, unknown>).validatorWarnings = validatorWarnings;
+  }
+  if (validatorAutoFixes.length > 0) {
+    (pipelineResult.extractionTrace as Record<string, unknown>).validatorAutoFixesApplied = validatorAutoFixes;
+  }
 
   // ── Per-subdocument extraction orchestration ───────────────────────────────
   // For bundle documents, run section-specific passes (health questionnaire LLM,
@@ -601,6 +623,8 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
       documentClassification: data.documentClassification,
       documentMeta: data.documentMeta,
       extractedFieldKeys: Object.keys(data.extractedFields ?? {}),
+      insuredPersons: data.insuredPersons ?? null,
+      premium: data.premium ?? null,
       parties: data.parties ?? {},
       sensitivityProfile: data.sensitivityProfile ?? null,
     };
@@ -707,14 +731,29 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     }
     return null;
   };
-  const providerName = readField("institutionName") ?? readField("partnerName");
-  const rawProductName = readField("productName");
-  const segmentHint = readField("productSegment") ?? readField("segment") ?? data.documentClassification.primaryType ?? null;
+  const providerName =
+    readField("institutionName") ??
+    readField("insurer") ??
+    readField("provider") ??
+    readField("partnerName");
+  const rawProductName = readField("productName") ?? readField("productType");
+  const segmentHint = [
+    readField("productSegment"),
+    readField("segment"),
+    data.documentClassification.primaryType,
+    data.documentClassification.subtype,
+    data.documentClassification.documentIntent,
+  ].filter(Boolean).join(" ");
   const paymentTypeHint: "one_time" | "regular" | null = (() => {
-    const pt = readField("paymentType");
-    if (!pt) return null;
+    const pt = [
+      readField("paymentType"),
+      readField("paymentFrequency"),
+      readField("premiumFrequency"),
+      typeof data.premium?.frequency === "string" ? data.premium.frequency : null,
+    ].filter(Boolean).join(" ");
     if (/jednor[aá]z|one[_-]?time|single/i.test(pt)) return "one_time";
-    if (/pravideln|regular|monthly|ročn[ií]|rocn/i.test(pt)) return "regular";
+    if (/pravideln|regular|monthly|měsí|mesic|ročn[ií]|rocn|quarter|čtvrt|ctvrt|pololet/i.test(pt)) return "regular";
+    if (data.premium?.totalMonthlyPremium != null || readField("totalMonthlyPremium")) return "regular";
     return null;
   })();
   const classification = classifyProduct({

@@ -49,12 +49,19 @@ Tyto oblasti zůstávají primárně na **desktop webu** (nebo jsou na mobilu je
 
 ## 3. Mobile navigation
 
-### Bottom navigation (4 položky)
+**Produkční kontrakt chrome:** Pokud je rozpor mezi tímto starším masterplanem a [mobile-chrome-contract.md](./mobile-chrome-contract.md), pro produkční mobile shell má přednost **mobile-chrome-contract.md**.
+
+### Bottom navigation (5 slotů, střed = +)
 
 1. **Přehled**
 2. **Úkoly**
-3. **Klienti**
-4. **AI** (centrální vstup do AI Asistenta / AI rozhraní podle produktové konfigurace)
+3. **Centrální +**
+4. **Klienti**
+5. **Obchody**
+
+**AI není bottom tab.** AI je top action button v mobile chrome a může být dostupná také přes drawer.
+
+**Kalendář není bottom tab.** Kalendář je dostupný přes drawer/menu nebo přes relevantní flow z centrálního `+`.
 
 ### Centrální akce „+“ (FAB / center action)
 
@@ -72,8 +79,8 @@ Implementace: jedna vstupní akce otevře **action sheet / menu** s těmito volb
 
 Sekundární nebo širší přístupy:
 
-- **Obchody**
 - **Kalendář**
+- **AI Asistent**
 - **AI Review**
 - **Dokumenty**
 - **Produkce** (vybrané KPI / přehled v mobilním rozsahu)
@@ -99,13 +106,15 @@ Směřování vizuálního jazyka — **premium fintech / productivity mobilní 
 
 ## 5. Component system
 
+**Konkrétní produkční kontrakt chrome (top/bottom nav, padding, +):** viz [mobile-chrome-contract.md](./mobile-chrome-contract.md).
+
 Sdílená sada **mobilních** wrapperů a bloků nad stávajícími daty (názvy jsou konvence pro implementaci — nezávislé na konkrétním frameworku zde):
 
 | Komponent | Účel (stručně) |
 |-----------|----------------|
 | **MobileShell** | Obal celé mobilní sekce — safe area, základní layout, pozadí. |
 | **MobileTopBar** | Horní lišta: název screenu, zpět, kontextové akce. |
-| **MobileBottomNav** | Spodní navigace podle výše uvedených 4 položek. |
+| **MobileBottomNav** | Spodní navigace podle kontraktu: Přehled / Úkoly / + / Klienti / Obchody. |
 | **MobileDrawer** | Postranní / slide-over menu se sekundární navigací. |
 | **MobileActionSheet** | Rychlé volby (např. výběr z FAB „+“). |
 | **MobileBottomSheet** | Tvary obsahu s drag handle; náhrada modálů na plnou šířku. |

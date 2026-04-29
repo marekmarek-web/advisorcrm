@@ -1,6 +1,7 @@
 "use client";
 
 import React, { type ButtonHTMLAttributes, type ReactNode, createElement, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
 import {
@@ -39,9 +40,9 @@ export function MobileAppShell({
         "aidv-mobile-premium-shell flex flex-col text-[color:var(--wp-text)]",
         /* Phone/tablet: fill visual viewport so document/body never scrolls or rubber-bands behind the shell. */
         deviceClass === "phone" &&
-          "fixed inset-0 z-[1] min-h-0 overflow-hidden pb-[calc(var(--aidv-mobile-tabbar-inner-h-phone)+var(--safe-area-bottom,0px))]",
+          "fixed inset-0 z-[1] min-h-0 overflow-hidden",
         deviceClass === "tablet" &&
-          "fixed inset-0 z-[1] min-h-0 overflow-hidden pb-[calc(var(--aidv-mobile-tabbar-inner-h-tablet)+var(--safe-area-bottom,0px))]",
+          "fixed inset-0 z-[1] min-h-0 overflow-hidden",
         deviceClass === "desktop" && "min-h-[100dvh] pb-0",
         className
       )}
@@ -73,36 +74,49 @@ export function MobileHeader({
   right,
   className,
   deviceClass = "phone",
+  /** Primární taby hub: titul jen pro čtečky, viz `isPrimaryTabHubPath` + mobile chrome contract. */
+  titleMode = "default",
 }: {
   title: string;
   subtitle?: string;
   left?: ReactNode;
   right?: ReactNode;
   deviceClass?: DeviceClass;
+  titleMode?: "default" | "accessibilityOnly";
 } & ClassName) {
+  const chromeOnly = titleMode === "accessibilityOnly";
   return (
     <header
       className={cx(
-        "z-40 shrink-0 border-b border-slate-200/70 shadow-[0_4px_24px_rgba(10,15,41,0.06)] backdrop-blur-xl",
-        "bg-white/80 supports-[backdrop-filter]:bg-white/70",
-        "pt-[calc(var(--safe-area-top)+0.25rem)] pb-2.5 rounded-b-[1.25rem]",
-        deviceClass === "phone" && "px-4",
+        "sticky top-0 z-40 shrink-0 backdrop-blur-2xl backdrop-saturate-150",
+        chromeOnly
+          ? "bg-transparent pt-[calc(var(--safe-area-top)+0.85rem)] pb-2"
+          : "border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--aidv-mobile-header-glass-bg)] supports-[backdrop-filter]:bg-white/75 shadow-[0_6px_28px_rgba(10,15,41,0.08)] pt-[calc(var(--safe-area-top)+0.35rem)] pb-3 rounded-b-[1.35rem]",
+        deviceClass === "phone" && (chromeOnly ? "px-6" : "px-4"),
         deviceClass === "tablet" && "px-6",
         className
       )}
     >
-      <div className={cx("min-h-[44px] flex items-center justify-between gap-3", deviceClass === "tablet" && "max-w-3xl mx-auto")}>
+      <div className={cx("min-h-[52px] flex items-center justify-between gap-3", deviceClass === "tablet" && "max-w-3xl mx-auto")}>
         <div className="min-w-0 flex items-center gap-2">{left}</div>
         <div className="min-w-0 flex-1">
-          <h1
-            className={cx(
-              "truncate text-center font-black text-[color:var(--wp-text)]",
-              deviceClass === "tablet" ? "text-lg" : "text-base"
-            )}
-          >
-            {title}
-          </h1>
-          <p className="truncate text-center text-[11px] text-[color:var(--wp-text-secondary)]">{subtitle || "\u00A0"}</p>
+          {chromeOnly ? (
+            <span className="sr-only">
+              {[title, subtitle].filter(Boolean).join(" — ")}
+            </span>
+          ) : (
+            <>
+              <h1
+                className={cx(
+                  "truncate text-center font-black text-[color:var(--wp-text)]",
+                  deviceClass === "tablet" ? "text-lg" : "text-base"
+                )}
+              >
+                {title}
+              </h1>
+              <p className="truncate text-center text-[11px] text-[color:var(--wp-text-secondary)]">{subtitle || "\u00A0"}</p>
+            </>
+          )}
         </div>
         <div className="min-w-0 flex items-center justify-end gap-2">{right}</div>
       </div>
@@ -129,13 +143,15 @@ function NavTabButton({
       aria-label={item.label}
       aria-current={active ? "page" : undefined}
       className={cx(
-        "min-h-[44px] rounded-2xl transition-all duration-200",
+        "min-h-[44px] transition-all duration-200",
         deviceClass === "tablet"
-          ? "flex items-center gap-2 px-4 py-1.5 text-sm font-bold"
-          : "flex flex-col items-center justify-center gap-1 text-[10px] font-bold",
+          ? "flex items-center gap-2 rounded-2xl px-4 py-1.5 text-sm font-bold"
+          : "flex flex-col items-center justify-center gap-0.5 rounded-[2rem] px-1.5 py-1 text-[10px] font-black",
         active
-          ? "bg-gradient-to-b from-indigo-50 to-violet-50/90 text-[#0a0f29] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] ring-1 ring-indigo-200/80"
-          : "text-[color:var(--wp-text-secondary)] hover:text-[color:var(--wp-text)] hover:bg-white/40"
+          ? deviceClass === "tablet"
+            ? "bg-gradient-to-b from-indigo-50 to-violet-50/90 text-[color:var(--wp-text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] ring-1 ring-indigo-200/80"
+            : "text-indigo-700"
+          : "text-slate-600 hover:text-[color:var(--wp-text)] hover:bg-slate-50"
       )}
     >
       <div className="relative flex-shrink-0">
@@ -157,6 +173,7 @@ export function MobileBottomNav({
   onSelect,
   deviceClass = "phone",
   centerFab,
+  visible = true,
 }: {
   items: Array<{ id: string; label: string; icon: React.ComponentType<{ size?: number }>; badge?: number }>;
   /** When null, no tab is shown as active (e.g. deep-linked tool routes). */
@@ -165,6 +182,8 @@ export function MobileBottomNav({
   deviceClass?: DeviceClass;
   /** Center “+” — same quick-new affordance as desktop header (4 surrounding tabs). */
   centerFab?: { onClick: () => void; ariaLabel?: string };
+  /** Při `false` lišta zajede dolů (scroll dolů). */
+  visible?: boolean;
 }) {
   const useFab = Boolean(centerFab) && items.length === 4;
   const left = useFab ? items.slice(0, 2) : items;
@@ -176,50 +195,62 @@ export function MobileBottomNav({
       onClick={centerFab.onClick}
       aria-label={centerFab.ariaLabel ?? "Nový – rychlé akce"}
       className={cx(
-        "flex shrink-0 items-center justify-center rounded-full border-[3px] border-white/90 text-white shadow-xl shadow-indigo-950/25 transition-transform active:scale-95",
+        "flex shrink-0 items-center justify-center rounded-full border-[4px] border-white text-white shadow-[0_16px_32px_rgba(15,23,42,.42)] transition-transform active:scale-95",
         "[background-image:var(--aidv-mobile-fab-gradient)]",
-        deviceClass === "tablet" ? "w-11 h-11 -translate-y-0.5" : "w-[3.35rem] h-[3.35rem] -translate-y-1"
+        deviceClass === "tablet" ? "w-12 h-12 -translate-y-0.5" : "w-16 h-16 -translate-y-6"
       )}
     >
-      <Plus size={deviceClass === "tablet" ? 20 : 23} strokeWidth={2.5} className="shrink-0 drop-shadow-sm" />
+      <Plus size={deviceClass === "tablet" ? 22 : 28} strokeWidth={2.5} className="shrink-0 drop-shadow-sm" />
     </button>
   ) : null;
+
+  const phoneBar = useFab && deviceClass === "phone" && (
+    <div className="grid h-[68px] grid-cols-5 items-center gap-0.5">
+      {left.map((item) => (
+        <NavTabButton
+          key={item.id}
+          item={item}
+          active={activeId != null && item.id === activeId}
+          deviceClass={deviceClass}
+          onSelect={onSelect}
+        />
+      ))}
+      <div className="flex justify-center pb-0.5">{fabButton}</div>
+      {right.map((item) => (
+        <NavTabButton
+          key={item.id}
+          item={item}
+          active={activeId != null && item.id === activeId}
+          deviceClass={deviceClass}
+          onSelect={onSelect}
+        />
+      ))}
+    </div>
+  );
 
   return (
     <nav
       className={cx(
-        "fixed inset-x-0 bottom-0 z-50",
-        "border-t border-[color:var(--aidv-mobile-nav-glass-border)]",
-        "bg-[color:var(--aidv-mobile-nav-glass-bg)] backdrop-blur-2xl backdrop-saturate-150",
-        "shadow-[var(--aidv-mobile-nav-shadow)]",
-        "pb-[var(--safe-area-bottom,0px)]",
-        "pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]"
+        "fixed inset-x-0 bottom-0 z-50 pointer-events-none pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]",
+        "transition-transform duration-300 ease-out will-change-transform",
+        visible ? "translate-y-0" : "translate-y-[calc(100%+12px)]",
       )}
+      style={{ paddingBottom: "max(4px, calc(var(--safe-area-bottom, 0px) - 28px))" }}
     >
       {useFab && deviceClass === "phone" ? (
-        <div className="grid grid-cols-5 gap-0.5 px-1 pt-1 pb-1 items-end max-w-lg mx-auto">
-          {left.map((item) => (
-            <NavTabButton
-              key={item.id}
-              item={item}
-              active={activeId != null && item.id === activeId}
-              deviceClass={deviceClass}
-              onSelect={onSelect}
-            />
-          ))}
-          <div className="flex justify-center pb-0.5">{fabButton}</div>
-          {right.map((item) => (
-            <NavTabButton
-              key={item.id}
-              item={item}
-              active={activeId != null && item.id === activeId}
-              deviceClass={deviceClass}
-              onSelect={onSelect}
-            />
-          ))}
+        <div className="pointer-events-auto mx-auto w-full max-w-[398px] px-5 pb-0">
+          <div
+            className={cx(
+              "relative rounded-full border border-slate-200/90 bg-white shadow-[0_20px_40px_-10px_rgba(15,23,42,.28)]",
+              "ring-1 ring-[color:var(--wp-surface-card-border)]/80",
+              "px-2"
+            )}
+          >
+            {phoneBar}
+          </div>
         </div>
       ) : useFab && (deviceClass === "tablet" || deviceClass === "desktop") ? (
-        <div className="flex items-end justify-between gap-2 px-4 pt-1 pb-1 max-w-3xl mx-auto">
+        <div className="pointer-events-auto flex items-end justify-between gap-2 border-t border-[color:var(--aidv-mobile-nav-glass-border)] bg-[color:var(--aidv-mobile-nav-glass-bg)] px-4 pt-1 pb-1 max-w-3xl mx-auto shadow-[var(--aidv-mobile-nav-shadow)] backdrop-blur-2xl backdrop-saturate-150">
           {left.map((item) => (
             <NavTabButton
               key={item.id}
@@ -243,6 +274,7 @@ export function MobileBottomNav({
       ) : (
         <div
           className={cx(
+            "pointer-events-auto border-t border-[color:var(--aidv-mobile-nav-glass-border)] bg-[color:var(--aidv-mobile-nav-glass-bg)] shadow-[var(--aidv-mobile-nav-shadow)] backdrop-blur-2xl backdrop-saturate-150",
             deviceClass === "tablet"
               ? "flex justify-around px-6 py-1.5 max-w-3xl mx-auto"
               : "grid grid-cols-5 gap-1 px-2 py-2"
@@ -263,20 +295,114 @@ export function MobileBottomNav({
   );
 }
 
+export type MobilePrimaryHubTabId = "home" | "tasks" | "clients" | "pipeline";
+
+export function MobileCurrentSectionPill({
+  label,
+  visible = true,
+  deviceClass = "phone",
+}: {
+  label: string;
+  visible?: boolean;
+  deviceClass?: DeviceClass;
+}) {
+  return (
+    <div
+      className={cx(
+        "pointer-events-none absolute inset-x-0 top-[calc(100%-0.2rem)] z-50 flex justify-center px-4",
+        "transition-all duration-300 ease-out",
+        visible
+          ? "translate-y-0 scale-100 opacity-100"
+          : "-translate-y-5 scale-95 opacity-0",
+      )}
+      aria-hidden="true"
+    >
+      <span
+        className={cx(
+          "inline-flex h-8 items-center rounded-full border border-white/75 bg-white/75 px-5",
+          "text-[13px] font-black text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_10px_26px_rgba(15,23,42,.07)]",
+          "ring-1 ring-slate-200/45 backdrop-blur-xl",
+          deviceClass === "tablet" && "h-9 px-6 text-sm",
+        )}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+/** Segmentové přepínání hlavních hubů (`/today`, `/tasks`, …) — řádek pod `MobileHeader`, na hub routách. */
+export function MobilePrimaryHubSegmentRow({
+  activeId,
+  onSelect,
+  visible = true,
+  deviceClass = "phone",
+}: {
+  activeId: MobilePrimaryHubTabId;
+  onSelect: (id: MobilePrimaryHubTabId) => void;
+  visible?: boolean;
+  deviceClass?: DeviceClass;
+}) {
+  const items: { id: MobilePrimaryHubTabId; label: string }[] = [
+    { id: "home", label: "Nástěnka" },
+    { id: "tasks", label: "Úkoly" },
+    { id: "clients", label: "Klienti" },
+    { id: "pipeline", label: "Obchody" },
+  ];
+  return (
+    <div
+      className={cx(
+        "overflow-hidden border-b border-[color:var(--wp-surface-card-border)]/55 bg-[color:var(--aidv-mobile-header-glass-bg)] px-4 transition-[max-height,opacity,padding] duration-200 ease-out sm:px-6",
+        visible ? "max-h-[88px] opacity-100 py-2" : "pointer-events-none max-h-0 opacity-0 py-0",
+      )}
+      aria-hidden={!visible}
+    >
+      <div className={cx("mx-auto flex w-full gap-1 rounded-[999px] bg-slate-100/92 p-1 ring-1 ring-[color:var(--wp-surface-card-border)]/45 shadow-[0_10px_28px_-18px_rgba(15,23,42,.12)] sm:max-w-3xl")}>
+        {items.map((item) => {
+          const active = activeId === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelect(item.id)}
+              className={cx(
+                "min-h-[42px] flex-1 rounded-[999px] px-1 text-center text-[11px] font-black leading-tight transition-colors sm:text-[12px]",
+                deviceClass === "tablet" ? "px-2" : "",
+                active
+                  ? "bg-white text-[color:var(--wp-text)] shadow-[0_4px_14px_-6px_rgba(15,23,42,.25)]"
+                  : "text-[color:var(--wp-text-secondary)] active:bg-white/40",
+              )}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function MobileScreen({
   children,
   className,
   ariaLabel,
   ariaLabelledBy,
-}: { children: ReactNode; ariaLabel?: string; ariaLabelledBy?: string } & ClassName) {
+  onScroll,
+}: {
+  children: ReactNode;
+  ariaLabel?: string;
+  ariaLabelledBy?: string;
+  onScroll?: React.UIEventHandler<HTMLElement>;
+} & ClassName) {
   return (
     <main
       role="main"
       aria-label={ariaLabelledBy ? undefined : ariaLabel ?? "Hlavní obsah"}
       aria-labelledby={ariaLabelledBy}
+      onScroll={onScroll}
       className={cx(
         "relative flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto overscroll-y-none",
-        "px-4 pt-3 space-y-4",
+        "bg-[color:var(--aidv-mobile-canvas-bg)] px-5 pt-3 space-y-4 sm:px-6",
         "pb-[var(--aidv-mobile-screen-pad-bottom)]",
         className
       )}
@@ -686,8 +812,9 @@ function OverlayContainer({
     };
   }, [open]);
 
-  if (!open) return null;
-  return (
+  const portalTarget = typeof document === "undefined" ? null : document.body;
+  if (!open || !portalTarget) return null;
+  return createPortal(
     <div
       className="fixed inset-0 z-[100]"
       role="dialog"
@@ -699,7 +826,7 @@ function OverlayContainer({
         type="button"
         aria-label="Zavřít"
         data-focus-trap-skip
-        className="absolute inset-0 bg-[color:var(--wp-overlay-scrim)] animate-in fade-in duration-200"
+        className="absolute inset-0 bg-[color:var(--wp-overlay-scrim)] backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
       {/* Panel */}
@@ -718,7 +845,8 @@ function OverlayContainer({
       >
         {children}
       </div>
-    </div>
+    </div>,
+    portalTarget
   );
 }
 

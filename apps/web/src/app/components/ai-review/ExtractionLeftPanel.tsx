@@ -2109,6 +2109,7 @@ function ExtractedFieldRow({
   isConfirmed,
   isApproved,
   applyResultPayload,
+  showDebugFieldPath,
   onFieldClick,
   onEdit,
   onConfirm,
@@ -2121,6 +2122,7 @@ function ExtractedFieldRow({
   /** True when the advisor approved or applied the whole review. */
   isApproved: boolean;
   applyResultPayload?: ApplyResultPayload;
+  showDebugFieldPath?: boolean;
   onFieldClick: (fieldId: string, page?: number) => void;
   onEdit: (fieldId: string, value: string) => void;
   onConfirm: (fieldId: string) => void;
@@ -2155,9 +2157,14 @@ function ExtractedFieldRow({
           )}
           {hasBeenEdited && !isEffectivelyConfirmed && (
             <span className="text-blue-500 normal-case tracking-normal font-bold">
-              upraveno
+              Ručně upraveno
             </span>
           )}
+          {showDebugFieldPath && field.fieldPath ? (
+            <code className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-mono normal-case tracking-normal text-slate-500">
+              {field.fieldPath}
+            </code>
+          ) : null}
         </span>
         {field.displayStatus === "Chybí" && !field.value && (
           <span className="text-[8px] font-bold uppercase tracking-wide text-slate-400 normal-case shrink-0">
@@ -2295,6 +2302,7 @@ function ExtractedGroupCard({
   state,
   applyResultPayload,
   isApproved,
+  showDebugFieldPath,
   onFieldClick,
   onEdit,
   onConfirm,
@@ -2308,6 +2316,7 @@ function ExtractedGroupCard({
   applyResultPayload?: ApplyResultPayload;
   /** True when the advisor approved or applied the whole review — all warning fields turn green. */
   isApproved: boolean;
+  showDebugFieldPath?: boolean;
   onFieldClick: (fieldId: string, page?: number) => void;
   onEdit: (fieldId: string, value: string) => void;
   onConfirm: (fieldId: string) => void;
@@ -2384,6 +2393,7 @@ function ExtractedGroupCard({
               isConfirmed={state.confirmedFields[field.id] ?? false}
               isApproved={isApproved}
               applyResultPayload={applyResultPayload}
+              showDebugFieldPath={showDebugFieldPath}
               onFieldClick={onFieldClick}
               onEdit={onEdit}
               onConfirm={onConfirm}
@@ -2550,6 +2560,7 @@ export function ExtractionLeftPanel({
                   state={state}
                   applyResultPayload={doc.applyResultPayload}
                   isApproved={doc.reviewStatus === "approved" || doc.reviewStatus === "applied" || doc.isApplied}
+                  showDebugFieldPath={doc.reviewUiMeta?.showDebugFieldPath === true}
                   onFieldClick={onFieldClick}
                   onEdit={onEdit}
                   onConfirm={onConfirm}

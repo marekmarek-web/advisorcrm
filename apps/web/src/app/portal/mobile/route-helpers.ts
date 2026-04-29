@@ -155,6 +155,20 @@ export function pathnameToBottomTab(pathname: string): TabId {
   return "none";
 }
 
+/**
+ * Primary bottom-tab hub routes where the **screen title** belongs in scrollable
+ * content (mock direction: clean top chrome with menu + actions only).
+ * Detail routes (dynamic segment) keep titles in `MobileHeader`.
+ */
+export function isPrimaryTabHubPath(pathname: string): boolean {
+  const p = normalizePortalPathname(pathname);
+  if (p === "/portal" || p === "/portal/today" || p.startsWith("/portal/today/")) return true;
+  if (p === "/portal/tasks") return true;
+  if (p === "/portal/contacts") return true;
+  if (p === "/portal/pipeline") return true;
+  return false;
+}
+
 /** True for routes with a dynamic segment (show back arrow, not hamburger). */
 export function isDetailRoute(pathname: string): boolean {
   if (/^\/portal\/contacts\/[^/]+$/.test(pathname) && !pathname.endsWith("/new")) return true;

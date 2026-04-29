@@ -50,7 +50,7 @@ export function HeroCard({
   eyebrow?: string;
   title: ReactNode;
   subtitle?: ReactNode;
-  /** Ikona v kruhu vlevo (volitelné). */
+  /** Ikona vlevo bez rámečku (bare na gradient/tmavém pozadí). */
   icon?: ReactNode;
   /** Akce vpravo nahoře (1-2 ghost tlačítka). */
   actions?: ReactNode;
@@ -77,11 +77,7 @@ export function HeroCard({
         className="pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full bg-white/5 blur-2xl"
       />
       <div className="relative flex items-start gap-3">
-        {icon ? (
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/10 backdrop-blur-sm ring-1 ring-white/10 text-white">
-            {icon}
-          </div>
-        ) : null}
+        {icon ? <div className="shrink-0 text-white [&>svg]:block">{icon}</div> : null}
         <div className="min-w-0 flex-1">
           {eyebrow ? (
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/60">
@@ -218,11 +214,7 @@ export function KpiCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          {icon ? (
-            <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]">
-              {icon}
-            </div>
-          ) : null}
+          {icon ? <span className="shrink-0 text-[color:var(--wp-text-secondary)]">{icon}</span> : null}
           <p className="truncate text-[10px] font-black uppercase tracking-[0.14em] text-[color:var(--wp-text-secondary)]">
             {label}
           </p>

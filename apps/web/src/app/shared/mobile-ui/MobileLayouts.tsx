@@ -8,6 +8,15 @@ function cx(...classes: Array<string | false | null | undefined>) {
 }
 
 /**
+ * Jednotný vnitřní wrapper pro obsah screenu (bez scrollu — ten drží `MobileScreen`).
+ * Viz `docs/mobile-redesign/mobile-chrome-contract.md` — na primárních tab hubách
+ * je hlavní H1 v obsahu, ne ve `MobileHeader` (`isPrimaryTabHubPath`).
+ */
+export function MobilePage({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cx("w-full min-w-0", className)}>{children}</div>;
+}
+
+/**
  * Consistent horizontal padding and max-width per device class.
  * Use inside MobileScreen / MobileAppShell to constrain content width on tablet.
  * Aligns with premium mobile canvas (narrow phones ~390–430px readable column).

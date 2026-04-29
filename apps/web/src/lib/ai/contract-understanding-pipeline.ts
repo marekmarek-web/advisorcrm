@@ -153,6 +153,7 @@ export type PipelineSuccess = {
   fieldConfidenceMap: Record<string, number> | null;
   classificationReasons: string[];
   reviewDecisionReason?: string | null;
+  learningValidatorHints?: Record<string, unknown>[];
 };
 
 export type PipelineError = {
@@ -232,6 +233,13 @@ export type ContractPipelineOptions = {
    * prepended to extraction text and values are merged after LLM extraction.
    */
   pdfAcroFormFieldRows?: import("@/lib/documents/processing/pdf-acroform-extract").PdfFormFieldRow[] | null;
+  /** Tenant used for PII-safe AI Review learning hints. */
+  tenantId?: string | null;
+  /** Optional pre-known institution/product context for learning hint lookup. */
+  learningHintContext?: {
+    institutionName?: string | null;
+    productName?: string | null;
+  } | null;
 };
 
 export async function runContractUnderstandingPipeline(

@@ -41,6 +41,7 @@ import {
   type ApplyPolicyEnforcementTrace,
 } from "@/lib/ai/apply-policy-enforcement";
 import { validateBeforeApply } from "./pre-apply-validation";
+import { runAiReviewDeterministicValidators, shouldPublishToCrm } from "./ai-review-contract-validator";
 import type { DocumentReviewEnvelope, PrimaryDocumentType } from "./document-review-types";
 import { getDocumentTypeLabel } from "./document-messages";
 import { applyExtractedFieldAliasNormalizations } from "./extraction-field-alias-normalize";
@@ -967,6 +968,7 @@ export async function applyContractReview(
   // even for payloads stored by an older pipeline version.
   if (extractedEnvelope.documentClassification && extractedEnvelope.extractedFields) {
     applyExtractedFieldAliasNormalizations(extractedEnvelope);
+    runAiReviewDeterministicValidators(extractedEnvelope, row.userDeclaredDocumentIntent, "");
   }
   const segmentForValidation = validateSegment(
     (row.extractedPayload as Record<string, unknown> | null)?.segment as string | undefined
@@ -1068,6 +1070,15 @@ export async function applyContractReview(
   // for the document classification. Only truly supporting docs (payslip, bank statement)
   // that the advisor did NOT override remain guarded.
   const rawIsSupporting = isSupportingDocumentOnly(extractedPayloadForEnforcement);
+  const publishToCrm = shouldPublishToCrm({
+    extractedPayload: {
+      ...extractedPayloadForEnforcement,
+      userDeclaredDocumentIntent:
+        row.userDeclaredDocumentIntent ??
+        (extractedPayloadForEnforcement.userDeclaredDocumentIntent as unknown),
+    },
+    reviewApprovedByAdvisor: row.reviewStatus === "approved",
+  });
   // Advisor-confirmed apply: bypass supporting document guard entirely.
   // When advisor explicitly approved the review, they take responsibility for
   // document classification — sensitive attachments, bundles, etc. must not
@@ -1310,7 +1321,7 @@ export async function applyContractReview(
           effectiveContactId
         ) {
           // Fáze 9: Supporting document guard — blocking contract apply for payslip/tax/bank statement
-          if (isSupporting) {
+          if (isSupporting || !publishToCrm) {
             // Supporting doc nesmí vytvořit contract-like DB apply — přeskočíme
             continue;
           }
@@ -1567,7 +1578,7 @@ export async function applyContractReview(
           action.type === "create_payment_setup_for_portal"
         ) {
           // Fáze 9: Supporting document guard — payslip/daňové přiznání nesmí vytvořit payment setup
-          if (isSupporting) {
+          if (isSupporting || !publishToCrm) {
             continue;
           }
 
@@ -1663,7 +1674,7 @@ export async function applyContractReview(
         }
       }
 
-      if (!isSupporting && createdContractIds.length === 0 && effectiveContactId) {
+      if (!isSupporting && publishToCrm && createdContractIds.length === 0 && effectiveContactId) {
         const hasContractAction = draftActions.some(
           (a) =>
             a.type === "create_contract" ||

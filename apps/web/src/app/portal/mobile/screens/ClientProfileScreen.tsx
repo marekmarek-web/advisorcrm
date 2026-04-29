@@ -527,7 +527,7 @@ function TasksTab({
                   </p>
                   {task.dueDate ? (
                     <p className={cx("text-xs mt-0.5 font-semibold", isOverdue ? "text-rose-500" : "text-[color:var(--wp-text-secondary)]")}>
-                      {isOverdue ? "Prošlé · " : ""}
+                      {isOverdue ? "Po termínu · " : ""}
                       {formatDisplayDateCs(task.dueDate) || task.dueDate}
                     </p>
                   ) : null}

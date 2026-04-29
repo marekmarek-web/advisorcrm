@@ -5,7 +5,7 @@ import { withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
 import { assertCapabilityForAction } from "@/lib/billing/server-action-plan-guard";
 import { contracts, SEGMENT_LABELS } from "db";
-import { eq, and, gte, lt, sql } from "db";
+import { eq, and, sql } from "db";
 import {
   getSegmentUiGroup,
   type ContractSegmentUiGroup,

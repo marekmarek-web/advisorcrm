@@ -219,6 +219,23 @@ export function sanitizeAdvisorVisibleText(raw: string): string {
     t = t.replace(re, rep);
   }
 
+  t = t.replace(
+    /Jedná se o návrh\/nabídku,\s*ne o finálně uzavřenou smlouvu\.?/gi,
+    "AI našla znaky návrhu/nabídky. Ověřte před schválením.",
+  );
+  t = t.replace(
+    /Dokument vypadá jako návrh,\s*ne jako finální smlouva\.?/gi,
+    "AI našla znaky návrhu/modelace. Ověřte před schválením.",
+  );
+  t = t.replace(
+    /Návrh\/modelace\s+—\s+ne finální smlouva\.?/gi,
+    "AI našla znaky návrhu/modelace. Ověřte před schválením.",
+  );
+  t = t.replace(
+    /classifier:\s*Nepodařilo se odhadnout kategorii produktu z názvu ani ze segmentu\.?/gi,
+    "Kategorie produktu vyžaduje kontrolu.",
+  );
+
   t = t.replace(/\s{2,}/g, " ").replace(/\s*·\s*·+/g, " · ").trim();
   return t;
 }

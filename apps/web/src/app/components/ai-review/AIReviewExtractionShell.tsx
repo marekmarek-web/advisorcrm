@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import React, { useReducer, useCallback, useEffect, useState } from "react";
+import React, { useReducer, useCallback, useEffect, useRef, useState } from "react";
 import {
   FileText,
   Eye,
@@ -244,6 +244,57 @@ function ApplyEnforcementResultSummary({ trace }: { trace: EnforcementTrace }) {
   );
 }
 
+function maskDebugValue(value: unknown): string {
+  const text = Array.isArray(value) ? value.join(", ") : String(value ?? "—");
+  return text.replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}|\+?\d[\d\s().-]{7,}|\b\d{6}\/?\d{3,4}\b/gi, "[masked]");
+}
+
+function AiReviewLearningTraceDebug({ doc }: { doc: ExtractionDocument }) {
+  const trace = doc.extractionTrace;
+  if (!trace) return null;
+  const validatorCodes = (doc.validationWarnings ?? [])
+    .map((warning) => warning.code ?? warning.field)
+    .filter((value): value is string => Boolean(value));
+  const autoFixes = trace.validatorAutoFixesApplied ?? [];
+  const hasLearningTrace =
+    trace.learningHintsUsed !== undefined ||
+    trace.learningPatternIds?.length ||
+    trace.modelName ||
+    trace.promptVersion ||
+    trace.schemaVersion ||
+    trace.pipelineVersion ||
+    validatorCodes.length ||
+    autoFixes.length;
+  if (!hasLearningTrace) return null;
+
+  return (
+    <details className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-700 md:px-6">
+      <summary className="cursor-pointer select-none font-black uppercase tracking-wide text-slate-600">
+        AI Review Learning trace
+      </summary>
+      <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <DebugItem label="modelName" value={trace.modelName} />
+        <DebugItem label="promptVersion" value={trace.promptVersion} />
+        <DebugItem label="schemaVersion" value={trace.schemaVersion} />
+        <DebugItem label="pipelineVersion" value={trace.pipelineVersion} />
+        <DebugItem label="learningHintsUsed" value={trace.learningHintsUsed === true ? "true" : "false"} />
+        <DebugItem label="learningPatternIds" value={trace.learningPatternIds?.join(", ")} />
+        <DebugItem label="validators fired" value={validatorCodes.join(", ")} />
+        <DebugItem label="autoFixes applied" value={autoFixes.join(", ")} />
+      </dl>
+    </details>
+  );
+}
+
+function DebugItem({ label, value }: { label: string; value: unknown }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-2">
+      <dt className="text-[10px] font-black uppercase tracking-wide text-slate-400">{label}</dt>
+      <dd className="mt-1 break-words font-mono text-[11px]">{maskDebugValue(value)}</dd>
+    </div>
+  );
+}
+
 function reducer(
   state: ExtractionReviewState,
   action: ExtractionReviewAction
@@ -319,6 +370,15 @@ type Props = {
   ) => void | Promise<void>;
   onReject?: (reason?: string) => void;
   onApply?: (options?: { overrideGateReasons?: string[]; overrideReason?: string }) => void;
+  onTrackFieldCorrection?: (input: {
+    fieldId: string;
+    fieldPath?: string | null;
+    correctedValue: string;
+    fieldLabel?: string | null;
+    originalAiValue?: string | null;
+    sourcePage?: number | null;
+    evidenceSnippet?: string | null;
+  }) => void | Promise<void>;
   onSelectClient?: (clientId: string) => void;
   onConfirmCreateNew?: () => void;
   /** Persist "final contract" override to server so it survives reload. */
@@ -349,6 +409,7 @@ export function AIReviewExtractionShell({
   onApproveAndApply,
   onReject,
   onApply,
+  onTrackFieldCorrection,
   onSelectClient,
   onConfirmCreateNew,
   onConfirmFinalContract,
@@ -373,6 +434,7 @@ export function AIReviewExtractionShell({
   const [finalContractBusy, setFinalContractBusy] = useState(false);
   const [pdfExportBusy, setPdfExportBusy] = useState(false);
   const [shellAttachClientOpen, setShellAttachClientOpen] = useState(false);
+  const correctionTimersRef = useRef<Record<string, number>>({});
   const toast = useToast();
 
   const isFailed = doc.processingStatus === "failed";
@@ -430,6 +492,13 @@ export function AIReviewExtractionShell({
     setApplyOverrideEnabled(serverOverride);
   }, [doc.id, doc.applyGate]);
 
+  useEffect(() => {
+    return () => {
+      Object.values(correctionTimersRef.current).forEach((timer) => window.clearTimeout(timer));
+      correctionTimersRef.current = {};
+    };
+  }, []);
+
   const handleFieldClick = useCallback((fieldId: string, page?: number) => {
     dispatch({ type: "SET_ACTIVE_FIELD", fieldId, page });
   }, []);
@@ -440,7 +509,29 @@ export function AIReviewExtractionShell({
 
   const handleEdit = useCallback((fieldId: string, value: string) => {
     dispatch({ type: "EDIT_FIELD", fieldId, value });
-  }, []);
+    if (!onTrackFieldCorrection) return;
+    const field = doc.groups.flatMap((group) => group.fields).find((candidate) => candidate.id === fieldId);
+    if (!field?.fieldPath || field.id.startsWith("synthetic.")) return;
+    const original = field.originalAiValue?.trim() ?? "";
+    const corrected = value.trim();
+    if (original === corrected) return;
+
+    const previousTimer = correctionTimersRef.current[fieldId];
+    if (previousTimer != null) window.clearTimeout(previousTimer);
+    correctionTimersRef.current[fieldId] = window.setTimeout(() => {
+      void Promise.resolve(onTrackFieldCorrection({
+        fieldId: field.id,
+        fieldPath: field.fieldPath,
+        correctedValue: value,
+        fieldLabel: field.label,
+        originalAiValue: field.originalAiValue,
+        sourcePage: field.page ?? null,
+        evidenceSnippet: field.evidenceSnippet ?? null,
+      })).catch((error) => {
+        console.warn("[AIReviewExtractionShell] correction event tracking failed", error);
+      });
+    }, 650);
+  }, [doc.groups, onTrackFieldCorrection]);
 
   const handleConfirm = useCallback((fieldId: string) => {
     dispatch({ type: "CONFIRM_FIELD", fieldId });
@@ -672,6 +763,8 @@ export function AIReviewExtractionShell({
           </div>
         </div>
       )}
+
+      <AiReviewLearningTraceDebug doc={doc} />
 
       {/* Phase 5B: Compact post-apply status strip — single row + collapsible details */}
       {doc.isApplied && doc.applyResultPayload && (() => {
@@ -1023,15 +1116,13 @@ export function AIReviewExtractionShell({
                 <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-600" />
                 <div className="text-sm leading-snug">
                   <p className="font-bold">
-                    Tento dokument se uloží jako <em>podpůrný</em> — nevytvoří smlouvu ani platební instrukci
+                    Dokument vypadá jako podkladová část nebo příloha
                   </p>
                   <p className="mt-1 text-xs text-amber-900 leading-relaxed">
                     Klasifikace {doc.detectedPrimaryType ? <code className="rounded bg-amber-100 px-1 py-0.5 text-[11px] font-mono">{doc.detectedPrimaryType}</code> : "dokumentu"}
                     {" "}je v množině <strong>hard-supporting</strong> typů (souhlasy, prohlášení, AML/FATCA,
                     výplatní pásky, daňová přiznání, výpisy z účtu, lékařské dotazníky, doklady totožnosti).
-                    Schválením dojde jen k navázání dokumentu na klienta — žádná smlouva nebo platba nevznikne.
-                    Pokud má být tento dokument <strong>hlavní smlouva</strong>, upravte jeho typ nebo nahrajte
-                    správný soubor.
+                    Ověřte před schválením, zda jde o hlavní smlouvu, nebo jen o interní podklad k přiložení.
                   </p>
                 </div>
               </div>

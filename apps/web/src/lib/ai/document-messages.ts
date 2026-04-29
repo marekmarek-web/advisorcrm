@@ -132,9 +132,9 @@ export function buildHumanSummary(params: {
       parts.push(`Klient: ${clientName}.`);
     }
 
-    // Lifecycle — important for advisor to know proposal vs final
+    // Lifecycle — AI wording is a warning only; upload intent decides CRM publishing.
     if (lifecycleStatus === "proposal" || lifecycleStatus === "offer") {
-      parts.push("Jedná se o návrh/nabídku, ne o finálně uzavřenou smlouvu.");
+      parts.push("AI našla znaky návrhu/nabídky. Ověřte před schválením.");
     } else if (lifecycleStatus === "illustration" || lifecycleStatus === "modelation" || lifecycleStatus === "non_binding_projection") {
       parts.push("Jedná se o modelaci/ilustraci — nezávazný dokument.");
     } else if (lifecycleStatus === "policy_change_request" || lifecycleStatus === "endorsement_request") {
@@ -193,8 +193,8 @@ function humanizeReviewReasonForAdvisorSummary(code: string): string | null {
   const map: Record<string, string> = {
     partial_extraction_coerced: "Některé údaje byly dopočítány z kontextu — ověřte je oproti dokumentu.",
     partial_extraction_merged_into_stub: "Údaje byly nalezeny jen částečně — zkontrolujte úplnost.",
-    proposal_or_modelation_not_final_contract: "Jde o modelaci nebo ilustraci, ne o finální smlouvu.",
-    proposal_not_final_contract: "Dokument vypadá jako návrh, ne jako finální smlouva.",
+    proposal_or_modelation_not_final_contract: "AI našla znaky návrhu/modelace. Ověřte před schválením.",
+    proposal_not_final_contract: "AI našla znaky návrhu/modelace. Ověřte před schválením.",
     hybrid_contract_signals_detected: "V dokumentu jsou prvky více typů smluv — ověřte rozpoznaný typ.",
     scan_or_ocr_unusable: "Dokument se nepodařilo spolehlivě přečíst — zkontrolujte všechny údaje.",
     garbled_text_layer_used_vision:

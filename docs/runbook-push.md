@@ -33,7 +33,7 @@
 
 ### 3. AppDelegate + entitlements (stav repa)
 
-- `apps/web/ios/App/App/AppDelegate.swift` volá `FirebaseApp.configure()` jen když je `GoogleService-Info.plist` v bundle (bez plistu by jinak appka spadla na černé obrazovce).
+- `apps/web/ios/App/App/AppDelegate.swift` volá `FirebaseApp.configure()` **jako první věc v** `application(_:didFinishLaunchingWithOptions:)` (ne v `AppDelegate.init()` — kvůli pořadí s `UIApplication.shared.delegate` a Firebase AppDelegate Swizzleru). Platí jen při přítomnosti `GoogleService-Info.plist` v bundle.
 - `App.release.entitlements` má `aps-environment = production`, `App.entitlements` `development`.
 - `Info.plist` `UIBackgroundModes` obsahuje `remote-notification`.
 - Xcode → target `App` → Signing & Capabilities → **Push Notifications** capability musí být přidaná (pokud chybí, **+ Capability** → Push Notifications; Automatic Signing pak propaguje do provisioning profilu sama).

@@ -5,17 +5,37 @@ import type { DocumentReviewEnvelope } from "../document-review-types";
 const txState = {
   updateReturnRows: [{ id: "11111111-1111-4111-8111-111111111111" }],
   selectRows: [] as unknown[],
+  selectQueue: [] as unknown[][],
   inserted: [] as unknown[],
+  updated: [] as unknown[],
 };
+
+function nextSelectRows(): unknown[] {
+  return txState.selectQueue.shift() ?? txState.selectRows;
+}
+
+function selectResult() {
+  return {
+    limit: async () => nextSelectRows(),
+    then: (resolve: (value: unknown[]) => void) => resolve(nextSelectRows()),
+  };
+}
 
 vi.mock("@/lib/db/service-db", () => ({
   withServiceTenantContext: async (_options: unknown, fn: (tx: unknown) => Promise<unknown>) => {
     const tx = {
       update: () => ({
-        set: () => ({
+        set: (values: unknown) => ({
           where: () => ({
-            returning: async () => txState.updateReturnRows,
+            returning: async () => {
+              txState.updated.push(values);
+              return txState.updateReturnRows;
+            },
             catch: async () => undefined,
+            then: (resolve: (value: unknown) => void) => {
+              txState.updated.push(values);
+              resolve(undefined);
+            },
           }),
         }),
       }),
@@ -28,11 +48,9 @@ vi.mock("@/lib/db/service-db", () => ({
       select: () => ({
         from: () => ({
           where: () => ({
-            orderBy: () => ({
-              limit: async () => txState.selectRows,
-            }),
-            limit: async () => txState.selectRows,
-            then: (resolve: (value: unknown[]) => void) => resolve(txState.selectRows),
+            orderBy: () => selectResult(),
+            limit: async () => nextSelectRows(),
+            then: (resolve: (value: unknown[]) => void) => resolve(nextSelectRows()),
           }),
         }),
       }),
@@ -43,8 +61,12 @@ vi.mock("@/lib/db/service-db", () => ({
 
 import {
   acceptAiReviewCorrectionEventsOnApproval,
+  buildCorrectionHintsTrace,
   buildCorrectionEventValues,
+  buildAiReviewLearningPatterns,
+  buildAiReviewLearningScorecard,
   createEvalCaseDraftsForAcceptedCorrections,
+  getCorrectionHints,
   mineLearningPatternDrafts,
   scoreAiReviewEvalCase,
 } from "../ai-review-learning";
@@ -181,7 +203,9 @@ function envelope(overrides: Partial<DocumentReviewEnvelope> = {}): DocumentRevi
 beforeEach(() => {
   txState.updateReturnRows = [{ id: "11111111-1111-4111-8111-111111111111" }];
   txState.selectRows = [];
+  txState.selectQueue = [];
   txState.inserted = [];
+  txState.updated = [];
 });
 
 describe("AI Review learning loop", () => {
@@ -271,8 +295,230 @@ describe("AI Review learning loop", () => {
     });
 
     expect(patterns[0].patternType).toBe("premium_aggregation_rule");
+    expect(patterns[0].confidence).toBe(0.55);
+    expect(patterns[0].validatorHintJson).toEqual({
+      rule: "sum_numbered_insured_premiums",
+      premiumLabels: ["Celkové běžné měsíční pojistné pro"],
+      requireAllNumberedInsuredBlocks: true,
+    });
     expect(promptVars.correction_hints).toContain("Known extraction hints from approved advisor corrections");
-    expect(promptVars.correction_hints).toContain("Per-insured premium rows must be summed");
+    expect(promptVars.correction_hints).toContain("Celkové měsíční pojistné smlouvy je součet všech pojištěných");
+    expect(promptVars.correction_hints).not.toContain("Nikola");
+  });
+
+  it("mines participant, publish, classification, and field alias patterns without raw values", () => {
+    const patterns = mineLearningPatternDrafts([
+      {
+        id: "11111111-1111-4111-8111-111111111111",
+        institutionName: "UNIQA",
+        productName: "Životní pojištění",
+        documentType: "life_insurance_contract",
+        fieldPath: "participants[1].fullName",
+        correctionType: "missing_field_added",
+      },
+      {
+        id: "22222222-2222-4222-8222-222222222222",
+        institutionName: "UNIQA",
+        productName: "Životní pojištění",
+        documentType: "life_insurance_contract",
+        fieldPath: "publishIntent.shouldPublishToCrm",
+        correctionType: "wrong_publish_decision",
+      },
+      {
+        id: "33333333-3333-4333-8333-333333333333",
+        institutionName: "UNIQA",
+        productName: "Životní pojištění",
+        documentType: "life_insurance_contract",
+        fieldPath: "documentClassification.primaryType",
+        correctionType: "wrong_document_classification",
+      },
+      {
+        id: "44444444-4444-4444-8444-444444444444",
+        institutionName: "UNIQA",
+        productName: "Životní pojištění",
+        documentType: "life_insurance_contract",
+        fieldPath: "contractNumber",
+        correctionType: "wrong_value_replaced",
+      },
+      {
+        id: "55555555-5555-4555-8555-555555555555",
+        institutionName: "UNIQA",
+        productName: "Životní pojištění",
+        documentType: "life_insurance_contract",
+        fieldPath: "contractNumber",
+        correctionType: "wrong_value_replaced",
+      },
+    ]);
+
+    expect(patterns.map((pattern) => pattern.patternType)).toEqual(expect.arrayContaining([
+      "participant_detection_rule",
+      "publish_decision_rule",
+      "classification_hint",
+      "field_alias",
+    ]));
+    expect(patterns.find((pattern) => pattern.patternType === "field_alias")?.supportCount).toBe(2);
+    expect(patterns.find((pattern) => pattern.patternType === "field_alias")?.confidence).toBe(0.70);
+    expect(patterns.find((pattern) => pattern.patternType === "publish_decision_rule")?.severity).toBe("critical");
+    expect(JSON.stringify(patterns)).not.toMatch(/[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b\d{6}\/?\d{3,4}\b/i);
+  });
+
+  it("updates existing learning pattern with support count and last seen timestamp", async () => {
+    txState.selectQueue = [
+      [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          institutionName: "UNIQA",
+          productName: "Životní pojištění",
+          documentType: "life_insurance_contract",
+          fieldPath: "premium.totalMonthlyPremium",
+          correctionType: "wrong_premium_aggregation",
+        },
+        {
+          id: "22222222-2222-4222-8222-222222222222",
+          institutionName: "UNIQA",
+          productName: "Životní pojištění",
+          documentType: "life_insurance_contract",
+          fieldPath: "premium.perInsured[1].monthlyPremium",
+          correctionType: "wrong_premium_aggregation",
+        },
+      ],
+      [{ id: "99999999-9999-4999-8999-999999999999" }],
+    ];
+
+    const drafts = await buildAiReviewLearningPatterns({
+      tenantId: "33333333-3333-4333-8333-333333333333",
+      institutionName: "UNIQA",
+      productName: "Životní pojištění",
+      documentType: "life_insurance_contract",
+    });
+
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0].supportCount).toBe(2);
+    expect(drafts[0].confidence).toBe(0.70);
+    expect(txState.updated[0]).toMatchObject({
+      supportCount: 2,
+      confidence: "0.7",
+    });
+    expect((txState.updated[0] as { lastSeenAt?: Date }).lastSeenAt).toBeInstanceOf(Date);
+  });
+
+  it("returns no correction prompt section when no safe patterns exist", async () => {
+    txState.selectRows = [];
+
+    const hints = await getCorrectionHints({
+      tenantId: "33333333-3333-4333-8333-333333333333",
+      institutionName: "UNIQA",
+      productName: "Životní pojištění",
+      documentType: "life_insurance_contract",
+    });
+    const vars = buildAiReviewExtractionPromptVariables({
+      documentText: "UNIQA smlouva",
+      classificationReasons: [],
+      adobeSignals: "none",
+      filename: "uniqa.pdf",
+      correctionHints: hints.promptHints,
+    });
+
+    expect(hints.promptHints).toEqual([]);
+    expect(vars.correction_hints).toBeUndefined();
+  });
+
+  it("selects product scoped correction hints before broader patterns", async () => {
+    txState.selectRows = [
+      {
+        id: "product-pattern",
+        scope: "product",
+        institutionName: "UNIQA",
+        productName: "Životní pojištění",
+        documentType: "life_insurance_contract",
+        promptHint: "U tohoto produktu sečti pojistné všech očíslovaných pojištěných osob.",
+        validatorHintJson: { rule: "sum_numbered_insured_premiums" },
+        confidence: "0.70",
+        supportCount: 2,
+        updatedAt: new Date(),
+      },
+      {
+        id: "tenant-pattern",
+        scope: "tenant",
+        institutionName: null,
+        productName: null,
+        documentType: null,
+        promptHint: "Obecně ověř pole podle aktuálního dokumentu.",
+        validatorHintJson: { rule: "field_attention" },
+        confidence: "0.85",
+        supportCount: 5,
+        updatedAt: new Date(),
+      },
+    ];
+
+    const hints = await getCorrectionHints({
+      tenantId: "33333333-3333-4333-8333-333333333333",
+      institutionName: "UNIQA",
+      productName: "Životní pojištění",
+      documentType: "life_insurance_contract",
+    });
+    const vars = buildAiReviewExtractionPromptVariables({
+      documentText: "UNIQA smlouva",
+      classificationReasons: [],
+      adobeSignals: "none",
+      filename: "uniqa.pdf",
+      correctionHints: hints.promptHints,
+    });
+
+    expect(hints.patternIds[0]).toBe("product-pattern");
+    expect(vars.correction_hints).toContain("U tohoto produktu sečti pojistné");
+    expect(vars.correction_hints).toContain("These hints are anonymized");
+  });
+
+  it("rejects PII-like correction hints and omits their pattern ids", async () => {
+    txState.selectRows = [
+      {
+        id: "pii-pattern",
+        scope: "product",
+        institutionName: "UNIQA",
+        productName: "Životní pojištění",
+        documentType: "life_insurance_contract",
+        promptHint: "Klient jan@example.com má vždy pojistné 1000 Kč.",
+        validatorHintJson: { rule: "field_attention" },
+        confidence: "0.90",
+        supportCount: 4,
+        updatedAt: new Date(),
+      },
+      {
+        id: "safe-pattern",
+        scope: "product",
+        institutionName: "UNIQA",
+        productName: "Životní pojištění",
+        documentType: "life_insurance_contract",
+        promptHint: "Ověř očíslované bloky pojištěných osob podle aktuálního dokumentu.",
+        validatorHintJson: { rule: "require_numbered_participants" },
+        confidence: "0.90",
+        supportCount: 4,
+        updatedAt: new Date(),
+      },
+    ];
+
+    const hints = await getCorrectionHints({
+      tenantId: "33333333-3333-4333-8333-333333333333",
+      institutionName: "UNIQA",
+      productName: "Životní pojištění",
+      documentType: "life_insurance_contract",
+    });
+
+    expect(hints.promptHints).toEqual(["Ověř očíslované bloky pojištěných osob podle aktuálního dokumentu."]);
+    expect(hints.patternIds).toEqual(["safe-pattern"]);
+  });
+
+  it("builds extraction trace metadata for used learning pattern ids", () => {
+    expect(buildCorrectionHintsTrace({
+      promptHints: ["Ověř očíslované bloky pojištěných osob."],
+      validatorHints: [{ rule: "require_numbered_participants" }],
+      patternIds: ["pattern-1"],
+    })).toEqual({
+      learningHintsUsed: true,
+      learningPatternIds: ["pattern-1"],
+      learningHintCount: 1,
+    });
   });
 
   it("validates premium aggregation and publish eligibility", () => {
@@ -331,9 +577,35 @@ describe("AI Review learning loop", () => {
     });
 
     expect(validation.warnings.some((warning) => warning.code === "participant_count_mismatch")).toBe(true);
-    expect(patterns[0].promptHint).toContain("Per-insured premium rows must be summed");
+    expect(patterns[0].promptHint).toContain("Celkové měsíční pojistné smlouvy je součet všech pojištěných");
     expect(corrected.premium?.totalMonthlyPremium).toBe(2442);
     expect(score.publishDecision).toBe(true);
     expect(score.criticalExact).toBe(1);
+  });
+
+  it("scores UNIQA eval fixture for critical fields and thresholds", async () => {
+    const fixture = await import("../../../../../../fixtures/ai-review-learning/uniqa-multi-insured-regression.json");
+    const score = scoreAiReviewEvalCase({
+      expectedOutput: fixture.default.expectedOutputJson,
+      actualOutput: fixture.default.expectedOutputJson,
+      criticalFields: fixture.default.criticalFields,
+    });
+    const scorecard = buildAiReviewLearningScorecard([score]);
+
+    expect(score.participantCount).toBe(true);
+    expect(score.premiumAggregation).toBe(true);
+    expect(score.publishDecision).toBe(true);
+    expect(score.classificationMatch).toBe(true);
+    expect(scorecard).toMatchObject({
+      cases: 1,
+      schemaValid: 1,
+      criticalExactMatch: 1,
+      numericToleranceMatch: 1,
+      participantCountMatch: 1,
+      premiumAggregationMatch: 1,
+      publishDecisionMatch: 1,
+      classificationMatch: 1,
+      pass: true,
+    });
   });
 });

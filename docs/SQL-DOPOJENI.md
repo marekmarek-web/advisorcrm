@@ -58,6 +58,7 @@ Při **nové** migraci nebo významné úpravě `.sql` přidejte **jeden řádek
 | 2026-04-22 | Team Overview F1 — canonical `team_members` + `team_member_manual_periods` + `team_member_career_log`. team_members je source of truth pro osobu v týmové struktuře, nezávislá na auth (auth_user_id nullable, unique per tenant when not null). Hierarchie přes parent_member_id, status active/paused/offboarded/planned, member_kind internal_user/external_manual. Manual periods drží period snapshoty (units, production, contracts, meetings, activities + pool_units JSONB pro BJ/BJS/PB/CC) s confidence manual_confirmed/manual_estimated. Career log auditně loguje change_kind auto/manual_confirmed/manual_override. Backfill z existing memberships (idempotentní) + shadow-copy trigger `sync_team_member_from_membership` udržuje team_members konzistentní při změnách memberships. RLS tenant-scoped (NULLIF pattern), grants na aidvisora_app. | [team-members-canonical-2026-04-22.sql](../packages/db/migrations/team-members-canonical-2026-04-22.sql) |
 | 2026-04-22 | WS-2 Batch M1-SQL — Bootstrap provisioning + RLS gaps + NULLIF normalizace. Tři SECURITY DEFINER funkce: `provision_workspace_v1(uuid,text,text,text,int)` (ensure-workspace), `resolve_public_booking_v1(text)` (public booking pre-auth), `lookup_invite_metadata_v1(text,text)` (invite prefill). Bootstrap RLS na `client_invitations` + `staff_invitations` (self select přes `auth_user_id = app.user_id`). Nové policies + FORCE RLS na `user_terms_acceptance`, `user_devices`, `unsubscribe_tokens`, `opportunity_stages`, `partners` (read-all + tenant-write), `products` (via partner), `fund_add_requests`, `dead_letter_items`, `ai_generations`, `ai_feedback` (via generation), `analysis_import_jobs`, `analysis_versions` (via analysis). Normalizace existujících policies na robustní `NULLIF(current_setting('app.tenant_id', true), '')::uuid` pattern (fail-closed → 0 řádků místo SQLSTATE) napříč contacts, households, documents, financial_*, tasks, opportunities, audit_log, activity_log, tenant_settings, contracts, messages/message_attachments, advisor_proposals (jen tenant_* scope), advisor_notifications, assistant_conversations/messages, client_requests*. Všechny grants na `aidvisora_app`. **HARD BLOCKER pro cutover na `aidvisora_app` runtime.** | [rls-m8-bootstrap-provision-and-gaps-2026-04-22.sql](../packages/db/migrations/rls-m8-bootstrap-provision-and-gaps-2026-04-22.sql) |
 | 2026-04-22 | WS-2 Batch M3-SQL — Pre-auth bootstrap SECURITY DEFINER funkce pro zbylé flow, které nemůžou mít tenant GUC (token-based pre-auth): `public.accept_staff_invitation_v1(token,auth_user_id,email)` pro `/register/complete → finalizePendingStaffInvitation` (ověří token+expiraci+revoke+email match, idempotentně vloží membership + stampne invitation) a `public.process_unsubscribe_by_token_v1(token)` pro `/client/unsubscribe?token=…` (atomicky stampne `contact.notification_unsubscribed_at` + `token.used_at`). Obě vrací strukturované `(ok, error_code, …)` — caller přeloží error_code na uživatelskou hlášku. Grants `aidvisora_app` + `authenticated` (+ `anon` pro unsubscribe). Sanity check ověří existenci funkcí, SECURITY DEFINER attribut a EXECUTE grant pro `aidvisora_app`. **Dependency pro M3 cutover — bez ní by staff invite a unsubscribe-by-token po swapu selhaly.** | [rls-m9-bootstrap-sd-functions-2026-04-22.sql](../packages/db/migrations/rls-m9-bootstrap-sd-functions-2026-04-22.sql) |
+| 2026-04-29 | AI Review learning loop follow-up: doplnění `superseded_by`, `updated_at` na eval cases a chybějících indexů pro tenant-scoped CRUD vrstvu. | [ai_review_learning_loop_followup_2026-04-29.sql](../packages/db/migrations/ai_review_learning_loop_followup_2026-04-29.sql) |
 
 ---
 
@@ -226,6 +227,13 @@ Partner ↔ produkt mapování odpovídá `catalog.json` (v2026-04-22):
 - UNIQA → „Pojištění odpovědnosti zaměstnance"
 
 Závěrečný `RAISE NOTICE` reportuje počet partnerů/produktů po běhu.
+
+</details>
+
+<details>
+<summary><strong>ai_review_learning_loop_followup_2026-04-29.sql</strong> — AI Review learning loop: doplnění sloupců a indexů pro repository vrstvu</summary>
+
+Odkaz: [`packages/db/migrations/ai_review_learning_loop_followup_2026-04-29.sql`](../packages/db/migrations/ai_review_learning_loop_followup_2026-04-29.sql)
 
 </details>
 

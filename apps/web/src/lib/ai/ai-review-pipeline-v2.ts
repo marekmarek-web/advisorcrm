@@ -59,7 +59,11 @@ import {
 import { getAiReviewPromptId, getAiReviewPromptVersion, type AiReviewPromptKey } from "./prompt-model-registry";
 import { fingerprintOpenAiPromptId } from "./ai-review-prompt-rollout";
 import { isAiReviewLlmPostprocessEnabled, runAiReviewDecisionLlm } from "./ai-review-llm-postprocess";
-import { buildAiReviewExtractionPromptVariables, capAiReviewPromptString } from "./ai-review-prompt-variables";
+import {
+  buildAiReviewExtractionPromptVariables,
+  capAiReviewPromptString,
+  formatCorrectionHintsPromptSection,
+} from "./ai-review-prompt-variables";
 import { getPromptTemplateContent } from "./ai-review-prompt-templates-content";
 import { zodIssuesToAdvisorBriefMessages } from "./zod-issues-advisor-copy";
 import {
@@ -104,6 +108,7 @@ import {
   isVisionBoundaryDetectEnabled,
 } from "./detect-document-boundaries-vision";
 import { rasterizePdfPageToDataUrl } from "./pdf-page-rasterize";
+import { buildCorrectionHintsTrace, getCorrectionHints } from "./ai-review-learning";
 
 /**
  * Returns true when none of the required fields for this document type have a non-empty extracted value.
@@ -256,6 +261,7 @@ async function tryExtractPaymentWithPrompt(
     classificationReasons: string[];
     adobeSignals: string;
     filename: string;
+    correctionHints?: string[];
     /** When true, skip Prompt Builder text path entirely and use the file-based multimodal call. */
     preferFileMultimodal?: boolean;
   }
@@ -278,6 +284,7 @@ async function tryExtractPaymentWithPrompt(
     classificationReasons: ctx.classificationReasons,
     adobeSignals: ctx.adobeSignals,
     filename: ctx.filename,
+    correctionHints: ctx.correctionHints,
   });
   const res = await createAiReviewResponseFromPrompt(
     {
@@ -1221,6 +1228,29 @@ export async function runAiReviewV2Pipeline(
   const extractionRoute: ExtractionRoute = resolveExtractionRoute(normPipeline, classification.confidence);
   trace.extractionRoute = extractionRoute;
 
+  let learningHints: Awaited<ReturnType<typeof getCorrectionHints>> = {
+    promptHints: [],
+    validatorHints: [],
+    patternIds: [],
+  };
+  if (options?.tenantId) {
+    try {
+      learningHints = await getCorrectionHints({
+        tenantId: options.tenantId,
+        institutionName: options.learningHintContext?.institutionName ?? null,
+        productName: options.learningHintContext?.productName ?? null,
+        documentType: effectivePrimary,
+        maxHints: 8,
+      });
+    } catch (error) {
+      trace.warnings = [
+        ...(trace.warnings ?? []),
+        `learning_hints_unavailable:${error instanceof Error ? error.message : String(error)}`,
+      ];
+    }
+  }
+  Object.assign(trace as Record<string, unknown>, buildCorrectionHintsTrace(learningHints));
+
   if (router.outcome === "manual_review") {
     const manualReasonNote = `Dokument je nestandardního nebo nerozpoznaného typu (kódy: ${router.reasonCodes.join(", ")}). Výstup je orientační — klasifikovaný typ dokumentu: ${classification.primaryType}. Finální rozhodnutí o zápisu je na poradci.`;
     const stub = buildManualReviewStubEnvelope({
@@ -1406,6 +1436,7 @@ export async function runAiReviewV2Pipeline(
       classificationReasons: classification.reasons,
       adobeSignals: buildAdobeSignalsSummary(options?.preprocessMeta ?? null),
       filename: options?.sourceFileName?.trim() || "unknown",
+      correctionHints: learningHints.promptHints,
       preferFileMultimodal: visionFallbackActivated && hasPdfFileForVisionFallback,
     });
     trace.extractionDurationMs = Date.now() - extStart;
@@ -1562,6 +1593,7 @@ export async function runAiReviewV2Pipeline(
         adobeSignals: buildAdobeSignalsSummary(options?.preprocessMeta ?? null),
         filename: options?.sourceFileName?.trim() || "unknown",
         bundleSectionTexts: options?.bundleSectionTexts ?? null,
+        correctionHints: learningHints.promptHints,
       });
       const pr = await createAiReviewResponseFromPrompt(
         {
@@ -1600,10 +1632,15 @@ export async function runAiReviewV2Pipeline(
               adobeSignals: buildAdobeSignalsSummary(options?.preprocessMeta ?? null),
               filename: options?.sourceFileName?.trim() || "unknown",
               bundleSectionTexts: options?.bundleSectionTexts ?? null,
+              correctionHints: learningHints.promptHints,
             });
             let sysPrompt2 = localTemplate.systemPrompt;
             for (const [k, v] of Object.entries(vars2)) {
               sysPrompt2 = sysPrompt2.replaceAll(`{{${k}}}`, typeof v === "string" ? v : "");
+            }
+            const correctionSection2 = formatCorrectionHintsPromptSection(learningHints.promptHints);
+            if (correctionSection2 && !sysPrompt2.includes("Known extraction hints from approved advisor corrections")) {
+              sysPrompt2 = `${sysPrompt2}\n\n${correctionSection2}`;
             }
             rawExtraction = await createResponse(sysPrompt2, { routing: { category: "ai_review" } });
             extractionBuilder = "schema_text_wrap";
@@ -1628,17 +1665,23 @@ export async function runAiReviewV2Pipeline(
           adobeSignals: buildAdobeSignalsSummary(options?.preprocessMeta ?? null),
           filename: options?.sourceFileName?.trim() || "unknown",
           bundleSectionTexts: options?.bundleSectionTexts ?? null,
+          correctionHints: learningHints.promptHints,
         });
         // Replace template variables in system prompt
         let sysPrompt = localTemplate.systemPrompt;
         for (const [k, v] of Object.entries(variables)) {
           sysPrompt = sysPrompt.replaceAll(`{{${k}}}`, typeof v === "string" ? v : "");
         }
+        const correctionSection = formatCorrectionHintsPromptSection(learningHints.promptHints);
+        if (correctionSection && !sysPrompt.includes("Known extraction hints from approved advisor corrections")) {
+          sysPrompt = `${sysPrompt}\n\n${correctionSection}`;
+        }
         textExtractionSystemPrompt = sysPrompt;
         (trace as Record<string, unknown>).localTemplateFallback = promptKey;
       } else {
+        const correctionSection = formatCorrectionHintsPromptSection(learningHints.promptHints);
         const wrapped = wrapExtractionPromptWithDocumentText(
-          extractionPrompt,
+          correctionSection ? `${extractionPrompt}\n\n${correctionSection}` : extractionPrompt,
           documentTextForExtraction,
           undefined,
           options?.bundleSectionTexts ?? null,
@@ -2149,5 +2192,6 @@ export async function runAiReviewV2Pipeline(
   return {
     ...finalized,
     extractionTrace: trace,
+    learningValidatorHints: learningHints.validatorHints,
   };
 }

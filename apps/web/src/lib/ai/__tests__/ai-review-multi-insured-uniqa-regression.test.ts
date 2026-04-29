@@ -68,6 +68,20 @@ function minimalEnvelope(): DocumentReviewEnvelope {
 }
 
 describe("AI Review UNIQA multi-insured regression", () => {
+  const uniqaText = `
+Počet pojištěných: 1 dospělá osoba, 1 dítě
+1. pojištěný
+Titul, jméno a příjmení: Jiří Chlumecký
+Rodné číslo: 7710252946
+Celkové běžné měsíční pojistné pro 1. pojištěného 1 560 Kč
+2. pojištěný
+Titul, jméno a příjmení: Nikola Chlumecká
+Datum narození: 31. 01. 2010
+Rodné číslo: 1051315705
+Zaměstnání: Dítě
+Celkové běžné měsíční pojistné pro 2. pojištěného 882 Kč
+`;
+
   it("aggregates all insured persons and does not use the first insured premium as total", () => {
     const validated = runAiReviewDeterministicValidators(minimalEnvelope(), {
       isModelation: false,
@@ -85,6 +99,26 @@ describe("AI Review UNIQA multi-insured regression", () => {
       { label: "1. pojištěný Jiří Chlumecký", amount: 1560, frequency: "monthly" },
       { label: "2. pojištěný Nikola Chlumecká", amount: 882, frequency: "monthly" },
     ]);
+  });
+
+  it("repairs extraction when AI returned only the first insured but document text contains both insured blocks", () => {
+    const env = minimalEnvelope();
+    env.insuredPersons = [
+      {
+        order: 1,
+        role: "primary_insured",
+        fullName: "Jiří Chlumecký",
+        monthlyPremium: 1560,
+      },
+    ];
+
+    const validated = runAiReviewDeterministicValidators(env, null, uniqaText);
+
+    expect(validated.insuredPersons).toHaveLength(2);
+    expect(validated.insuredPersons?.[1]?.fullName).toBe("Nikola Chlumecká");
+    expect(validated.insuredPersons?.[1]?.birthDate).toBe("31.01.2010");
+    expect(validated.insuredPersons?.[1]?.birthNumber).toBe("1051315705");
+    expect(validated.premium?.totalMonthlyPremium).toBe(2442);
   });
 
   it("does not block CRM publishing from AI proposal/modelation wording when advisor checkbox is false", () => {

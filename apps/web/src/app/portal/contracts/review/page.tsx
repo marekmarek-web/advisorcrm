@@ -161,6 +161,7 @@ export default function ContractReviewListPage() {
   const [processingFilter, setProcessingFilter] = useState<ProcessingStatus | "">("");
   const [search, setSearch] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [isModelationUpload, setIsModelationUpload] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -193,6 +194,7 @@ export default function ContractReviewListPage() {
     try {
       const formData = new FormData();
       formData.set("file", file);
+      formData.set("isModelation", isModelationUpload ? "true" : "false");
       // Step 1: Fast upload (Storage + DB row), returns immediately.
       const res = await fetch("/api/contracts/upload", { method: "POST", body: formData });
       const data = await res.json();
@@ -208,7 +210,7 @@ export default function ContractReviewListPage() {
     } finally {
       setUploading(false);
     }
-  }, [router]);
+  }, [isModelationUpload, router]);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -322,6 +324,24 @@ export default function ContractReviewListPage() {
             </button>
           )}
         </div>
+
+        <label className="flex items-start gap-3 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-3 text-left">
+          <input
+            type="checkbox"
+            checked={isModelationUpload}
+            onChange={(e) => setIsModelationUpload(e.target.checked)}
+            className="mt-1 h-5 w-5 rounded border-[color:var(--wp-border-strong)] text-indigo-600 focus:ring-indigo-500"
+            disabled={uploading}
+          />
+          <span className="flex flex-col gap-1">
+            <span className="text-sm font-bold text-[color:var(--wp-text)]">
+              Toto je modelace / návrh, ne finální smlouva
+            </span>
+            <span className="text-xs font-medium text-[color:var(--wp-text-secondary)]">
+              Nechte nezaškrtnuté, pokud má po kontrole vzniknout smluvní záznam v CRM.
+            </span>
+          </span>
+        </label>
 
         {/* Error state - reference */}
         {error && (

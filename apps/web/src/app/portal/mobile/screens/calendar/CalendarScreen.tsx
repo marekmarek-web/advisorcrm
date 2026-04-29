@@ -28,12 +28,11 @@ import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import {
   BottomSheet,
   ErrorState,
-  FloatingActionButton,
   MobileCard,
   Toast,
   useToast,
 } from "@/app/shared/mobile-ui/primitives";
-import { Check, Plus } from "lucide-react";
+import { Check } from "lucide-react";
 import { CalendarAgendaView } from "./CalendarAgendaView";
 import { CalendarDayTasksStrip } from "./CalendarDayTasksStrip";
 import { CalendarDrawer } from "./CalendarDrawer";
@@ -441,13 +440,6 @@ export function CalendarScreen({
     [canWriteCalendar],
   );
 
-  const openCreateForm = useCallback(() => {
-    if (!canWriteCalendar) return;
-    setFormInitial({ ...EMPTY_FORM });
-    setSaveError(null);
-    setFormOpen(true);
-  }, [canWriteCalendar]);
-
   const openEditForm = useCallback(
     (ev: EventRow) => {
       if (!canWriteCalendar) return;
@@ -634,9 +626,14 @@ export function CalendarScreen({
   const showTimeGridUi = view !== "agenda" && view !== "month";
   const skeletonCols = view === "agenda" || view === "month" ? 7 : visibleDays.length;
   const skeletonTimeW = dc === "phone" ? 44 : 52;
+  const calendarChromePad = dc === "phone" ? "px-5 sm:px-6" : "px-3 sm:px-4";
+  const calendarGridBleed =
+    dc === "phone" ? "-mx-5 w-[calc(100%+2.5rem)] sm:-mx-6 sm:w-[calc(100%+3rem)]" : "-mx-3 w-[calc(100%+1.5rem)] sm:mx-0 sm:w-auto";
 
   return (
-    <div className="flex min-h-[50vh] w-full min-w-0 flex-1 flex-col overflow-x-hidden pb-[var(--aidv-mobile-screen-pad-bottom)]">
+    <div
+      className={`flex min-h-[50vh] w-full min-w-0 flex-1 flex-col overflow-x-hidden pb-[var(--aidv-mobile-screen-pad-bottom)] ${calendarChromePad}`}
+    >
       <CalendarMobileToolbar
         anchorDate={anchorDate}
         segmentedValue={segmentedWeekMonth}
@@ -652,7 +649,7 @@ export function CalendarScreen({
         refreshing={refreshing}
       />
 
-      <div className="mx-3 mb-2 min-h-[40px]">
+      <div className="mb-2 min-h-[40px]">
         {googleConnected === false ? (
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-950">
             <span>Google Kalendář není připojen.</span>
@@ -705,7 +702,7 @@ export function CalendarScreen({
           }
         >
           {showTimeGridUi ? (
-            <div className="-mx-4 mb-4 w-[calc(100%+2rem)] max-w-none sm:mx-0 sm:mb-0 sm:w-auto">
+            <div className={`${calendarGridBleed} mb-4 max-w-none sm:mb-0`}>
               <CalendarTimeGrid
                 visibleDays={visibleDays}
                 eventsByDate={eventsByDate}
@@ -781,10 +778,6 @@ export function CalendarScreen({
           ) : null}
         </div>
       )}
-
-      {canWriteCalendar && !formOpen && !selectedEvent ? (
-        <FloatingActionButton onClick={openCreateForm} label="Nová aktivita" icon={Plus} />
-      ) : null}
 
       <CalendarDrawer
         open={drawerOpen}

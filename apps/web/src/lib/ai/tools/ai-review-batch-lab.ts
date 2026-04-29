@@ -511,6 +511,7 @@ export async function runAiReviewBatchLab(options: RunAiReviewBatchLabOptions): 
           detectedDocumentSubtype: null,
           lifecycleStatus: lc,
           documentIntent: String(data.documentClassification?.documentIntent ?? ""),
+          userDeclaredDocumentIntent: null,
           extractionTrace: {
             ...trace,
             matchVerdict: resolvedMatchVerdict,

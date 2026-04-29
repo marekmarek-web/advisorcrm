@@ -1,5 +1,16 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
+/**
+ * Dev přes lokální Next.js (`pnpm dev` na Macu):
+ *
+ * – Simulátor: často stačí `CAPACITOR_SERVER_URL=http://127.0.0.1:3000/prihlaseni?native=1` + `pnpm cap:sync`.
+ * – Fyzický iPhone: `localhost` / `127.0.0.1` odkazuje na telefon samotný → WKWebView hlásí `-1004` (Could not connect).
+ *   Nastavte IP vašeho Macu v LAN (např. `http://192.168.1.42:3000/prihlaseni?native=1`), Mac i telefon na stejné Wi‑Fi,
+ *   firewall povolit Node :3000, pak znovu `pnpm cap sync` / build v Xcode.
+ *
+ * Produkční host ve výchozím stavu — viz `NEXT_PUBLIC_SITE_URL` / deployment.
+ */
+
 const serverUrl = process.env.CAPACITOR_SERVER_URL?.trim() || "https://www.aidvisora.cz/prihlaseni?native=1";
 const isHttpServer = /^http:\/\//i.test(serverUrl);
 const isProduction = process.env.NODE_ENV === "production";

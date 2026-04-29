@@ -34,11 +34,10 @@
     --safe-area-right: env(safe-area-inset-right, 0px);
 
     /*
-      Mobilní spodní tab bar: výška VNITŘNÍHO gridu (py-2 × 2 + min-h-button = 8+44+8 = 60 px).
-      Safe-area se přidá zvlášť přes max(0.5rem, safe-area-bottom) jak v <nav>, tak v shellu.
-      Tímto způsobem shell rezervuje přesně tolik prostoru kolik nav skutečně zabírá → žádný gap.
+      Mobilní spodní tab bar: rezervovaná výška pro `MobileBottomNav` (floating pill na telefonech,
+      FAB s posunem nahoru). Musí ladit s vizuální výškou baru + bezpečným dnem (`--safe-area-bottom` v `<nav>`).
     */
-    --aidv-mobile-tabbar-inner-h-phone: 3.75rem;
+    --aidv-mobile-tabbar-inner-h-phone: 4.5rem;
     --aidv-mobile-tabbar-inner-h-tablet: 3.5rem;
     --aidv-mobile-fab-above-tabbar: 0.5rem;
     --aidv-mobile-secondary-fab-from-bottom: 10.5rem;
@@ -60,15 +59,16 @@
     );
     --aidv-mobile-shell-blob-a: color-mix(in srgb, #6366f1 16%, transparent);
     --aidv-mobile-shell-blob-b: color-mix(in srgb, #a855f7 12%, transparent);
-    --aidv-mobile-nav-glass-bg: color-mix(in srgb, #ffffff 78%, rgba(255, 255, 255, 0) 100%);
-    --aidv-mobile-nav-glass-border: color-mix(in srgb, #0a0f29 8%, transparent);
-    --aidv-mobile-nav-shadow: 0 -10px 40px rgba(10, 15, 41, 0.07), 0 -1px 0 rgba(255, 255, 255, 0.7) inset;
+    --aidv-mobile-nav-glass-bg: #ffffff;
+    --aidv-mobile-nav-glass-border: color-mix(in srgb, #0a0f29 16%, transparent);
+    --aidv-mobile-nav-shadow: 0 -14px 34px rgba(10, 15, 41, 0.16), 0 -1px 0 rgba(255, 255, 255, 0.9) inset;
     --aidv-mobile-header-glass-bg: color-mix(in srgb, #ffffff 82%, rgba(255, 255, 255, 0) 100%);
     --aidv-mobile-card-radius-lg: 1.625rem;
     --aidv-mobile-card-radius-xl: 2rem;
     --aidv-mobile-shadow-card-premium: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 28px rgba(10, 15, 41, 0.07);
     --aidv-mobile-fab-gradient: linear-gradient(135deg, #0a0f29 0%, #312e81 55%, #4f46e5 100%);
-    --aidv-mobile-screen-pad-bottom: max(1.25rem, calc(var(--safe-area-bottom, 0px) + 0.5rem));
+    /* Extra „dech“ pod poslední kartou uvnitř scroll oblasti (výšku tab baru řeší shell). */
+    --aidv-mobile-screen-pad-bottom: max(1.5rem, calc(var(--safe-area-bottom, 0px) + 1rem));
 
     /*
       Portal UI 2026 – design tokeny pro novou primitives vrstvu

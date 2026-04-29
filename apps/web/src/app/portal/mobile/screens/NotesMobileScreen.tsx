@@ -1,18 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
+import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
 import { getMeetingNotesForBoard } from "@/app/actions/meeting-notes";
 import { getNotesBoardPositions } from "@/app/actions/notes-board-positions";
 import { getContactNamePickerRows, type ContactNamePickerRow } from "@/app/actions/contacts";
 import { NotesVisionBoard } from "@/app/portal/notes/NotesVisionBoard";
 import { ErrorState, LoadingSkeleton } from "@/app/shared/mobile-ui/primitives";
+import { getFailedServerActionFriendlyMessage } from "@/lib/observability/production-error-ui";
 
-export function NotesMobileScreen() {
-  const [notes, setNotes] = useState<Awaited<ReturnType<typeof getMeetingNotesForBoard>>>([]);
+export function NotesMobileScreen({ seededMeetingNotes = [] }: { seededMeetingNotes?: MeetingNoteForBoard[] }) {
+  const [notes, setNotes] = useState<Awaited<ReturnType<typeof getMeetingNotesForBoard>>>(() => seededMeetingNotes);
   const [contacts, setContacts] = useState<ContactNamePickerRow[]>([]);
   const [boardPositions, setBoardPositions] = useState<Awaited<ReturnType<typeof getNotesBoardPositions>>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (seededMeetingNotes.length === 0) return;
+    setNotes((prev) => (prev.length === 0 ? seededMeetingNotes : prev));
+  }, [seededMeetingNotes]);
 
   const refetch = useCallback(() => {
     startTransition(async () => {
@@ -27,7 +34,7 @@ export function NotesMobileScreen() {
         setContacts(c);
         setBoardPositions(bp);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Nepodařilo se načíst zápisky.");
+        setError(getFailedServerActionFriendlyMessage(e, "Nepodařilo se načíst zápisky."));
       }
     });
   }, []);
@@ -40,7 +47,13 @@ export function NotesMobileScreen() {
     return <LoadingSkeleton variant="card" rows={5} />;
   }
   if (error) {
-    return <ErrorState title={error} onRetry={refetch} />;
+    return (
+      <ErrorState
+        title="Zápisky se nepovedly načíst"
+        description={error}
+        onRetry={refetch}
+      />
+    );
   }
 
   return (

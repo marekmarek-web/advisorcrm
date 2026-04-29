@@ -1,7 +1,7 @@
 import { contractUploadReviews } from "db";
 import { contractReviewCorrections } from "db";
 import { eq, and, desc } from "db";
-import type { ContractProcessingStatus, ContractReviewStatus } from "db";
+import type { ContractProcessingStatus, ContractReviewStatus, UserDeclaredDocumentIntent } from "db";
 import { logAudit } from "@/lib/audit";
 import { withServiceTenantContext } from "@/lib/db/service-db";
 
@@ -368,6 +368,7 @@ export type ContractReviewRow = {
   detectedDocumentSubtype: string | null;
   lifecycleStatus: string | null;
   documentIntent: string | null;
+  userDeclaredDocumentIntent: UserDeclaredDocumentIntent | null;
   extractionTrace: ExtractionTrace | null;
   validationWarnings: ValidationWarning[] | null;
   fieldConfidenceMap: Record<string, number> | null;
@@ -419,6 +420,7 @@ export async function createContractReview(insert: {
   confidence?: number | null;
   reasonsForReview?: string[] | null;
   uploadedBy?: string | null;
+  userDeclaredDocumentIntent?: UserDeclaredDocumentIntent | null;
 }): Promise<string> {
   const primaryValues = {
     tenantId: insert.tenantId,
@@ -434,6 +436,7 @@ export async function createContractReview(insert: {
     confidence: insert.confidence ?? null,
     reasonsForReview: insert.reasonsForReview ?? null,
     uploadedBy: insert.uploadedBy ?? null,
+    userDeclaredDocumentIntent: insert.userDeclaredDocumentIntent ?? null,
   };
 
   const rowId = await withServiceTenantContext(
@@ -544,6 +547,7 @@ const listReviewColumns = {
   detectedDocumentSubtype: contractUploadReviews.detectedDocumentSubtype,
   lifecycleStatus: contractUploadReviews.lifecycleStatus,
   documentIntent: contractUploadReviews.documentIntent,
+  userDeclaredDocumentIntent: contractUploadReviews.userDeclaredDocumentIntent,
   sensitivityProfile: contractUploadReviews.sensitivityProfile,
   uploadedBy: contractUploadReviews.uploadedBy,
   createdAt: contractUploadReviews.createdAt,
@@ -623,6 +627,7 @@ export async function listContractReviews(
           detectedDocumentSubtype: base.detectedDocumentSubtype ?? null,
           lifecycleStatus: base.lifecycleStatus ?? null,
           documentIntent: null,
+          userDeclaredDocumentIntent: null,
           sensitivityProfile: base.sensitivityProfile ?? null,
           sectionSensitivity: null,
           relationshipInference: null,
@@ -660,6 +665,7 @@ export async function updateContractReview(
     detectedDocumentSubtype?: string | null;
     lifecycleStatus?: string | null;
     documentIntent?: string | null;
+    userDeclaredDocumentIntent?: UserDeclaredDocumentIntent | null;
     extractionTrace?: ExtractionTrace | null;
     validationWarnings?: ValidationWarning[] | null;
     fieldConfidenceMap?: Record<string, number> | null;

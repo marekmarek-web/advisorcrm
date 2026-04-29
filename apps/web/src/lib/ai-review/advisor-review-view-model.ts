@@ -182,8 +182,10 @@ function buildDeterministicBrief(env: DocumentReviewEnvelope, recognition: strin
   const cn = str(fv(env, "contractNumber"));
   if (cn) parts.push(`Č. smlouvy: ${cn}`);
   const lifecycle = env.documentClassification.lifecycleStatus;
-  if (lifecycle === "proposal" || lifecycle === "modelation" || lifecycle === "illustration") {
-    parts.push("Návrh/modelace — ne finální smlouva.");
+  if (env.userDeclaredDocumentIntent?.isModelation) {
+    parts.push("Modelace / návrh — poradce označil při nahrání.");
+  } else if (lifecycle === "proposal" || lifecycle === "modelation" || lifecycle === "illustration") {
+    parts.push("AI našla znaky návrhu/modelace. Ověřte před schválením.");
   }
   if (env.contentFlags?.containsPaymentInstructions) {
     parts.push("Obsahuje platební pokyny.");

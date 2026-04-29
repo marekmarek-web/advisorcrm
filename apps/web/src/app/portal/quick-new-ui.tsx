@@ -57,7 +57,8 @@ export function QuickNewItemIcon({ item }: { item: QuickActionItem }) {
 }
 
 /**
- * Shared body for desktop dropdown ([`QuickNewMenu`]) and mobile bottom sheet ([`QuickNewMobileSheet`]).
+ * Historical note: mobilní centrální „+“ používá vlastní seznam v {@link QuickNewMobileSheet}
+ * (synchro s chrome kontraktem). Desktopová nabídka zůstává konfigurovaná přes `useQuickActionsItems`.
  */
 export function QuickActionsMenuContent({
   variant,

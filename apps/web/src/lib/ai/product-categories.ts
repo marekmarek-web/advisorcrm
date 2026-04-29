@@ -108,6 +108,7 @@ export const PARTNER_PRODUCT_RULES: Array<{
   { pattern: /\b(pov|povinné\s+ručení|hav[áa]rijn[ií])\b/i, category: "MOTOR_INSURANCE", subtypes: ["auto"] },
 
   // ── Životní pojištění (pravidelné) ────────────────────────────────────
+  { pattern: /život\s*&\s*radost|zivot\s*&\s*radost/i, category: "LIFE_INSURANCE_REGULAR", subtypes: ["regular_payment"], confidenceHint: "high" },
   { pattern: /\bnn\b.*\b(život|zivot|životn[ií])\b/i, category: "LIFE_INSURANCE_REGULAR", subtypes: ["regular_payment"] },
   { pattern: /\buniqa\b.*\b(život|zivot|životn[ií])\b/i, category: "LIFE_INSURANCE_REGULAR", subtypes: ["regular_payment"] },
   { pattern: /\b(maxima|allianz|koopa?|kooperativa|generali|česká\s+pojišťovna)\b.*\b(život|zivot|životn[ií])\b/i, category: "LIFE_INSURANCE_REGULAR", subtypes: ["regular_payment"] },
@@ -158,7 +159,30 @@ export type ClassifyProductResult = {
   notes: string[];
 };
 
+function normalizeClassifierText(value: string | null | undefined): string {
+  return (value ?? "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
+
+function categoryFromKnownType(value: string | null | undefined): ProductCategory {
+  const lower = normalizeClassifierText(value).replace(/[\s-]+/g, "_");
+  if (/(^|_)life(_|$)|life_insurance|zivot|zivotni/.test(lower)) return "LIFE_INSURANCE_REGULAR";
+  if (/non_life|property|majetek|nemovitost|domacnost/.test(lower)) return "PROPERTY_INSURANCE";
+  if (/liability|odpovednost/.test(lower)) return "LIABILITY_INSURANCE";
+  if (/motor|vehicle|auto|povinne_ruceni|havarijni/.test(lower)) return "MOTOR_INSURANCE";
+  if (/mortgage|hypo|hypoteka/.test(lower)) return "MORTGAGE";
+  if (/leasing/.test(lower)) return "LEASING";
+  if (/consumer_loan|uver|pujcka/.test(lower)) return "CONSUMER_LOAN";
+  if (/pension|penzijni|dps|dip/.test(lower)) return "PENSION_PARTICIPANT_CONTRIBUTION";
+  if (/investment|investic|fund|fond/.test(lower)) return "INVESTMENT_ENTRY_FEE";
+  return "UNKNOWN_REVIEW";
+}
+
 function segmentToCategoryFallback(segment: string | null | undefined): ProductCategory {
+  const known = categoryFromKnownType(segment);
+  if (known !== "UNKNOWN_REVIEW") return known;
   const s = (segment ?? "").toUpperCase();
   switch (s) {
     case "ZP":
@@ -210,11 +234,13 @@ export function classifyProduct(input: ClassifyProductInput): ClassifyProductRes
   }
 
   if (category === "UNKNOWN_REVIEW") {
-    const fallback = segmentToCategoryFallback(input.segment);
+    const fallback =
+      segmentToCategoryFallback(input.segment) !== "UNKNOWN_REVIEW"
+        ? segmentToCategoryFallback(input.segment)
+        : categoryFromKnownType(haystack);
     if (fallback !== "UNKNOWN_REVIEW") {
       category = fallback;
-      confidence = "low";
-      notes.push(`Kategorie odvozena jen ze segmentu „${input.segment}“ — pro jistotu zkontrolujte.`);
+      confidence = "medium";
     } else {
       confidence = "low";
       notes.push("Nepodařilo se odhadnout kategorii produktu z názvu ani ze segmentu.");

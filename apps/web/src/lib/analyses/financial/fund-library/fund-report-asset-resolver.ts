@@ -34,6 +34,7 @@ function isCommittedReportVisualPath(p: string): boolean {
   if (p.startsWith("/report-assets/creif/")) return true;
   if (p.startsWith("/report-assets/atris/")) return true;
   if (p.startsWith("/report-assets/penta/")) return true;
+  if (p.startsWith("/report-assets/msci/")) return true;
   return false;
 }
 

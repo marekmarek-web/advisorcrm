@@ -34,6 +34,8 @@ export type BoundingBox = {
 
 export type ExtractedField = {
   id: string;
+  /** Stable machine path used for audit and AI Review correction learning. */
+  fieldPath?: string;
   groupId: string;
   label: string;
   value: string;
@@ -339,6 +341,15 @@ export type ExtractionDocument = {
     warnings?: string[];
     /** AI Review v2 classifier raw JSON (for advisor-facing labels). */
     aiClassifierJson?: Record<string, unknown>;
+    modelName?: string;
+    promptVersion?: string;
+    schemaVersion?: string;
+    pipelineVersion?: string;
+    learningHintsUsed?: boolean;
+    learningPatternIds?: string[];
+    learningHintCount?: number;
+    validatorWarnings?: string[];
+    validatorAutoFixesApplied?: string[];
     matchVerdict?: MatchVerdict;
     matchVerdictReason?: string;
     autoResolvedClientId?: string;
@@ -382,6 +393,7 @@ export type ExtractionDocument = {
   /** Client-side: synthetic groups were added when extraction envelope had no flattenable fields. */
   reviewUiMeta?: {
     usedSyntheticGroups?: boolean;
+    showDebugFieldPath?: boolean;
   };
   /**
    * Phase 2+3 canonical fields from Agent A normalizer.

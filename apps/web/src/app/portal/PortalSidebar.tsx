@@ -24,7 +24,6 @@ import {
   Moon,
   Monitor,
   Settings,
-  Network,
   ChevronLeft,
   ChevronRight,
   Search,
@@ -36,15 +35,12 @@ import {
   Target,
   User,
   Command,
-  FileX2,
-  Megaphone,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { usePortalBadgeCounts } from "@/app/portal/PortalBadgeCountsContext";
 import clsx from "clsx";
 import { displayNameFromUserMetadata, getUserMenuInitials } from "@/lib/user-initials";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
-import { isTerminationsModuleEnabled } from "@/lib/terminations/terminations-feature-flag";
 
 /** Zarovnáno s main banner txt (expanded 300px, collapsed 88px). */
 export const PORTAL_SIDEBAR_WIDTH_PX = 300;
@@ -116,17 +112,8 @@ const DEFAULT_SECTIONS: SectionConfig[] = [
     specialBg: true,
     items: [
       { href: "/portal/contracts/review", label: "AI Review smluv", Icon: AiAssistantBrandIcon, isAi: true },
-      {
-        href: "/portal/terminations/new",
-        label: "Výpověď smlouvy",
-        Icon: FileX2,
-        activePathPrefix: "/portal/terminations",
-        activePathPrefixExclude: "/portal/terminations/registry",
-        hoverAnim: "group-hover:-translate-y-0.5 group-hover:scale-110",
-      },
       { href: "/portal/analyses", label: "Finanční analýzy", Icon: BarChart3, isHighlighted: true, hoverAnim: "group-hover:scale-110 group-hover:rotate-6" },
       { href: "/portal/calculators", label: "Kalkulačky", Icon: Calculator, hoverAnim: "group-hover:rotate-12 group-hover:scale-110" },
-      { href: "/portal/mindmap", label: "Mindmap", Icon: Network, hoverAnim: "group-hover:-translate-y-1" },
       { href: "/portal/tools/drive", label: "Google Disk", Icon: GoogleDriveLogo, hoverAnim: "group-hover:scale-110" },
       { href: "/portal/tools/gmail", label: "Gmail", Icon: GmailLogo, hoverAnim: "group-hover:scale-110" },
     ],
@@ -137,7 +124,6 @@ const DEFAULT_SECTIONS: SectionConfig[] = [
     items: [
       { href: "/portal/contacts", label: "Klienti", Icon: Users, hoverAnim: "group-hover:scale-110" },
       { href: "/portal/households", label: "Domácnosti", Icon: Building2, hoverAnim: "group-hover:-translate-y-1" },
-      { href: "/portal/email-campaigns", label: "E-mail kampaně", Icon: Megaphone, hoverAnim: "group-hover:scale-110" },
     ],
   },
   {
@@ -255,16 +241,6 @@ function filterSectionsByRole(sections: SectionConfig[], showTeamOverview: boole
   return sections;
 }
 
-function filterTerminationNavItem(sections: SectionConfig[], terminationsEnabled: boolean): SectionConfig[] {
-  if (terminationsEnabled) return sections;
-  const termHrefs = new Set(["/portal/terminations/new"]);
-  return sections.map((sec) =>
-    sec.id === "sec-nastroje"
-      ? { ...sec, items: sec.items.filter((i) => !termHrefs.has(i.href)) }
-      : sec
-  );
-}
-
 export function PortalSidebar({
   showTeamOverview,
   advisorAvatarUrl = null,
@@ -280,11 +256,7 @@ export function PortalSidebar({
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
   const baseSections = useMemo(
-    () =>
-      filterTerminationNavItem(
-        filterSectionsByRole(DEFAULT_SECTIONS, showTeamOverview),
-        isTerminationsModuleEnabled()
-      ),
+    () => filterSectionsByRole(DEFAULT_SECTIONS, showTeamOverview),
     [showTeamOverview]
   );
   const [menuSections, setMenuSections] = useState<SectionConfig[]>(baseSections);

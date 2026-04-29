@@ -1,0 +1,79 @@
+{
+  "id": "uniqa-multi-insured-premium-aggregation",
+  "description": "UNIQA regression: document declares two insured persons and per-insured monthly premium rows.",
+  "documentTextExcerpt": "Počet pojištěných: 1 dospělá osoba, 1 dítě\n1. pojištěný\n2. pojištěný\nCelkové běžné měsíční pojistné pro 1. pojištěného 1 560 Kč\nCelkové běžné měsíční pojistné pro 2. pojištěného 882 Kč",
+  "initialWrongOutput": {
+    "participants": [
+      {
+        "fullName": "První pojištěný",
+        "role": "insured"
+      }
+    ],
+    "premium": {
+      "frequency": "monthly",
+      "totalMonthlyPremium": 1560,
+      "perInsured": [
+        {
+          "order": 1,
+          "monthlyPremium": 1560
+        }
+      ]
+    },
+    "publishIntent": {
+      "shouldPublishToCrm": true
+    },
+    "documentClassification": {
+      "primaryType": "life_insurance_contract",
+      "lifecycleStatus": "final_contract"
+    }
+  },
+  "expectedOutputJson": {
+    "participants": [
+      {
+        "fullName": "První pojištěný",
+        "role": "insured"
+      },
+      {
+        "fullName": "Druhý pojištěný",
+        "role": "insured"
+      }
+    ],
+    "premium": {
+      "frequency": "monthly",
+      "totalMonthlyPremium": 2442,
+      "perInsured": [
+        {
+          "order": 1,
+          "monthlyPremium": 1560
+        },
+        {
+          "order": 2,
+          "monthlyPremium": 882
+        }
+      ]
+    },
+    "publishIntent": {
+      "shouldPublishToCrm": true
+    },
+    "documentClassification": {
+      "primaryType": "life_insurance_contract",
+      "lifecycleStatus": "final_contract"
+    }
+  },
+  "criticalFields": [
+    "participants.length",
+    "participants[0].fullName",
+    "participants[0].role",
+    "participants[1].fullName",
+    "participants[1].role",
+    "premium.totalMonthlyPremium",
+    "premium.frequency",
+    "premium.perInsured[0].monthlyPremium",
+    "premium.perInsured[1].monthlyPremium",
+    "publishIntent.shouldPublishToCrm",
+    "documentClassification.primaryType",
+    "documentClassification.lifecycleStatus"
+  ],
+  "piiScrubbed": false,
+  "exportPolicy": "Internal tenant DB only; anonymize before any external fine-tune export."
+}

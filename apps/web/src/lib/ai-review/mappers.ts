@@ -38,6 +38,7 @@ import { buildAdvisorReviewViewModel } from "./advisor-review-view-model";
 import { deriveFieldApplyPolicy } from "./field-apply-policy";
 import { isAiReviewPipelineDebug } from "../ai/ai-review-debug";
 import { deriveCanonicalPhase1DetailFields } from "../ai/canonical-detail-fields";
+import { resolveAiReviewCorrectionFieldPath } from "../ai/ai-review-correction-paths";
 
 type ApiReviewDetail = Record<string, unknown>;
 
@@ -1174,6 +1175,7 @@ function flattenEnvelopeToGroups(
 
       pushGroupedField({
         id: `extractedFields.${fKey}`,
+        fieldPath: resolveAiReviewCorrectionFieldPath(`extractedFields.${fKey}`) ?? `extractedFields.${fKey}`,
         groupId: "extractedFields",
         label: fieldLabelForKeyAndFamily(fKey, productFamily, primaryType),
         value: strVal,
@@ -1220,6 +1222,7 @@ function flattenEnvelopeToGroups(
       });
       pushGroupedField({
         id: `parties.${pk}`,
+        fieldPath: resolveAiReviewCorrectionFieldPath(`parties.${pk}`) ?? `parties.${pk}`,
         groupId: "parties",
         label: fieldLabelForKey(pk),
         value: strVal,
@@ -1244,6 +1247,7 @@ function flattenEnvelopeToGroups(
       const confPct = fieldConfidence(k, fieldConfidenceMap, globalConfidence01);
       pushGroupedField({
         id: `financialTerms.${k}`,
+        fieldPath: resolveAiReviewCorrectionFieldPath(`financialTerms.${k}`) ?? `financialTerms.${k}`,
         groupId: "financialTerms",
         label: fieldLabelForKey(k),
         value: strVal,
@@ -1321,6 +1325,7 @@ function flattenPayload(
         const status = fieldStatus(conf, fVal);
         pushGroupedField({
           id: `${sectionKey}.${fKey}`,
+          fieldPath: resolveAiReviewCorrectionFieldPath(`${sectionKey}.${fKey}`) ?? `${sectionKey}.${fKey}`,
           groupId: sectionKey,
           label: fieldLabelForKey(fKey),
           value: strVal,
@@ -1343,6 +1348,7 @@ function flattenPayload(
       const status = fieldStatus(conf, sectionVal);
       pushGroupedField({
         id: `root.${sectionKey}`,
+        fieldPath: resolveAiReviewCorrectionFieldPath(`root.${sectionKey}`) ?? sectionKey,
         groupId: "__ungrouped",
         label: fieldLabelForKey(sectionKey),
         value: strVal,
@@ -1716,6 +1722,7 @@ function appendSyntheticEnvelopeGroups(
     status: FieldStatus
   ): ExtractedField => ({
     id,
+    fieldPath: resolveAiReviewCorrectionFieldPath(id) ?? undefined,
     groupId,
     label,
     value,
@@ -2039,7 +2046,13 @@ export function mapApiToExtractionDocument(
         overriddenReasons: ignored.length > 0 ? ignored : undefined,
       };
     })(),
-    reviewUiMeta: usedSyntheticGroups ? { usedSyntheticGroups: true } : undefined,
+    reviewUiMeta:
+      usedSyntheticGroups || detail.debug
+        ? {
+            ...(usedSyntheticGroups ? { usedSyntheticGroups: true } : {}),
+            ...(detail.debug ? { showDebugFieldPath: true } : {}),
+          }
+        : undefined,
     productCategory: (detail.productCategory as string | null | undefined) ?? null,
     productSubtypes: (detail.productSubtypes as string[] | null | undefined) ?? null,
     extractionConfidenceLevel: (() => {

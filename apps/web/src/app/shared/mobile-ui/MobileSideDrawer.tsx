@@ -15,7 +15,6 @@ import {
   Calendar,
   Bell,
   Settings,
-  Network,
   MessageCircle,
   X,
   FileText,
@@ -24,10 +23,7 @@ import {
   UserPlus,
   ScanLine,
   LogOut,
-  FileX2,
-  Megaphone,
 } from "lucide-react";
-import { isTerminationsModuleEnabled } from "@/lib/terminations/terminations-feature-flag";
 import Link from "next/link";
 import Image from "next/image";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
@@ -73,7 +69,7 @@ function filterSections(sections: DrawerSection[], showTeamOverview: boolean): D
   return sections.filter((s) => s.id !== "sec-vedeni");
 }
 
-/** Mirrors web `DEFAULT_SECTIONS` (PortalSidebar.tsx) 1:1 in section order + items, plus mobile-only extras (Dokumenty, Skenovat, Studené kontakty). Items filtered by `hasPermission`. */
+/** Mirrors web `DEFAULT_SECTIONS` (PortalSidebar.tsx) in section order + items, plus mobile-only extras (Skenovat, Studené kontakty). Items filtered by `hasPermission`. */
 function buildSections(showTeamOverview: boolean, roleName: RoleName): DrawerSection[] {
   const prehled: DrawerNavItem[] = [
     { href: "/portal/today", label: "Nástěnka", Icon: Home },
@@ -87,17 +83,10 @@ function buildSections(showTeamOverview: boolean, roleName: RoleName): DrawerSec
     ...(hasPermission(roleName, "documents:read")
       ? [{ href: "/portal/contracts/review", label: "AI Review smluv", Icon: AiAssistantBrandIcon, isAi: true } as DrawerNavItem]
       : []),
-    ...(isTerminationsModuleEnabled()
-      ? [{ href: "/portal/terminations/new", label: "Výpověď smlouvy", Icon: FileX2 } as DrawerNavItem]
-      : []),
     ...(hasPermission(roleName, "financial_analyses:read")
       ? [{ href: "/portal/analyses", label: "Finanční analýzy", Icon: BarChart3 } as DrawerNavItem]
       : []),
     { href: "/portal/calculators", label: "Kalkulačky", Icon: Calculator },
-    { href: "/portal/mindmap", label: "Mindmap", Icon: Network },
-    ...(hasPermission(roleName, "documents:read")
-      ? [{ href: "/portal/documents", label: "Dokumenty", Icon: FileText } as DrawerNavItem]
-      : []),
     ...(hasPermission(roleName, "documents:read") && isPortalMultiPageScanEnabled()
       ? [{ href: "/portal/scan", label: "Skenovat dokument", Icon: ScanLine } as DrawerNavItem]
       : []),
@@ -108,7 +97,6 @@ function buildSections(showTeamOverview: boolean, roleName: RoleName): DrawerSec
   const databaze: DrawerNavItem[] = [
     { href: "/portal/contacts", label: "Klienti", Icon: Users },
     { href: "/portal/households", label: "Domácnosti", Icon: Building2 },
-    { href: "/portal/email-campaigns", label: "E-mail kampaně", Icon: Megaphone },
     ...(isColdContactsEnabled() && hasPermission(roleName, "contacts:read")
       ? [{ href: "/portal/cold-contacts", label: "Studené kontakty", Icon: UserPlus } as DrawerNavItem]
       : []),
@@ -246,12 +234,17 @@ export function MobileSideDrawer({
     >
       <aside
         className={cx(
-          "flex h-full min-h-0 min-w-0 shrink-0 flex-col overflow-hidden",
-          "border-r border-white/45 bg-white/90 shadow-[16px_0_48px_rgba(10,15,41,0.12)] backdrop-blur-2xl",
+          "relative isolate flex h-full min-h-0 min-w-0 shrink-0 flex-col overflow-hidden",
           "animate-in slide-in-from-left duration-300 ease-out rounded-r-[1.65rem]",
           widthClass
         )}
       >
+        {/* Frost + blur na samostatné vrstvě s inherit radius — jinak WebKit v rohůch vykreslí pod scrimem bílé „kousky“. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-[inherit] border-r border-white/45 bg-white/90 shadow-[16px_0_48px_rgba(10,15,41,0.12)] backdrop-blur-2xl"
+        />
+        <div className="relative z-[1] flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <div className="flex items-start justify-between gap-2 border-b border-slate-200/70 px-4 pb-3 pt-[calc(var(--safe-area-top)+0.5rem)]">
           <div className="min-w-0 flex items-start gap-3">
             <Link
@@ -432,6 +425,7 @@ export function MobileSideDrawer({
               </div>
             </>
           )}
+        </div>
         </div>
       </aside>
       <button

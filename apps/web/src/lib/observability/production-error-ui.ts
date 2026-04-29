@@ -3,10 +3,30 @@ import * as Sentry from "@sentry/nextjs";
 /**
  * User-visible Czech copy for production errors where Next.js omits details
  * or surfaces generic RSC failure messages.
+ *
+ * Další funkce řeší běžné chyby server actions / klient‑server nesouladu.
  */
+
 /**
- * Chyby ze server actions / fetch na klientu — srozumitelná čeština i když Next v produkci schová detail.
+ * Next.js případ: klient drží staré ID serverové akce (často při probíhajícím compile ve vývoji
+ * nebo po deployi před reloadem).
+ * @see https://nextjs.org/docs/messages/failed-to-find-server-action
  */
+export function getFailedServerActionFriendlyMessage(raw: unknown, fallback = "Nepodařilo se dokončit požadavek."): string {
+  const msg = raw instanceof Error ? raw.message.trim() : String(raw).trim();
+  if (
+    /was not found on the server/i.test(msg) ||
+    /failed[_-]?to[_-]?find[_-]?server[_-]?action/i.test(msg) ||
+    /\bfailed-to-find-server-action\b/i.test(msg)
+  ) {
+    return (
+      "Prohlížeč má uložený starší stav aplikace a neshoduje se s vyhlášenými akcemi na serveru. " +
+      "Zkuste „Zkusit znovu“ nebo celé obnovení stránky. Ve vývojovém režimu se to často projeví během probíhající kompilace."
+    );
+  }
+  return msg || fallback;
+}
+
 export function getActionFriendlyErrorMessage(e: unknown, fallback: string): string {
   const err = e instanceof Error ? e : null;
   const msg = (err?.message ?? (typeof e === "string" ? e : "")).trim();

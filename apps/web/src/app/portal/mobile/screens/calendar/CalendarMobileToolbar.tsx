@@ -1,7 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Menu, RefreshCw, Search } from "lucide-react";
-import { MobileSectionHeader } from "@/app/shared/mobile-ui/primitives";
+import { ChevronLeft, ChevronRight, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
 import { formatMonthYear } from "./calendar-utils";
 
 function cx(...c: Array<string | false | null | undefined>) {
@@ -33,11 +32,6 @@ export function CalendarMobileToolbar({
 }) {
   return (
     <div className="shrink-0 space-y-2 px-1 pt-0">
-      <MobileSectionHeader
-        title="Můj kalendář"
-        subtitle="Interní agenda poradce — časové bloky nad daty úkolů CRM."
-      />
-
       <div className="flex rounded-[1rem] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/40 p-1">
         {(
           [
@@ -71,9 +65,9 @@ export function CalendarMobileToolbar({
           type="button"
           onClick={onOpenDrawer}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[color:var(--wp-text-secondary)] transition-colors active:bg-[color:var(--wp-surface-muted)] active:scale-95"
-          aria-label="Menu kalendáře"
+          aria-label="Zobrazení a filtry kalendáře"
         >
-          <Menu size={22} />
+          <SlidersHorizontal size={20} />
         </button>
         <div className="flex shrink-0 items-center gap-1">
           <button

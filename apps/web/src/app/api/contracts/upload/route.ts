@@ -75,6 +75,12 @@ export async function POST(request: Request) {
     }
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
+    const isModelationUpload = formData.get("isModelation") === "true";
+    const userDeclaredDocumentIntent = {
+      isModelation: isModelationUpload,
+      declaredByAdvisor: true as const,
+      declaredAtUpload: new Date().toISOString(),
+    };
     if (!file?.size) {
       return NextResponse.json(
         { error: "Vyberte soubor (PDF nebo obrázek)." },
@@ -165,6 +171,7 @@ export async function POST(request: Request) {
         sizeBytes: fileBytes.byteLength,
         processingStatus: "uploaded",
         uploadedBy: userId,
+        userDeclaredDocumentIntent,
       });
     } catch (dbErr) {
       const pgMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
