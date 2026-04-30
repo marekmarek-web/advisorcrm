@@ -395,16 +395,18 @@ export async function routeAssistantMessage(
     skipIncrement?: boolean;
     recentMessages?: RecentAssistantPromptMessage[];
     imageAssets?: ImageAssetPayload[];
+    intentOverride?: AssistantIntent;
   },
 ): Promise<AssistantResponse> {
   if (!options?.skipIncrement) {
     incrementMessageCount(session);
   }
 
-  const intent = await extractAssistantIntent(message);
+  const intent = options?.intentOverride ?? await extractAssistantIntent(message);
   logAssistantTelemetry(AssistantTelemetryAction.LEGACY_INTENT_EXTRACTED, {
     actionTags: Array.isArray(intent.actions) ? intent.actions.slice(0, 12) : [],
     switchClient: intent.switchClient,
+    source: options?.intentOverride ? "canonical_override" : "legacy_llm",
   });
   const roleName = options?.roleName ?? "Advisor";
 
@@ -1138,11 +1140,28 @@ export async function routeAssistantMessageCanonical(
   ]);
 
   if (READ_ONLY_INTENTS.has(canonicalIntent.intentType)) {
+    const intentOverride: AssistantIntent = {
+      actions: canonicalIntent.intentType === "dashboard_summary"
+        ? ["dashboard_summary"]
+        : canonicalIntent.intentType === "search_contacts"
+          ? ["search_contacts"]
+          : ["general_chat"],
+      switchClient: canonicalIntent.switchClient,
+      clientRef: canonicalIntent.targetClient?.ref ?? null,
+      amount: null,
+      ltv: null,
+      purpose: null,
+      bank: null,
+      rateGuess: null,
+      noEmail: canonicalIntent.noEmail,
+      dueDateText: null,
+    };
     return routeAssistantMessage(message, session, activeContext, {
       roleName: options?.roleName,
       skipIncrement: true,
       recentMessages: options?.recentMessages,
       imageAssets: options?.imageAssets,
+      intentOverride,
     });
   }
 

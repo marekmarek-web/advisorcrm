@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import type { ContactRow } from "@/app/actions/contacts";
 import { ContactSearchInput } from "@/app/components/ContactSearchInput";
 import { CALENDAR_EVENT_CATEGORIES } from "@/app/portal/calendar/event-categories";
+import { openIntegrationConnect } from "@/lib/native/open-integration-connect";
 import type { CalendarViewMode } from "./calendar-utils";
 import { startOfDayLocal, startOfWeekLocal, viewModeLabel } from "./calendar-utils";
 import { CalendarMiniMonth } from "./CalendarMiniMonth";
@@ -77,11 +78,10 @@ export function CalendarDrawer({
   if (!open) return null;
 
   const viewOptions: { id: CalendarViewMode; label: string }[] = [
-    { id: "day", label: "1 den" },
+    { id: "day", label: "Den" },
     { id: "3day", label: "3 dny" },
     { id: "week", label: "Týden" },
     { id: "month", label: "Měsíc" },
-    { id: "agenda", label: "Agenda (týden)" },
   ];
 
   return (
@@ -272,13 +272,14 @@ export function CalendarDrawer({
               Nastavení vzhledu kalendáře
             </button>
             {!googleConnected ? (
-              <a
-                href="/api/integrations/google-calendar/connect"
+              <button
+                type="button"
+                onClick={() => void openIntegrationConnect("/api/integrations/google-calendar/connect")}
                 className="flex min-h-[48px] w-full items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 text-sm font-bold text-[color:var(--wp-text)]"
               >
                 <RefreshCw size={16} className="text-[color:var(--wp-text-secondary)]" />
                 Připojit Google kalendář
-              </a>
+              </button>
             ) : null}
             {googleConnected && onSyncCalendar ? (
               <button

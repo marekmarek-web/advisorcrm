@@ -50,7 +50,8 @@ cd ~/Developer/Aidvisora/apps/web
 pnpm cap:dev
 ```
 
-Tento rezim prepne WebView na `http://localhost:3000/prihlaseni?native=1`.
+Tento rezim prepne WebView na LAN adresu Macu, napr. `http://192.168.0.106:3000/prihlaseni?native=1`.
+Pro iOS simulator lze pouzit `pnpm cap:dev:sim`, ktery necha `http://127.0.0.1:3000/prihlaseni?native=1`.
 
 ## 3. Doporuceny postup pri kazdem otevreni Xcode
 
@@ -58,7 +59,8 @@ Tento rezim prepne WebView na `http://localhost:3000/prihlaseni?native=1`.
 2. Po `git pull` nebo zmene zavislosti spust `pnpm install` z korene repa.
 3. Rozhodni rezim:
    - produkce v appce -> `pnpm cap:sync`
-   - localhost -> `pnpm dev` a pak `pnpm cap:dev`
+   - fyzicky iPhone -> `pnpm dev` a pak `pnpm cap:dev`
+   - iOS simulator -> `pnpm dev` a pak `pnpm cap:dev:sim`
 4. Otevri `App.xcodeproj`.
 5. V Xcode proved:
    - `File > Packages > Reset Package Caches`

@@ -324,7 +324,7 @@ export async function buildAiReviewPdfBlob(
   ].filter((r) => !r.dismissed && !dismissed[r.id]);
 
   if (activeRecs.length > 0) {
-    state = drawBoldTitle(state, "Doporučení a upozornění", 12, rgb);
+    state = drawBoldTitle(state, "Interní upozornění a oblasti k ověření", 12, rgb);
     for (const r of activeRecs) {
       const head = `[${r.severity}] ${r.title}`;
       state = drawLines(state, wrapLineToWidth(head, fontBold, 10, contentWidth), 10, TEXT, rgb);

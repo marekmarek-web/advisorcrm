@@ -26,14 +26,14 @@ export function CalendarMiniMonth({
   const cells = Array.from({ length: 42 }, (_, i) => addDaysLocal(gridStart, i));
 
   return (
-    <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50 p-3 shadow-[var(--aidv-mobile-shadow-card-premium,var(--aidv-shadow-card-sm))]">
-      <p className="mb-2 text-center text-xs font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)]">{label}</p>
-      <div className="mb-1 grid grid-cols-7 gap-0.5 text-center text-[9px] font-bold text-[color:var(--wp-text-tertiary)]">
+    <div className="rounded-[34px] bg-white/74 p-4 shadow-[0_20px_46px_-36px_rgba(15,23,42,.42)] ring-1 ring-slate-200/45 backdrop-blur-xl">
+      <p className="mb-5 text-center text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">{label}</p>
+      <div className="mb-2 grid grid-cols-7 gap-2 text-center text-[11px] font-black text-slate-400">
         {dayLabels.map((d) => (
-          <span key={d}>{d}</span>
+          <span key={d} className="py-1">{d}</span>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-2">
         {cells.map((d) => {
           const ds = formatDateLocal(d);
           const inMonth = d.getMonth() === anchorDate.getMonth();
@@ -46,25 +46,25 @@ export function CalendarMiniMonth({
               key={ds}
               type="button"
               onClick={() => onPickDay(startOfDayLocal(d))}
-              className={`relative flex min-h-[2.65rem] flex-col items-center justify-center gap-0.5 rounded-lg pt-1 text-xs font-bold transition-colors active:scale-95 ${
-                !inMonth ? "text-[color:var(--wp-text-tertiary)]" : "text-[color:var(--wp-text-secondary)]"
+              className={`relative flex h-[56px] flex-col items-center justify-center gap-0.5 rounded-[18px] text-xs font-bold transition-colors active:scale-95 ${
+                !inMonth ? "text-slate-300" : "text-slate-600"
               } ${
-                isToday
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : isAnchor
-                    ? "bg-indigo-100 text-indigo-800"
+                isAnchor
+                  ? "bg-indigo-600 text-white shadow-[0_14px_28px_-16px_rgba(79,70,229,.75)]"
+                  : isToday
+                    ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100"
                     : inMonth
-                      ? "bg-[color:var(--wp-surface-card)] hover:bg-[color:var(--wp-surface-muted)]"
+                      ? "bg-white ring-1 ring-slate-100"
                       : ""
               }`}
             >
-              {d.getDate()}
+              <span className="text-[15px] font-black">{d.getDate()}</span>
               {dots > 0 ? (
                 <span className="flex h-3 items-center gap-px" aria-hidden>
                   {Array.from({ length: dots }).map((_, i) => (
                     <span
                       key={`${ds}-${i}`}
-                      className="h-1.5 w-1.5 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 opacity-95"
+                      className={`h-1.5 w-1.5 rounded-full ${isAnchor ? "bg-white" : "bg-indigo-500"}`}
                     />
                   ))}
                 </span>

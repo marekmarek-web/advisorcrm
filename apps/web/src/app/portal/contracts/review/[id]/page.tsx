@@ -57,6 +57,15 @@ function processingStepHintFromTrace(trace: unknown): string | undefined {
   return "matching";
 }
 
+function processingStepHintFromApi(data: Record<string, unknown>): string | undefined {
+  const stage = typeof data.processingStage === "string" ? data.processingStage : "";
+  if (stage === "preprocessing" || stage === "document_recognized") return "preprocessing";
+  if (stage === "extracting") return "extracting";
+  if (stage === "matching_client") return "matching";
+  if (stage === "finalizing") return "validating";
+  return processingStepHintFromTrace(data.extractionTrace);
+}
+
 function ProcessingProgress({ stepHint }: { stepHint?: string }) {
   const [frame, setFrame] = useState(0);
   useEffect(() => {
@@ -158,6 +167,7 @@ export default function ContractReviewDetailPage() {
       }
       const data = await res.json();
       setProcessingStatus(data.processingStatus ?? null);
+      setProcessingStepHint(processingStepHintFromApi(data as Record<string, unknown>));
       setMatchedClientId(typeof data.matchedClientId === "string" ? data.matchedClientId : null);
       // F0-1 (C-01): snapshot raw envelope tak, aby Approve/Approve+Apply mohl
       // poslat aktuální snapshot spolu s field edits. Bez tohoto se UI edity
@@ -209,7 +219,7 @@ export default function ContractReviewDetailPage() {
         const status: string = data.processingStatus ?? "";
         setProcessingStatus(status);
         setMatchedClientId(typeof data.matchedClientId === "string" ? data.matchedClientId : null);
-        const hint = processingStepHintFromTrace(data.extractionTrace);
+        const hint = processingStepHintFromApi(data as Record<string, unknown>);
         if (hint) setProcessingStepHint(hint);
         if (status !== "uploaded" && status !== "processing") {
           stopPolling();

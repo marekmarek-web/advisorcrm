@@ -10,6 +10,9 @@ import { CellProduct } from "./CellProduct";
 import type { Column } from "./types";
 import type { Item } from "./types";
 import { PRODUCT_COLUMNS } from "@/app/board/seed-data";
+import type { StatusLabel } from "@/app/lib/status-labels";
+import { shouldCelebrateBoardStatus } from "@/app/lib/status-labels";
+import { triggerConfettiBurstFromRect } from "@/app/lib/confetti-burst";
 
 const EMPTY_POTENTIAL_DEAL_IDS = new Set<string>();
 
@@ -35,6 +38,8 @@ interface RowProps {
   actionColumnWidth?: number;
   /** Buňky s těmito id štítků zvýrazní řádek (shodně s KPI potenciálních obchodů). */
   potentialDealStatusIds?: Set<string>;
+  /** Štítky stavu boardu (pro detekci „úspěšného“ statusu u konfeti). */
+  statusLabels: StatusLabel[];
 }
 
 function RowComponent({
@@ -51,6 +56,7 @@ function RowComponent({
   onCellNoteChange,
   actionColumnWidth = 60,
   potentialDealStatusIds = EMPTY_POTENTIAL_DEAL_IDS,
+  statusLabels,
 }: RowProps) {
   const hasPotential = itemHasPotential(item, potentialDealStatusIds);
 
@@ -135,6 +141,11 @@ function RowComponent({
               <CellStatus
                 value={String(cellValue ?? "")}
                 onChange={(v) => onCellChange(item.id, col.id, v)}
+                onStatusPickCommitted={(nextId, getAnchorRect) => {
+                  const prev = String(cellValue ?? "");
+                  if (!shouldCelebrateBoardStatus(nextId, prev, statusLabels)) return;
+                  triggerConfettiBurstFromRect(getAnchorRect() ?? null);
+                }}
                 fullCell={mondayStyle}
                 note={item.cellNotes?.[col.id]}
                 onNoteChange={col.supportsNote && onCellNoteChange ? (v) => onCellNoteChange(item.id, col.id, v) : undefined}

@@ -209,6 +209,8 @@ export type ExtractionTrace = {
   llmClientMatchDurationMs?: number;
   /** Parsed from optional client-match LLM (guardrails). */
   llmClientMatchKind?: string;
+  /** Fine-grained phase timings for AI Review performance tuning. */
+  phaseTimings?: Record<string, number>;
   /**
    * Deterministic client-match verdict; may mirror top-level DB column when also stored in trace.
    */

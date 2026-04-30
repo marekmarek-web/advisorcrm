@@ -119,6 +119,17 @@ describe("Scenario 1: re-apply same review → no duplicate contract", () => {
   });
 });
 
+describe("AI review portfolio segment routing", () => {
+  it("forces life insurance reviews to ZP so client portfolio renders risks", () => {
+    const segment = resolveSegmentForContractApply(
+      { segment: "INV" },
+      { documentClassification: { primaryType: "life_insurance_proposal", productFamily: "life_insurance" } },
+    );
+
+    expect(segment).toBe("ZP");
+  });
+});
+
 // ── Scenario 2: existing manual contact → fields not overwritten ──────────────
 //
 // Rule: resolveFieldMerge with sourceKind="manual" on existing non-empty field

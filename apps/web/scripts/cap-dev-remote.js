@@ -23,3 +23,4 @@ execSync("npx cap sync", {
   stdio: "inherit",
   env: { ...process.env, CAPACITOR_SERVER_URL: url },
 });
+execSync("node scripts/fix-cap-spm-app-identity-alias.mjs", { stdio: "inherit" });

@@ -8,5 +8,6 @@ export function getPublicSiteOrigin(): string {
 export function absoluteUrlFromPublicPath(path: string): string {
   const base = getPublicSiteOrigin();
   const p = path.startsWith("/") ? path : `/${path}`;
-  return `${base}${p}`;
+  const encoded = p.split("/").map((seg) => (seg === "" ? "" : encodeURIComponent(seg))).join("/");
+  return `${base}${encoded}`;
 }

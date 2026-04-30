@@ -181,11 +181,19 @@ function ContractDetailCard({
   // Format premium display from canonical fields
   const premiumMonthly = product.premiumMonthly;
   const premiumAnnual = product.premiumAnnual;
+  const paymentFrequencyLabel = String(
+    (contract.portfolioAttributes as Record<string, unknown> | null)?.paymentFrequencyLabel ??
+      (contract.portfolioAttributes as Record<string, unknown> | null)?.paymentFrequency ??
+      "",
+  ).toLowerCase();
+  const hasAnnualPaymentFrequency = /roč|roc|annual/.test(paymentFrequencyLabel);
   const investmentPaymentType =
     product.segmentDetail?.kind === "investment" ? product.segmentDetail.paymentType : null;
   let premium = "—";
   if (investmentPaymentType === "one_time" && premiumMonthly) {
     premium = premiumMonthly.toLocaleString("cs-CZ", { maximumFractionDigits: 0 }) + " Kč jednorázově";
+  } else if (hasAnnualPaymentFrequency && premiumAnnual) {
+    premium = premiumAnnual.toLocaleString("cs-CZ", { maximumFractionDigits: 0 }) + " Kč / rok";
   } else if (premiumMonthly) {
     premium = premiumMonthly.toLocaleString("cs-CZ", { maximumFractionDigits: 0 }) + " Kč / měs";
   } else if (premiumAnnual) {
@@ -369,13 +377,17 @@ function ContractDetailCard({
                         variableSymbol: paymentVs ?? product.contractNumber ?? undefined,
                         accountNumber: paymentAccount ?? undefined,
                         amount:
-                          product.premiumMonthly != null
+                          hasAnnualPaymentFrequency && product.premiumAnnual != null
+                            ? String(product.premiumAnnual)
+                            : product.premiumMonthly != null
                             ? String(product.premiumMonthly)
                             : product.premiumAnnual != null
                               ? String(product.premiumAnnual)
                               : undefined,
                         frequency:
-                          product.premiumMonthly
+                          hasAnnualPaymentFrequency && product.premiumAnnual
+                            ? "Ročně"
+                            : product.premiumMonthly
                             ? "Měsíčně"
                             : product.premiumAnnual
                               ? "Ročně"

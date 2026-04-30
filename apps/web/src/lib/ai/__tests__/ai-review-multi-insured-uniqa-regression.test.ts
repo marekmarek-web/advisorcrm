@@ -73,12 +73,26 @@ Počet pojištěných: 1 dospělá osoba, 1 dítě
 1. pojištěný
 Titul, jméno a příjmení: Jiří Chlumecký
 Rodné číslo: 7710252946
+Přehled pojištění Kód tarifu Konec pojištění Pojistná částka (PČ) Měsíční pojistné
+Smrt (hlavní pojištění) 1CSRK 01. 05. 2046 50 000 Kč 66 Kč
+Přehled připojištění Kód tarifu Konec pojištění Pojistná částka (PČ) Měsíční pojistné
+Invalidita 3. stupně (klesající PČ) 1CIL3 01. 05. 2042 2 000 000 Kč 582 Kč
+Invalidita 2. stupně (klesající PČ) 1CIL2 01. 05. 2042 2 000 000 Kč 318 Kč
+Trvalé následky úrazu od 0,5 % s progresí 1 000 % 1CT0 01. 05. 2042 500 000 Kč 54 Kč
+Trvalé následky úrazu od 10 % s progresí 1 000 % 1CT10 01. 05. 2042 1 000 000 Kč 77 Kč
+Pracovní neschopnost (karenční doba 28 dní, denní
+dávka od 29. dne) 1CD28 01. 05. 2042 500 Kč 463 Kč
 Celkové běžné měsíční pojistné pro 1. pojištěného 1 560 Kč
 2. pojištěný
 Titul, jméno a příjmení: Nikola Chlumecká
 Datum narození: 31. 01. 2010
 Rodné číslo: 1051315705
 Zaměstnání: Dítě
+Přehled připojištění Kód tarifu Konec pojištění Pojistná částka (PČ) Měsíční pojistné
+Invalidita dítěte 1CID 01. 05. 2028 5 000 000 Kč 167 Kč
+Snížená soběstačnost dítěte 1CLD 01. 05. 2028 5 000 000 Kč 248 Kč
+Trvalé následky úrazu od 0,5 % s progresí 1 000 % 1CTD 01. 05. 2036 2 000 000 Kč 129 Kč
+Denní odškodné úrazu 1CODZ 01. 05. 2036 600 Kč 338 Kč
 Celkové běžné měsíční pojistné pro 2. pojištěného 882 Kč
 `;
 
@@ -119,6 +133,37 @@ Celkové běžné měsíční pojistné pro 2. pojištěného 882 Kč
     expect(validated.insuredPersons?.[1]?.birthDate).toBe("31.01.2010");
     expect(validated.insuredPersons?.[1]?.birthNumber).toBe("1051315705");
     expect(validated.premium?.totalMonthlyPremium).toBe(2442);
+    expect(validated.premium?.totalAnnualPremium).toBe(29304);
+    expect(validated.extractedFields.premiumAmount?.value).toBe("2442");
+    expect(validated.extractedFields.annualPremium?.value).toBe("29304");
+  });
+
+  it("repairs contract total when extracted total equals one insured premium", () => {
+    const env = minimalEnvelope();
+    env.insuredPersons = [
+      { order: 1, role: "primary_insured", fullName: "Jiří Chlumecký", monthlyPremium: 1560 },
+      { order: 2, role: "child_insured", fullName: "Nikola Chlumecká", monthlyPremium: 882 },
+    ];
+    env.extractedFields.totalContractMonthlyPremium = { value: "1 560 Kč", status: "extracted", confidence: 0.9 };
+    env.extractedFields.annualPremium = { value: "18 720 Kč", status: "extracted", confidence: 0.9 };
+
+    const validated = runAiReviewDeterministicValidators(env, null, uniqaText);
+
+    expect(validated.premium?.totalMonthlyPremium).toBe(2442);
+    expect(validated.premium?.totalAnnualPremium).toBe(29304);
+    expect(validated.reviewWarnings?.some((w) => w.message.includes("jedné pojištěné osoby"))).toBe(true);
+  });
+
+  it("extracts life insurance risks from per-insured tables", () => {
+    const env = minimalEnvelope();
+    env.insuredPersons = [{ order: 1, role: "primary_insured", fullName: "Jiří Chlumecký", monthlyPremium: 1560 }];
+
+    const validated = runAiReviewDeterministicValidators(env, null, uniqaText);
+
+    expect(validated.insuredRisks?.length).toBeGreaterThanOrEqual(10);
+    expect(validated.insuredRisks?.some((r) => r.riskLabel === "Smrt (hlavní pojištění)" && r.premium === "66 Kč")).toBe(true);
+    expect(validated.insuredRisks?.some((r) => r.riskLabel === "Invalidita dítěte" && r.linkedParticipantName === "Nikola Chlumecká")).toBe(true);
+    expect(validated.extractedFields.insuredRisks?.value).toEqual(validated.insuredRisks);
   });
 
   it("does not block CRM publishing from AI proposal/modelation wording when advisor checkbox is false", () => {

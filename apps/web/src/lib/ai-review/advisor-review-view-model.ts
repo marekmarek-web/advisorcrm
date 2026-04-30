@@ -370,7 +370,7 @@ function resolveInitialActionStatus(type: string): DraftAction["status"] {
 function resolveStatusNote(type: string): string | undefined {
   if (AUTO_EXECUTE_ON_APPLY.has(type)) return "Provede se automaticky při propsání do Aidvisory";
   if (INLINE_EXECUTABLE.has(type)) return undefined;
-  if (RECOMMENDATION_ONLY.has(type)) return "Doporučení — rozhodněte podle situace";
+  if (RECOMMENDATION_ONLY.has(type)) return "Interní návrh dalšího kroku — rozhodněte podle situace";
   if (CANNOT_AUTO.has(type)) return "Vyžaduje ruční akci";
   return undefined;
 }

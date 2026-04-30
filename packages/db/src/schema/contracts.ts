@@ -133,7 +133,8 @@ export type ContractBjCalculation = {
     | "client_contribution"
     | "annual_premium"
     | "loan_principal"
-    | "investment_amount";
+    | "investment_amount"
+    | "manual_override";
   /** Vstupní částka v Kč (po uplatnění cap/floor). */
   amountCzk: number;
   /** Původní částka (před cap/floor), pokud došlo k ořezu. */
@@ -157,6 +158,10 @@ export type ContractBjCalculation = {
   };
   /** Volitelné poznámky (např. „nepodařilo se určit partnera, použit category default"). */
   notes: string[];
+  /** Důvod ruční úpravy BJ, pokud formula = manual_override. */
+  manualOverrideReason?: string;
+  /** Uživatel, který ruční úpravu provedl. */
+  manualOverrideByUserId?: string;
   /** ISO timestamp výpočtu — rekalkulace přepíše. */
   computedAt: string;
 };

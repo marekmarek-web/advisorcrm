@@ -169,7 +169,7 @@ export function buildHumanSummary(params: {
   if (confidence < 0.5) {
     parts.push("Dokument se nepodařilo spolehlivě přečíst — důkladně zkontrolujte všechny údaje.");
   } else if (confidence < 0.65) {
-    parts.push("Některé údaje byly nalezeny jen částečně — doporučujeme je ověřit oproti dokumentu.");
+    parts.push("Některé údaje byly nalezeny jen částečně — ověřte je oproti dokumentu.");
   }
 
   // Actionable review reasons only
@@ -202,7 +202,7 @@ function humanizeReviewReasonForAdvisorSummary(code: string): string | null {
     read_via_vision_fallback:
       "Dokument byl přečten přímo ze skenu (vision) — některé hodnoty ověřte oproti originálu.",
     scan_vision_fallback_used:
-      "Dokument byl doplněn vizuálním čtením ze skenu — doporučujeme údaje ověřit.",
+      "Dokument byl doplněn vizuálním čtením ze skenu — údaje ověřte.",
     full_document_vision_recovered:
       "Chybějící údaje byly doplněny vizuálním čtením stránek — ověřte je v dokumentu.",
     ambiguous_client_match: "V CRM existuje více možných klientů — vyberte správného.",

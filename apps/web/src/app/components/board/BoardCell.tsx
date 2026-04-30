@@ -26,6 +26,7 @@ export function BoardCell({
   selected,
   onSelect,
   onCellChange,
+  onOpenItem,
   onCellNoteChange,
 }: BoardCellProps) {
   const cellValue = column.type === "item" ? item.name : item.cells[column.id];
@@ -46,17 +47,36 @@ export function BoardCell({
             onClick={(e) => e.stopPropagation()}
             className="shrink-0 mr-2 cursor-pointer"
           />
-          <div className="mr-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700">
-            <User size={13} className="text-slate-500 dark:text-slate-200" />
-          </div>
+          <button
+            type="button"
+            className="mr-2 flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full border-0 bg-gradient-to-br from-slate-200 to-slate-300 px-2 text-slate-500 shadow-sm transition hover:opacity-95 active:opacity-90 dark:from-slate-600 dark:to-slate-700 dark:text-slate-200"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenItem?.(item.id);
+            }}
+            aria-label="Otevřít detail položky"
+            title="Otevřít detail položky"
+          >
+            <User size={15} className="shrink-0" aria-hidden />
+          </button>
           <div className="min-w-0 flex-1">
             {item.contactId && item.contactName ? (
-              <span className="block truncate text-[14px] font-medium text-[color:var(--wp-text)]">{item.contactName}</span>
+              <span
+                className="block cursor-default truncate text-[14px] font-medium text-[color:var(--wp-text)] select-text"
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  onOpenItem?.(item.id);
+                }}
+                title="Dvojklik otevře detail položky"
+              >
+                {item.contactName}
+              </span>
             ) : (
               <CellText
                 value={String(item.name ?? "")}
                 editable
                 onChange={(v) => onCellChange(item.id, column.id, v)}
+                onDetailDoubleClick={onOpenItem ? () => onOpenItem(item.id) : undefined}
               />
             )}
           </div>

@@ -19,6 +19,7 @@ import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/components/ConfirmDialog";
 import { useAiAssistantDrawer } from "./AiAssistantDrawerContext";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
+import { ChatTypingIndicator } from "@/app/components/chat/ChatTypingIndicator";
 import type { SuggestedAction } from "@/lib/ai/dashboard-types";
 import {
   getCsvPreview,
@@ -2064,15 +2065,15 @@ export function AiAssistantDrawer() {
               </div>
             ))}
             {chatLoading && (
-              <div className="flex justify-start gap-2.5 items-start">
-                <div className="w-8 h-8 shrink-0 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center mt-0.5 shadow-sm p-1">
-                  <AiAssistantBrandIcon size={20} className="max-w-full max-h-full" />
-                </div>
-                <div className="rounded-2xl px-4 py-2.5 bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] shadow-sm flex items-center gap-2">
-                  <Loader2 size={16} className="animate-spin text-indigo-500 shrink-0" aria-hidden />
-                  <span className="text-sm text-[color:var(--wp-text-secondary)] font-medium">Přemýšlím…</span>
-                </div>
-              </div>
+              <ChatTypingIndicator
+                role="assistant"
+                label="Asistent píše…"
+                leadingSlot={
+                  <div className="w-8 h-8 shrink-0 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center mt-0.5 shadow-sm p-1">
+                    <AiAssistantBrandIcon size={20} className="max-w-full max-h-full" />
+                  </div>
+                }
+              />
             )}
             <div ref={chatEndRef} />
           </div>

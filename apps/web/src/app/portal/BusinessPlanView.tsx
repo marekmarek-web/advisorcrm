@@ -87,7 +87,7 @@ function getMetric(progress: PlanProgressResult["progress"], metricType: string)
   return {
     actual: m?.actual ?? 0,
     target: m?.target ?? 0,
-    unit: m?.unit === "czk" ? "Kč" : "",
+    unit: m?.unit === "bj" ? "BJ" : m?.unit === "czk" ? "Kč" : "",
   };
 }
 
@@ -224,7 +224,7 @@ export function BusinessPlanView() {
         ? `Q${Math.floor(new Date().getMonth() / 3) + 1} ${new Date().getFullYear()}`
         : String(new Date().getFullYear()));
 
-  const production = progressResult ? getMetric(progressResult.progress, "production") : { actual: 0, target: productionTarget, unit: "Kč" };
+  const production = progressResult ? getMetric(progressResult.progress, "production") : { actual: 0, target: productionTarget, unit: "BJ" };
   const meetings = progressResult ? getMetric(progressResult.progress, "meetings") : { actual: 0, target: meetingsTarget, unit: "" };
   const newClients = progressResult ? getMetric(progressResult.progress, "new_clients") : { actual: 0, target: newClientsTarget, unit: "" };
   const dealsClosed = progressResult ? getMetric(progressResult.progress, "deals_closed") : { actual: 0, target: 0, unit: "" };
@@ -254,7 +254,7 @@ export function BusinessPlanView() {
 
   const openParamsModal = () => {
     setTempParams({
-      production: productionTarget || 300000,
+      production: productionTarget || 100000,
       meetings: meetingsTarget || 25,
       newClients: newClientsTarget || 6,
     });
@@ -281,13 +281,13 @@ export function BusinessPlanView() {
           title: label,
         });
         await setPlanTargets(planId, [
-          { metricType: "production", targetValue: Number(tempParams.production), unit: "czk" },
+          { metricType: "production", targetValue: Number(tempParams.production), unit: "bj" },
           { metricType: "meetings", targetValue: Number(tempParams.meetings), unit: "count" },
           { metricType: "new_clients", targetValue: Number(tempParams.newClients), unit: "count" },
         ]);
       } else {
         await setPlanTargets(plan.planId, [
-          { metricType: "production", targetValue: Number(tempParams.production), unit: "czk" },
+          { metricType: "production", targetValue: Number(tempParams.production), unit: "bj" },
           { metricType: "meetings", targetValue: Number(tempParams.meetings), unit: "count" },
           { metricType: "new_clients", targetValue: Number(tempParams.newClients), unit: "count" },
         ]);
@@ -536,7 +536,7 @@ export function BusinessPlanView() {
                       <>
                         <div className="flex items-center gap-4 flex-wrap text-sm">
                           <span className="text-[color:var(--wp-text-secondary)]">
-                            Produkce: <strong className="text-[color:var(--wp-text)]">{(m.productionActual / 1000).toFixed(0)}k</strong> / {(m.productionTarget / 1000).toFixed(0)}k Kč
+                            Produkce: <strong className="text-[color:var(--wp-text)]">{m.productionActual.toLocaleString("cs-CZ", { maximumFractionDigits: 0 })}</strong> / {m.productionTarget.toLocaleString("cs-CZ", { maximumFractionDigits: 0 })} BJ
                           </span>
                           <span className="text-[color:var(--wp-text-secondary)]">
                             Schůzky: <strong className="text-[color:var(--wp-text)]">{m.meetingsActual}</strong> / {m.meetingsTarget}
@@ -631,8 +631,8 @@ export function BusinessPlanView() {
                     <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-400 text-white rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-amber-500/30">
                       <Trophy size={24} />
                     </div>
-                    <span className="text-2xl font-display font-black text-[color:var(--wp-text)]">{reverseMath.productionK}k</span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mt-1">Produkce (Kč)</span>
+                    <span className="text-2xl font-display font-black text-[color:var(--wp-text)]">{reverseMath.productionK.toLocaleString("cs-CZ")}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mt-1">Produkce BJ</span>
                   </div>
                 </div>
               </div>
@@ -653,10 +653,10 @@ export function BusinessPlanView() {
                   <span className="block text-[11px] font-bold uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1">Cílová produkce ({periodLabel})</span>
                   <div className="flex items-baseline gap-2 mb-4 flex-wrap">
                     <span className="text-3xl font-display font-black text-[color:var(--wp-text)] tracking-tight">
-                      {(production.actual / 1000).toFixed(0)}k
+                      {production.actual.toLocaleString("cs-CZ", { maximumFractionDigits: 0 })}
                     </span>
                     <span className="text-sm font-semibold text-[color:var(--wp-text-tertiary)]">
-                      / {(production.target / 1000).toFixed(0)}k Kč
+                      / {production.target.toLocaleString("cs-CZ", { maximumFractionDigits: 0 })} BJ
                     </span>
                   </div>
                   <div className="h-2 w-full bg-[color:var(--wp-surface-muted)] rounded-full overflow-hidden">
@@ -752,7 +752,7 @@ export function BusinessPlanView() {
                   <PieChart className="text-emerald-500" size={20} /> Produkční mix
                 </h2>
                 <p className="text-xs font-medium text-[color:var(--wp-text-secondary)] mb-8">
-                  Podle smluv v období (Kč); pokud v období není produkce, zobrazí se uložený cílový mix nebo výchozí poměr.
+                  Podle BJ ze smluv v období; pokud v období není produkce, zobrazí se uložený cílový mix nebo výchozí poměr.
                 </p>
                 <div className="flex justify-center mb-8 relative">
                   {renderSVGDonut(mix)}
@@ -819,7 +819,7 @@ export function BusinessPlanView() {
             </div>
             <div className="p-6 space-y-4 overflow-y-auto custom-scroll text-sm">
               <p className="text-[color:var(--wp-text-secondary)]">
-                <strong>Přičíst k automatickým číslům z CRM</strong> (schůzky, klienti, produkce v Kč). Záporná hodnota sníží výsledek.
+                <strong>Přičíst k automatickým číslům z CRM</strong> (schůzky, klienti, produkce v BJ). Záporná hodnota sníží výsledek.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <label className="block">
@@ -843,7 +843,7 @@ export function BusinessPlanView() {
                   />
                 </label>
                 <label className="block sm:col-span-1">
-                  <span className="text-xs font-bold text-[color:var(--wp-text-secondary)]">Produkce Δ (Kč)</span>
+                  <span className="text-xs font-bold text-[color:var(--wp-text-secondary)]">Produkce Δ (BJ)</span>
                   <input
                     type="number"
                     inputMode="numeric"
@@ -1019,12 +1019,12 @@ export function BusinessPlanView() {
             <form onSubmit={saveParams} className="flex flex-col">
               <div className="p-6 space-y-5">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-2">Cílová produkce (Kč)</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-2">Cílová produkce (BJ)</label>
                   <input
                     type="number"
                     required
                     min={0}
-                    step={10000}
+                    step={1000}
                     value={tempParams.production}
                     onChange={(e) => setTempParams((p) => ({ ...p, production: Number(e.target.value) || 0 }))}
                     className="w-full px-4 py-3 bg-[color:var(--wp-surface-muted)] border border-[color:var(--wp-surface-card-border)] rounded-xl text-lg font-black outline-none focus:bg-[color:var(--wp-surface-card)] focus:border-indigo-400 min-h-[44px]"

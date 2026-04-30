@@ -54,6 +54,18 @@ function isOneTimeInvestment(p: CanonicalProduct): boolean {
   return p.segmentDetail?.kind === "investment" && p.segmentDetail.paymentType === "one_time";
 }
 
+function paymentFrequencyLabel(row: ContractRow): string {
+  const attrs = (row.portfolioAttributes ?? {}) as Record<string, unknown>;
+  return String(attrs.paymentFrequencyLabel ?? attrs.paymentFrequency ?? "").trim().toLowerCase();
+}
+
+function isExplicitlyNonMonthlyPayment(row: ContractRow): boolean {
+  const label = paymentFrequencyLabel(row);
+  if (!label) return false;
+  if (/měsíč|mesic|monthly/.test(label)) return false;
+  return /roč|roc|annual|čtvrtlet|ctvrtlet|quarter|polo\s*let|semi|jednoráz|jednoraz|one.?time|single/.test(label);
+}
+
 /**
  * F4 double-guard: pokud `paymentType` chybí (ani „regular" ani „one_time") a
  * řádek vypadá jako potenciální jednorázová investice (nemá roční prémii,
@@ -72,9 +84,10 @@ function hasAmbiguousInvestmentPaymentType(p: CanonicalProduct): boolean {
 }
 
 /** Měsíční cashflow — u jednorázové investice vždy 0 (není to měsíční). */
-function monthlyCashflowForKpi(p: CanonicalProduct): number {
+function monthlyCashflowForKpi(row: ContractRow, p: CanonicalProduct): number {
   if (INVEST_SEGMENTS.has(p.segment)) {
     if (isOneTimeInvestment(p)) return 0;
+    if (isExplicitlyNonMonthlyPayment(row)) return 0;
     if (hasAmbiguousInvestmentPaymentType(p)) {
       // Zatím ticho v prod – konzervativní 0, abychom nenafukovali „Měsíční investice“.
       // Záznam se v UI ukáže jako „chybí frekvence“ přes read-model (segmentDetail.paymentType = null).
@@ -90,6 +103,7 @@ function monthlyCashflowForKpi(p: CanonicalProduct): number {
     }
     return p.premiumMonthly ?? 0;
   }
+  if (INSURANCE_SEGMENTS.has(p.segment) && isExplicitlyNonMonthlyPayment(row)) return 0;
   if (p.segmentDetail?.kind === "life_insurance" && p.segmentDetail.monthlyPremium != null && p.segmentDetail.monthlyPremium > 0) {
     return p.segmentDetail.monthlyPremium;
   }
@@ -172,13 +186,13 @@ export function computeContactOverviewKpiFromContracts(contracts: ContractRow[])
     const p = mapContractToCanonicalProduct(c);
     const seg = p.segment;
     if (INVEST_SEGMENTS.has(seg)) {
-      monthlyInvest += monthlyCashflowForKpi(p);
+      monthlyInvest += monthlyCashflowForKpi(c, p);
       personalAum += investmentAumForRow(c, p);
     } else if (INSURANCE_SEGMENTS.has(seg)) {
-      monthlyInsurance += monthlyCashflowForKpi(p);
+      monthlyInsurance += monthlyCashflowForKpi(c, p);
       annualInsurance += annualInsuranceAmountForKpi(p);
     } else if (LOAN_SEGMENTS.has(seg)) {
-      monthlyLoan += monthlyCashflowForKpi(p);
+      monthlyLoan += monthlyCashflowForKpi(c, p);
       outstandingLoanBalance += loanBalanceForRow(c, p);
     }
   }

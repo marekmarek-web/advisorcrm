@@ -66,6 +66,20 @@ export interface MissingDataWarning {
   message: string;
 }
 
+export interface DashboardMetric {
+  key: "overdue" | "today" | "review" | "blocked";
+  label: string;
+  value: number;
+  tone: "danger" | "warning" | "info" | "neutral";
+}
+
+export interface DashboardPrioritySummary {
+  headline: string;
+  primaryFocus: string;
+  primaryActionLabel: string;
+  metrics: DashboardMetric[];
+}
+
 export interface DashboardSummary {
   urgentItems: UrgentItem[];
   contractsWaitingForReview: ContractWaitingForReview[];
@@ -78,4 +92,5 @@ export interface DashboardSummary {
   blockedItems?: BlockedItem[];
   paymentsBlockedForPortal?: BlockedItem[];
   communicationSuggestions?: string[];
+  prioritySummary?: DashboardPrioritySummary;
 }

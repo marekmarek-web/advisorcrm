@@ -33,6 +33,9 @@ export type PreprocessResult = {
 
 /** Musí odpovídat `USABLE_TEXT_MIN` v `contract-review-scan-gate.ts` (scan defer vs. text layer). */
 const USABLE_TEXT_MIN_FOR_PDF_LAYER_FALLBACK = 400;
+const PREPROCESS_CACHE_TTL_MS = 30 * 60 * 1000;
+
+const preprocessMemoryCache = new Map<string, { expiresAt: number; result: PreprocessResult }>();
 
 async function getSignedUrl(path: string): Promise<string | null> {
   const admin = createAdminClient();
@@ -52,6 +55,20 @@ export async function preprocessForAiExtraction(
   documentId: string,
   mimeType: string
 ): Promise<PreprocessResult> {
+  const cacheKey = `${tenantId}:${storagePath}:${mimeType}`;
+  const cached = preprocessMemoryCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    let refreshedFileUrl = cached.result.fileUrl;
+    if (cached.result.normalizedPdfPath) {
+      refreshedFileUrl = (await getSignedUrl(cached.result.normalizedPdfPath)) ?? refreshedFileUrl;
+    }
+    return {
+      ...cached.result,
+      fileUrl: refreshedFileUrl,
+      warnings: [...cached.result.warnings, "preprocess_reused_memory_cache"],
+    };
+  }
+
   const canonical = await preprocessDocument({
     fileUrl,
     storagePath,
@@ -167,7 +184,7 @@ export async function preprocessForAiExtraction(
       if (preprocessMode === "pdf_parse_fallback") {
         preprocessMode = "pdf_parse_fallback_garbage";
       }
-      return {
+      const result = {
         preprocessed: adobePreprocessedOk || hasUsableMarkdown,
         preprocessStatus,
         preprocessMode,
@@ -184,10 +201,12 @@ export async function preprocessForAiExtraction(
         textQualityIsGarbage,
         textQualityReasons,
       };
+      preprocessMemoryCache.set(cacheKey, { expiresAt: Date.now() + PREPROCESS_CACHE_TTL_MS, result });
+      return result;
     }
   }
 
-  return {
+  const result = {
     preprocessed: adobePreprocessedOk || (hasUsableMarkdown && preprocessMode === "pdf_parse_fallback"),
     preprocessStatus,
     preprocessMode,
@@ -204,4 +223,6 @@ export async function preprocessForAiExtraction(
     textQualityIsGarbage,
     textQualityReasons,
   };
+  preprocessMemoryCache.set(cacheKey, { expiresAt: Date.now() + PREPROCESS_CACHE_TTL_MS, result });
+  return result;
 }

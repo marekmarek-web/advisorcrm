@@ -415,12 +415,12 @@ export function DashboardEditable(props: DashboardEditableProps) {
         );
       }
       case "production": {
-        const totalPremium = sec.productionSummary?.totalPremium ?? 0;
-        const totalAnnual = sec.productionSummary?.totalAnnual ?? 0;
+        const totalProductionBj = sec.productionSummary?.totalProductionBj ?? 0;
+        const missingRuleCount = sec.productionSummary?.missingRuleCount ?? 0;
         const totalCount = sec.productionSummary?.totalCount ?? 0;
         const periodLabel = sec.productionSummary?.periodLabel ?? "";
-        const target: number | null = null;
-        const pct = target && target > 0 ? Math.round((totalPremium / target) * 100) : 0;
+        const target = sec.productionSummary?.targetBj ?? null;
+        const pct = sec.productionSummary?.targetProgressPct ?? 0;
         if (sec.productionError) {
           return (
             <div className="flex flex-col h-full justify-center items-center text-center">
@@ -461,12 +461,16 @@ export function DashboardEditable(props: DashboardEditableProps) {
               <span className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
                 Produkce {periodLabel}
               </span>
-              <div className="text-3xl font-black text-[color:var(--wp-text)]">{totalPremium.toLocaleString("cs-CZ")} Kč</div>
+              <div className="text-3xl font-black text-[color:var(--wp-text)]">
+                {totalProductionBj.toLocaleString("cs-CZ", { maximumFractionDigits: 2 })} BJ
+              </div>
               <div className="text-xs font-bold text-[color:var(--wp-text-secondary)] mt-1">
-                Roční ekvivalent: {totalAnnual.toLocaleString("cs-CZ")} Kč · {totalCount} smluv
+                {totalCount} smluv · {missingRuleCount > 0 ? `${missingRuleCount} bez pravidla` : "vše spočteno"}
               </div>
               {target != null && target > 0 && (
-                <div className="text-xs font-bold text-[color:var(--wp-text-secondary)] mt-0.5">Cíl: {Number(target).toLocaleString("cs-CZ")} Kč</div>
+                <div className="text-xs font-bold text-[color:var(--wp-text-secondary)] mt-0.5">
+                  Cíl: {Number(target).toLocaleString("cs-CZ")} BJ
+                </div>
               )}
             </div>
             {target != null && target > 0 && (
@@ -494,7 +498,11 @@ export function DashboardEditable(props: DashboardEditableProps) {
           not_applicable: "—",
         };
         const formatVal = (v: number, unit: string) =>
-          unit === "czk" ? `${Math.round(v).toLocaleString("cs-CZ")} Kč` : String(Math.round(v));
+          unit === "bj"
+            ? `${Math.round(v).toLocaleString("cs-CZ")} BJ`
+            : unit === "czk"
+              ? `${Math.round(v).toLocaleString("cs-CZ")} Kč`
+              : String(Math.round(v));
         if (!data) {
           return (
             <div className="flex flex-col h-full justify-center">

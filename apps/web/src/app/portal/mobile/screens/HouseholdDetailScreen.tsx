@@ -456,13 +456,13 @@ export function HouseholdDetailScreen({
         <MobileSection title={`Obchodní příležitosti (${opportunities.length})`}>
           {opportunities.length === 0 ? (
             <div className="space-y-3">
-              <EmptyState title="Žádné navázané obchody" description="Obchody spravujete v pipeline — můžete je navázat na členy domácnosti." />
+              <EmptyState title="Žádné navázané obchody" description="Obchody spravujete na obchodní nástěnce — můžete je navázat na členy domácnosti." />
               <button
                 type="button"
                 onClick={() => router.push("/portal/pipeline")}
                 className="w-full min-h-[44px] rounded-xl border border-indigo-200 bg-indigo-50 text-sm font-bold text-indigo-800"
               >
-                Otevřít obchodní pipeline
+                Otevřít obchodní nástěnku
               </button>
             </div>
           ) : (

@@ -6,7 +6,7 @@ import type { CalendarViewMode } from "./calendar-utils";
 import { navigateAnchor, startOfDayLocal } from "./calendar-utils";
 
 function initialViewMode(): CalendarViewMode {
-  return "week";
+  return "day";
 }
 
 export function useCalendarState() {

@@ -195,13 +195,11 @@ function PushNotificationsRow() {
       sublabel="Dostávejte upozornění na nové zprávy a úkoly"
       onClick={requestSystemPermission}
       right={
-        <button
-          type="button"
-          onClick={requestSystemPermission}
+        <span
           className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg min-h-[32px]"
         >
           Povolit
-        </button>
+        </span>
       }
     />
   );

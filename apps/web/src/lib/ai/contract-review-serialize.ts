@@ -104,6 +104,7 @@ export function serializeContractReviewDetailResponse(
         reviewDecisionDurationMs: rd,
         clientMatchDurationMs: cm,
         totalPipelineDurationMs: total,
+        phaseTimings: t.phaseTimings,
       };
     })(),
     applyGate: evaluateApplyReadiness(row),

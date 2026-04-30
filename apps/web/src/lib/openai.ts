@@ -40,8 +40,14 @@ type OpenAIRequestOptions = {
 
 type JsonSchemaFormat = NonNullable<NonNullable<ResponsesCreateBody["text"]>["format"]>;
 
-/** Model routing for copilot vs AI Review (env overrides). */
-export type OpenAIModelRoutingCategory = "default" | "copilot" | "ai_review" | "advisor_chat";
+/** Model routing for copilot, AI Review and advisor assistant paths (env overrides). */
+export type OpenAIModelRoutingCategory =
+  | "default"
+  | "copilot"
+  | "ai_review"
+  | "advisor_chat"
+  | "advisor_chat_fast"
+  | "advisor_intent";
 
 export type OpenAICallRoutingOptions = {
   category?: OpenAIModelRoutingCategory;
@@ -95,6 +101,7 @@ function buildResponsesCreateBody(params: {
     ...(params.input !== undefined ? { input: params.input } : {}),
     ...(params.prompt !== undefined ? { prompt: params.prompt } : {}),
     ...(text ? { text } : {}),
+    ...(params.routing?.maxOutputTokens ? { max_output_tokens: params.routing.maxOutputTokens } : {}),
   };
 }
 
@@ -121,6 +128,21 @@ export function resolveOpenAIModel(options?: {
   }
   if (cat === "advisor_chat") {
     return process.env.OPENAI_MODEL_ADVISOR_CHAT?.trim() || fallback;
+  }
+  if (cat === "advisor_chat_fast") {
+    return (
+      process.env.OPENAI_MODEL_ADVISOR_CHAT_FAST?.trim() ||
+      process.env.OPENAI_MODEL_ADVISOR_CHAT?.trim() ||
+      fallback
+    );
+  }
+  if (cat === "advisor_intent") {
+    return (
+      process.env.OPENAI_MODEL_ADVISOR_INTENT?.trim() ||
+      process.env.OPENAI_MODEL_ADVISOR_CHAT_FAST?.trim() ||
+      process.env.OPENAI_MODEL_ADVISOR_CHAT?.trim() ||
+      fallback
+    );
   }
   return fallback;
 }
@@ -159,6 +181,13 @@ function isModelError(err: unknown): boolean {
 export type CreateResponseSuccess = { ok: true; text: string };
 export type CreateResponseError = { ok: false; error: string; code?: string };
 export type CreateResponseResult = CreateResponseSuccess | CreateResponseError;
+
+export type CreateResponseStreamingOptions = {
+  model?: string;
+  store?: boolean;
+  routing?: OpenAICallRoutingOptions;
+  onTextDelta?: (delta: string) => void;
+};
 
 /**
  * Server-only logging. Never log API key or full document content.
@@ -339,6 +368,150 @@ export async function createResponseSafe(
     const message = err instanceof Error ? err.message : String(err);
     const code = (err as { code?: string })?.code;
     return { ok: false, error: message, code };
+  }
+}
+
+function extractStreamingTextDelta(event: unknown): string {
+  const rec = event as { type?: string; delta?: unknown; text?: unknown };
+  if (
+    rec?.type === "response.output_text.delta" ||
+    rec?.type === "response.refusal.delta" ||
+    rec?.type === "response.text.delta"
+  ) {
+    return typeof rec.delta === "string" ? rec.delta : "";
+  }
+  return typeof rec?.text === "string" && rec.type === "text_delta" ? rec.text : "";
+}
+
+function extractStreamingCompletedResponse(event: unknown): { output_text?: string; output?: unknown[] } | null {
+  const rec = event as { type?: string; response?: unknown };
+  if (rec?.type !== "response.completed" || typeof rec.response !== "object" || rec.response === null) {
+    return null;
+  }
+  return rec.response as { output_text?: string; output?: unknown[] };
+}
+
+async function streamResponseWithModel(params: {
+  client: OpenAI;
+  input: string;
+  model: string;
+  store: boolean;
+  routing?: OpenAICallRoutingOptions;
+  onTextDelta?: (delta: string) => void;
+}): Promise<string> {
+  const createBody = {
+    ...buildResponsesCreateBody({
+      model: params.model,
+      input: params.input,
+      store: params.store,
+      routing: params.routing,
+    }),
+    stream: true,
+  };
+
+  const stream = await withOpenAIRateLimitRetry(
+    () =>
+      params.client.responses.create(
+        createBody as Parameters<OpenAI["responses"]["create"]>[0],
+        buildOpenAIRequestOptions(params.routing) as Parameters<OpenAI["responses"]["create"]>[1]
+      ),
+    { label: "responses.stream", maxAttempts: resolveOpenAIRetryAttempts(params.routing) }
+  ) as AsyncIterable<unknown>;
+
+  const chunks: string[] = [];
+  let completedResponse: { output_text?: string; output?: unknown[] } | null = null;
+  for await (const event of stream) {
+    const delta = extractStreamingTextDelta(event);
+    if (delta) {
+      chunks.push(delta);
+      params.onTextDelta?.(delta);
+      continue;
+    }
+    completedResponse = extractStreamingCompletedResponse(event) ?? completedResponse;
+  }
+
+  const text = chunks.join("").trim();
+  if (text) return text;
+  if (completedResponse) return extractResponseText(completedResponse);
+  throw new Error("Prázdná streamovaná odpověď od OpenAI.");
+}
+
+export async function createResponseStreaming(
+  input: string,
+  options?: CreateResponseStreamingOptions
+): Promise<string> {
+  const client = getClient();
+  if (!client) {
+    throw new Error(
+      "OPENAI_API_KEY není nastaven. Nastavte ho v Nastavení nebo v .env."
+    );
+  }
+
+  const primaryModel = resolveOpenAIModel({
+    explicit: options?.model,
+    category: options?.routing?.category,
+  });
+  const store = options?.store ?? false;
+  const start = Date.now();
+  const lfObs = new OpenAiResponsesLangfuseObservation({
+    operation: "responses.stream",
+    model: primaryModel,
+    input,
+    routingCategory: options?.routing?.category,
+  });
+
+  try {
+    let usedModel = primaryModel;
+    let text: string;
+    try {
+      text = await streamResponseWithModel({
+        client,
+        input,
+        model: primaryModel,
+        store,
+        routing: options?.routing,
+        onTextDelta: options?.onTextDelta,
+      });
+    } catch (err) {
+      if (isModelError(err) && primaryModel !== fallbackModel) {
+        usedModel = fallbackModel;
+        lfObs.setModel(fallbackModel);
+        text = await streamResponseWithModel({
+          client,
+          input,
+          model: fallbackModel,
+          store,
+          routing: options?.routing,
+          onTextDelta: options?.onTextDelta,
+        });
+      } else {
+        const latencyMs = Date.now() - start;
+        const message = err instanceof Error ? err.message : String(err);
+        logOpenAICall({
+          endpoint: "responses.stream",
+          model: primaryModel,
+          latencyMs,
+          success: false,
+          error: message,
+        });
+        throw err instanceof Error ? err : new Error(message);
+      }
+    }
+
+    const latencyMs = Date.now() - start;
+    logOpenAICall({
+      endpoint: "responses.stream",
+      model: usedModel,
+      latencyMs,
+      success: true,
+    });
+    lfObs.endSuccess({ output_text: text }, text);
+    return text;
+  } catch (err) {
+    lfObs.endFailure(err);
+    throw err;
+  } finally {
+    await lfObs.flush();
   }
 }
 

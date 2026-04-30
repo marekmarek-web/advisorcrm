@@ -151,7 +151,7 @@ export async function computeAllMetrics(
       })(),
       (async () => {
         const rows = await tx
-          .select({ total: sql<string>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)` })
+          .select({ total: sql<string>`coalesce(sum(${contracts.bjUnits}::numeric), 0)` })
           .from(contracts)
           .where(
             and(
@@ -276,7 +276,7 @@ export async function getCallsCount(
 }
 
 /**
- * Production by segment for mix donut: investice (INV+DIP), penze (DPS), ŽP, hypo.
+ * Production by segment for mix donut: BJ by investice (INV+DIP), penze (DPS), ŽP, hypo.
  * Oddělené DPS odpovídá reportingu „plánovaný mix“.
  */
 export async function getProductionMix(
@@ -296,19 +296,19 @@ export async function getProductionMix(
     );
     const [inv, penze, zp, hypo] = await Promise.all([
       tx
-        .select({ total: sql<string>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)` })
+        .select({ total: sql<string>`coalesce(sum(${contracts.bjUnits}::numeric), 0)` })
         .from(contracts)
         .where(and(base, sql`${contracts.segment} IN ('INV', 'DIP')`)),
       tx
-        .select({ total: sql<string>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)` })
+        .select({ total: sql<string>`coalesce(sum(${contracts.bjUnits}::numeric), 0)` })
         .from(contracts)
         .where(and(base, eq(contracts.segment, "DPS"))),
       tx
-        .select({ total: sql<string>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)` })
+        .select({ total: sql<string>`coalesce(sum(${contracts.bjUnits}::numeric), 0)` })
         .from(contracts)
         .where(and(base, eq(contracts.segment, "ZP"))),
       tx
-        .select({ total: sql<string>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)` })
+        .select({ total: sql<string>`coalesce(sum(${contracts.bjUnits}::numeric), 0)` })
         .from(contracts)
         .where(and(base, eq(contracts.segment, "HYPO"))),
     ]);

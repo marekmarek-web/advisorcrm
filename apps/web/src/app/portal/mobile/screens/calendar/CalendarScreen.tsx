@@ -24,17 +24,16 @@ import {
   DEFAULT_SETTINGS,
   saveCalendarSettings,
 } from "@/app/portal/calendar/calendar-settings";
+import { openIntegrationConnect } from "@/lib/native/open-integration-connect";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import {
   BottomSheet,
   ErrorState,
-  MobileCard,
   Toast,
   useToast,
 } from "@/app/shared/mobile-ui/primitives";
-import { Check } from "lucide-react";
+import { AlertTriangle, Check, RefreshCw } from "lucide-react";
 import { CalendarAgendaView } from "./CalendarAgendaView";
-import { CalendarDayTasksStrip } from "./CalendarDayTasksStrip";
 import { CalendarDrawer } from "./CalendarDrawer";
 import { CalendarEventDetail } from "./CalendarEventDetail";
 import {
@@ -54,6 +53,7 @@ import {
   buildEventsByDate,
   filterEventsByDateMap,
   formatMonthYear,
+  getVisibleDays,
   startOfDayLocal,
 } from "./calendar-utils";
 import { useCalendarEvents } from "./useCalendarEvents";
@@ -622,23 +622,46 @@ export function CalendarScreen({
     [reload, showToast, canWriteCalendar],
   );
 
-  const segmentedWeekMonth = view === "month" ? "month" : "week";
   const showTimeGridUi = view !== "agenda" && view !== "month";
   const skeletonCols = view === "agenda" || view === "month" ? 7 : visibleDays.length;
   const skeletonTimeW = dc === "phone" ? 44 : 52;
-  const calendarChromePad = dc === "phone" ? "px-5 sm:px-6" : "px-3 sm:px-4";
-  const calendarGridBleed =
-    dc === "phone" ? "-mx-5 w-[calc(100%+2.5rem)] sm:-mx-6 sm:w-[calc(100%+3rem)]" : "-mx-3 w-[calc(100%+1.5rem)] sm:mx-0 sm:w-auto";
+  const calendarChromePad = "px-5 sm:px-6";
+  const calendarGridBleed = "-mx-5 w-[calc(100%+2.5rem)] sm:-mx-6 sm:w-[calc(100%+3rem)]";
+  const firstVisibleDay = visibleDays[0] ?? anchorDate;
+  const lastVisibleDay = visibleDays[visibleDays.length - 1] ?? anchorDate;
+  const headerStripDays = useMemo(
+    () => (view === "day" ? getVisibleDays(anchorDate, "week", firstDayOfWeek) : visibleDays),
+    [anchorDate, firstDayOfWeek, view, visibleDays],
+  );
+  const gridDateLabel =
+    view === "day"
+      ? (formatDisplayDateCs(formatDateLocal(anchorDate)) ?? formatDateLocal(anchorDate))
+      : `${formatDisplayDateCs(formatDateLocal(firstVisibleDay)) ?? formatDateLocal(firstVisibleDay)} – ${
+          formatDisplayDateCs(formatDateLocal(lastVisibleDay)) ?? formatDateLocal(lastVisibleDay)
+        }`;
+  const gridModeLabel =
+    view === "day"
+      ? "Denní plán"
+      : view === "3day"
+        ? "Třídenní fokus"
+        : view === "agenda"
+          ? "Agenda"
+          : "Týdenní přehled";
 
   return (
     <div
-      className={`flex min-h-[50vh] w-full min-w-0 flex-1 flex-col overflow-x-hidden pb-[var(--aidv-mobile-screen-pad-bottom)] ${calendarChromePad}`}
+      className={`relative flex min-h-[50vh] w-full min-w-0 flex-1 flex-col overflow-x-hidden bg-[#f6f8fb] pb-[var(--aidv-mobile-screen-pad-bottom)] ${calendarChromePad}`}
     >
+      <div className="pointer-events-none absolute -right-24 -top-20 h-64 w-64 rounded-full bg-indigo-200/44 blur-[80px]" aria-hidden />
+      <div className="pointer-events-none absolute -left-28 top-56 h-72 w-72 rounded-full bg-emerald-100/50 blur-[80px]" aria-hidden />
+      <div className="pointer-events-none absolute inset-x-8 top-40 h-28 rounded-full bg-white/70 blur-3xl" aria-hidden />
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
       <CalendarMobileToolbar
         anchorDate={anchorDate}
-        segmentedValue={segmentedWeekMonth}
-        onSegmentChange={(seg) => {
-          setView(seg);
+        view={view}
+        onViewChange={(nextView) => {
+          setView(nextView);
+          bumpScroll();
         }}
         onOpenDrawer={() => setDrawerOpen(true)}
         onOpenSearch={() => setSearchOpen(true)}
@@ -649,35 +672,45 @@ export function CalendarScreen({
         refreshing={refreshing}
       />
 
-      <div className="mb-2 min-h-[40px]">
+      <div className="mb-5 mt-5 min-h-[40px]">
         {googleConnected === false ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-950">
-            <span>Google Kalendář není připojen.</span>
-            <a
-              href="/api/integrations/google-calendar/connect"
-              className="text-indigo-600 underline underline-offset-2"
+          <div className="flex items-center gap-3 rounded-[22px] bg-amber-50 px-4 py-3 text-amber-900 ring-1 ring-amber-200">
+            <AlertTriangle size={19} className="shrink-0 text-amber-600" aria-hidden />
+            <span className="min-w-0 flex-1 text-[13px] font-black leading-5">
+              Google Kalendář není připojený
+            </span>
+            <button
+              type="button"
+              onClick={() => void openIntegrationConnect("/api/integrations/google-calendar/connect")}
+              className="shrink-0 text-[13px] font-black text-indigo-600 underline underline-offset-4"
             >
               Připojit
-            </a>
+            </button>
           </div>
         ) : null}
         {googleConnected === true && googleEmail ? (
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/80 px-3 py-1.5 text-[11px] font-bold text-emerald-900">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-            <span className="truncate">Google: {googleEmail}</span>
+          <div className="flex items-center gap-3 rounded-[22px] bg-emerald-50 px-4 py-3 text-emerald-950 ring-1 ring-emerald-100">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500 ring-4 ring-emerald-100" aria-hidden />
+            <span className="min-w-0 flex-1 truncate text-[13px] font-black leading-5">
+              Google: {googleEmail}
+            </span>
+            <button
+              type="button"
+              onClick={handleGoogleSync}
+              disabled={syncBusy}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-emerald-700 ring-1 ring-emerald-100 transition-transform active:scale-95 disabled:opacity-60"
+              aria-label="Synchronizovat s Google Kalendářem"
+            >
+              <RefreshCw size={17} className={syncBusy ? "animate-spin" : ""} aria-hidden />
+            </button>
           </div>
         ) : null}
       </div>
 
-      <CalendarDayTasksStrip
-        dateStr={formatDateLocal(anchorDate)}
-        onOpenTasks={() => router.push("/portal/tasks")}
-      />
-
       {view !== "month" && view !== "agenda" ? (
         <div className="mb-3">
           <CalendarWeekDayStrip
-            weekDays={visibleDays}
+            weekDays={headerStripDays}
             anchorDate={anchorDate}
             todayStr={todayStr}
             onPickDay={handleSelectDayFromHeader}
@@ -703,21 +736,39 @@ export function CalendarScreen({
         >
           {showTimeGridUi ? (
             <div className={`${calendarGridBleed} mb-4 max-w-none sm:mb-0`}>
-              <CalendarTimeGrid
-                visibleDays={visibleDays}
-                eventsByDate={eventsByDate}
-                todayStr={todayStr}
-                firstDayOfWeek={firstDayOfWeek}
-                deviceClass={dc}
-                settings={settings}
-                selectedEventId={selectedEventId}
-                onSlotClick={onSlotClick}
-                onEventClick={onEventClick}
-                onEventMove={handleEventMove}
-                onEventResize={handleEventResize}
-                onDragCreate={handleDragCreate}
-                scrollSignal={scrollSignal}
-              />
+              <section className="overflow-hidden rounded-[34px] bg-white/76 shadow-[0_20px_46px_-36px_rgba(15,23,42,.42)] ring-1 ring-slate-200/45 backdrop-blur-xl">
+                <div className="flex items-center justify-between gap-3 px-4 pb-4 pt-4">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+                      {gridModeLabel}
+                    </p>
+                    <h2 className="mt-1 truncate text-[21px] font-black leading-tight text-slate-950">
+                      {gridDateLabel}
+                    </h2>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-indigo-50 px-3 py-2 text-[11px] font-black uppercase text-indigo-700 ring-1 ring-indigo-100">
+                    {canWriteCalendar ? "Tahem vytvořit" : "Pouze náhled"}
+                  </span>
+                </div>
+                <div className="overflow-hidden rounded-t-[28px] bg-slate-50 ring-1 ring-slate-200/70">
+                  <CalendarTimeGrid
+                    visibleDays={visibleDays}
+                    eventsByDate={eventsByDate}
+                    todayStr={todayStr}
+                    firstDayOfWeek={firstDayOfWeek}
+                    deviceClass={dc}
+                    settings={settings}
+                    selectedEventId={selectedEventId}
+                    onSlotClick={onSlotClick}
+                    onEventClick={onEventClick}
+                    onEventMove={handleEventMove}
+                    onEventResize={handleEventResize}
+                    onDragCreate={handleDragCreate}
+                    onSelectDay={handleSelectDayFromHeader}
+                    scrollSignal={scrollSignal}
+                  />
+                </div>
+              </section>
             </div>
           ) : null}
           {view === "month" ? (
@@ -729,7 +780,7 @@ export function CalendarScreen({
                 eventDotsByDay={eventDotsByDay}
                 onPickDay={(d) => handleSelectDayFromHeader(d)}
               />
-              <MobileCard className="p-4">
+              <section className="rounded-[34px] bg-white/76 p-4 shadow-[0_18px_38px_-34px_rgba(15,23,42,.36)] ring-1 ring-slate-200/45 backdrop-blur-xl">
                 <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[color:var(--wp-text-tertiary)]">
                   Aktivity ({formatMonthYear(anchorDate)})
                 </p>
@@ -763,7 +814,7 @@ export function CalendarScreen({
                     ))}
                   </ul>
                 )}
-              </MobileCard>
+              </section>
             </div>
           ) : null}
           {view === "agenda" ? (
@@ -944,6 +995,7 @@ export function CalendarScreen({
           <Toast message={toast.message} variant={toast.variant} onDismiss={dismissToast} />
         </div>
       ) : null}
+      </div>
     </div>
   );
 }

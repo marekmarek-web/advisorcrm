@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
-import { and, contacts, eq } from "db";
+import { advisorPreferences, and, contacts, eq } from "db";
 import { withTenantContext } from "@/lib/db/with-tenant-context";
 import { listClientMaterialRequests } from "@/app/actions/advisor-material-requests";
 import {
@@ -144,6 +144,28 @@ export const loadClientPortalSessionBundle = cache(async function loadClientPort
           () => ({}) as Record<string, { name: string }>,
         )
       : {};
+  const advisorBookingRow = advisor
+    ? await withTenantContext({ tenantId: auth.tenantId, userId: auth.userId }, (tx) =>
+        tx
+          .select({
+            enabled: advisorPreferences.publicBookingEnabled,
+            token: advisorPreferences.publicBookingToken,
+          })
+          .from(advisorPreferences)
+          .where(
+            and(
+              eq(advisorPreferences.tenantId, auth.tenantId),
+              eq(advisorPreferences.userId, advisor.userId),
+            ),
+          )
+          .limit(1)
+          .then((rows) => rows[0] ?? null),
+      ).catch(() => null)
+    : null;
+  const advisorBookingToken =
+    advisorBookingRow?.enabled && advisorBookingRow.token?.trim()
+      ? advisorBookingRow.token.trim()
+      : null;
 
   return {
     tenantId: auth.tenantId,
@@ -151,6 +173,7 @@ export const loadClientPortalSessionBundle = cache(async function loadClientPort
     fullName,
     contact: contactRows,
     advisor,
+    advisorBookingPath: advisorBookingToken ? `/rezervace/${encodeURIComponent(advisorBookingToken)}` : null,
     quickStats: quickStats.rows,
     quickStatsLoadFailed: !quickStats.ok,
     requests,

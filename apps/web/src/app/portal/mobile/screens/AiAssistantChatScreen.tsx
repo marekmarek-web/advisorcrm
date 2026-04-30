@@ -22,6 +22,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
+import { ChatTypingIndicator } from "@/app/components/chat/ChatTypingIndicator";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/components/ConfirmDialog";
 import {
@@ -463,31 +464,6 @@ function MessageBubble({
           <User size={14} />
         </div>
       ) : null}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Typing indicator                                                   */
-/* ------------------------------------------------------------------ */
-
-function TypingIndicator() {
-  return (
-    <div className="flex justify-start gap-3">
-      <div className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-[14px] border border-indigo-100 bg-white p-1 shadow-[0_14px_28px_-22px_rgba(79,70,229,.38)]">
-        <AiAssistantBrandIcon size={24} variant="colorOnWhite" className="max-h-full max-w-full" />
-      </div>
-      <div className="rounded-[24px] border border-white/85 bg-white/95 px-4 py-3 shadow-[0_18px_34px_-30px_rgba(15,23,42,.34)] ring-1 ring-slate-200/40 backdrop-blur-xl">
-        <div className="flex gap-1 items-center h-4">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce"
-              style={{ animationDelay: `${i * 150}ms` }}
-            />
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
@@ -1665,7 +1641,17 @@ export function AiAssistantChatScreen() {
           />
         ))}
 
-        {isTyping ? <TypingIndicator /> : null}
+        {isTyping ? (
+          <ChatTypingIndicator
+            role="assistant"
+            label="Asistent píše…"
+            leadingSlot={
+              <div className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-[14px] border border-indigo-100 bg-white p-1 shadow-[0_14px_28px_-22px_rgba(79,70,229,.38)]">
+                <AiAssistantBrandIcon size={24} variant="colorOnWhite" className="max-h-full max-w-full" />
+              </div>
+            }
+          />
+        ) : null}
 
         {/* Draft email panel */}
         {draftEmail ? (

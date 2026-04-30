@@ -353,7 +353,7 @@ export async function extractAssistantIntent(message: string): Promise<Assistant
     const { parsed } = await createResponseStructured<Record<string, unknown>>(
       `${INTENT_SYSTEM}\n\nZpráva uživatele:\n${message}`,
       ASSISTANT_INTENT_JSON_SCHEMA,
-      { schemaName: "assistant_intent", store: false },
+      { schemaName: "assistant_intent", store: false, routing: { category: "advisor_intent", maxOutputTokens: 500 } },
     );
     const base = coerceAssistantIntent(parsed);
     return {
@@ -405,7 +405,7 @@ export async function extractCanonicalIntent(
     const { parsed } = await createResponseStructured<Record<string, unknown>>(
       `${systemBlock}\n\nZpráva uživatele:\n${composed}`,
       CANONICAL_INTENT_JSON_SCHEMA,
-      { schemaName: "canonical_intent", store: false },
+      { schemaName: "canonical_intent", store: false, routing: { category: "advisor_intent", maxOutputTokens: 700 } },
     );
     const raw = coerceCanonicalIntentRaw(parsed);
     const canonical = toCanonicalIntent({

@@ -1,13 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2, Send, Sparkles, X } from "lucide-react";
 
 type ChatItem = { role: "user" | "assistant"; text: string };
 type AssistantSuggestion = { id: string; label: string; href: string };
 
-export function AiSupportButton({ anchorClassName = "bottom-5 right-5" }: { anchorClassName?: string }) {
+export function AiSupportButton({
+  anchorClassName = "bottom-5 right-5",
+  variant = "floating",
+  onOpenChange,
+}: {
+  anchorClassName?: string;
+  variant?: "floating" | "header";
+  onOpenChange?: (open: boolean) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,6 +31,10 @@ export function AiSupportButton({ anchorClassName = "bottom-5 right-5" }: { anch
     { id: "openRequests", label: "Vytvořit požadavek", href: "/client/requests" },
     { id: "openDocuments", label: "Nahrát dokument", href: "/client/documents" },
   ]);
+
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [onOpenChange, open]);
 
   async function sendMessage() {
     const trimmed = message.trim();
@@ -69,20 +81,42 @@ export function AiSupportButton({ anchorClassName = "bottom-5 right-5" }: { anch
     }
   }
 
-  return (
-    <div className={`fixed z-50 ${anchorClassName}`}>
-      {!open ? (
+  const trigger =
+    variant === "header" ? (
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="group relative grid h-11 w-11 place-items-center rounded-full bg-white text-violet-600 shadow-sm ring-1 ring-slate-200/60 transition-all active:scale-95"
+        aria-label={open ? "Zavřít nápovědu k portálu" : "Otevřít nápovědu k portálu"}
+        aria-expanded={open}
+      >
+        <Sparkles size={18} />
+      </button>
+    ) : (
         <button
+          type="button"
           onClick={() => setOpen(true)}
           className="group relative p-[2.5px] rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-indigo-900/20 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 min-h-[44px]"
+          aria-label="Otevřít nápovědu k portálu"
         >
           <span className="bg-white rounded-full px-5 min-h-[44px] py-2.5 flex items-center justify-center gap-2">
             <Sparkles size={16} className="text-purple-500" />
             <span className="font-black text-[color:var(--wp-text)] text-sm tracking-wide">Nápověda k portálu</span>
           </span>
         </button>
-      ) : (
-        <div className="w-[360px] max-w-[calc(100vw-24px)] bg-white border border-[color:var(--wp-surface-card-border)] rounded-3xl shadow-2xl p-4 client-scale-in">
+    );
+
+  return (
+    <div className={variant === "header" ? "relative z-50" : `fixed z-50 ${anchorClassName}`}>
+      {trigger}
+      {open ? (
+        <div
+          className={
+            variant === "header"
+              ? "fixed right-3 top-[calc(var(--safe-area-top)+4.75rem)] z-[80] w-[360px] max-w-[calc(100vw-24px)] bg-white border border-[color:var(--wp-surface-card-border)] rounded-3xl shadow-2xl p-4 client-scale-in"
+              : "mt-2 w-[360px] max-w-[calc(100vw-24px)] bg-white border border-[color:var(--wp-surface-card-border)] rounded-3xl shadow-2xl p-4 client-scale-in"
+          }
+        >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Sparkles size={16} className="text-purple-500" />
@@ -120,7 +154,7 @@ export function AiSupportButton({ anchorClassName = "bottom-5 right-5" }: { anch
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Dotaz k portálu…"
-              className="flex-1 min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
+              className="flex-1 min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-[16px]"
             />
             <button
               type="button"
@@ -144,7 +178,7 @@ export function AiSupportButton({ anchorClassName = "bottom-5 right-5" }: { anch
             ))}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

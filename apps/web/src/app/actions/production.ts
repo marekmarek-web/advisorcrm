@@ -4,7 +4,7 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
 import { assertCapabilityForAction } from "@/lib/billing/server-action-plan-guard";
-import { contracts, SEGMENT_LABELS } from "db";
+import { advisorBusinessPlans, advisorBusinessPlanTargets, contracts, SEGMENT_LABELS } from "db";
 import { eq, and, sql } from "db";
 import {
   getSegmentUiGroup,
@@ -12,6 +12,17 @@ import {
 } from "@/lib/contracts/contract-segment-wizard-config";
 import { advisorPreferences } from "db";
 import { findCareerPosition } from "@/lib/bj/coefficients-repository";
+import {
+  aggregateProductionContracts,
+  getProductionBasisLabel,
+  mapProductionContract,
+  type ClientAmountType,
+  type ProductionBasis,
+  type ProductionCalculationStatus,
+  type ProductionCalculationTrace,
+  type ProductionContractReadModel,
+} from "@/lib/production/production-read-model";
+import type { ContractBjCalculation, PortfolioAttributes } from "db";
 
 export type PeriodType = "month" | "quarter" | "year";
 
@@ -21,11 +32,21 @@ export type ProductionRow = {
   /** UI skupina pro agregaci produkce (pojištění / investice / úvěry). */
   group: ContractSegmentUiGroup;
   partnerName: string | null;
+  /** Součet klientských vstupů v řádku. Není to produkce. */
+  clientAmountTotal: number;
+  /** Pomocný roční ekvivalent klientských plateb. Není to produkce. */
+  clientAnnualEquivalentTotal: number;
+  /** Součet katalogově vypočtených BJ. Jediná produkční hodnota. */
+  productionBj: number;
   totalPremium: number;
   totalAnnual: number;
   count: number;
   /** Součet BJ za tuto dvojici segment + partner (nebo 0, pokud nejsou spočítané). */
   bjUnits: number;
+  calculatedCount: number;
+  missingRuleCount: number;
+  manualReviewCount: number;
+  productionWarnings: string[];
 };
 
 /**
@@ -52,22 +73,32 @@ function parseCareerBjBonusCzk(v: unknown): number {
 
 export type ProductionSummary = {
   rows: ProductionRow[];
-  /** Legacy — součet všech `premiumAmount` napříč segmenty (pro zpětnou kompatibilitu UI). */
+  contracts: ProductionContractReadModel[];
+  /** Součet klientských vstupů. Kontext, nikdy produkce. */
+  totalClientAmount: number;
+  /** Pomocný roční ekvivalent klientských plateb. Kontext, nikdy produkce. */
+  totalClientAnnualEquivalent: number;
+  /** Celková produkce v BJ podle katalogu. */
+  totalProductionBj: number;
+  targetBj: number | null;
+  targetProgressPct: number | null;
+  calculatedCount: number;
+  missingRuleCount: number;
+  manualReviewCount: number;
+  /** Legacy aliases — zachováno kvůli starším komponentám, ale neznamená produkci. */
   totalPremium: number;
   totalAnnual: number;
   totalCount: number;
-  /** Nové agregáty: pojistné (ZP/MAJ/ODP/AUTO/CEST/FIRMA_POJ) */
+  /** Kontextové agregáty klientských vstupů podle skupin. Nejsou produkce. */
   totalInsurancePremium: number;
   totalInsuranceAnnual: number;
   totalInsuranceCount: number;
-  /** Nové agregáty: investice (INV/DIP/DPS) */
   totalInvestment: number;
   totalInvestmentAnnual: number;
   totalInvestmentCount: number;
-  /** Nové agregáty: úvěry / hypotéky (HYPO/UVER) */
   totalLending: number;
   totalLendingCount: number;
-  /** Celkový součet BJ za období (napříč segmenty). */
+  /** Legacy alias pro `totalProductionBj`. */
   totalBjUnits: number;
   /** Přepočet `totalBjUnits × (základ + výjimka)` nebo `null`, pokud poradce nemá nastavenou pozici. */
   totalBjCzk: number | null;
@@ -112,7 +143,7 @@ function contractProductionDateLt(dateStr: string) {
   END) < ${dateStr}`;
 }
 
-function getPeriodRange(period: PeriodType, refDate?: string): { start: Date; end: Date; label: string } {
+function getPeriodRange(period: PeriodType, refDate?: string): { start: Date; end: Date; label: string; year: number; periodNumber: number } {
   const ref = refDate ? new Date(refDate) : new Date();
   const y = ref.getFullYear();
   const m = ref.getMonth();
@@ -121,17 +152,49 @@ function getPeriodRange(period: PeriodType, refDate?: string): { start: Date; en
     const start = new Date(y, m, 1);
     const end = new Date(y, m + 1, 1);
     const label = `${start.toLocaleString("cs-CZ", { month: "long" })} ${y}`;
-    return { start, end, label };
+    return { start, end, label, year: y, periodNumber: m + 1 };
   }
   if (period === "quarter") {
     const q = Math.floor(m / 3);
     const start = new Date(y, q * 3, 1);
     const end = new Date(y, q * 3 + 3, 1);
-    return { start, end, label: `Q${q + 1} ${y}` };
+    return { start, end, label: `Q${q + 1} ${y}`, year: y, periodNumber: q + 1 };
   }
   const start = new Date(y, 0, 1);
   const end = new Date(y + 1, 0, 1);
-  return { start, end, label: `${y}` };
+  return { start, end, label: `${y}`, year: y, periodNumber: 0 };
+}
+
+async function getProductionTargetBj(params: {
+  auth: Awaited<ReturnType<typeof requireAuthInAction>>;
+  tenantId: string;
+  userId: string;
+  period: PeriodType;
+  year: number;
+  periodNumber: number;
+}): Promise<number | null> {
+  const rows = await withTenantContextFromAuth(
+    params.auth,
+    async (tx) =>
+      tx
+        .select({ targetValue: advisorBusinessPlanTargets.targetValue })
+        .from(advisorBusinessPlans)
+        .innerJoin(advisorBusinessPlanTargets, eq(advisorBusinessPlanTargets.planId, advisorBusinessPlans.id))
+        .where(
+          and(
+            eq(advisorBusinessPlans.tenantId, params.tenantId),
+            eq(advisorBusinessPlans.userId, params.userId),
+            eq(advisorBusinessPlans.periodType, params.period),
+            eq(advisorBusinessPlans.year, params.year),
+            eq(advisorBusinessPlans.periodNumber, params.periodNumber),
+            eq(advisorBusinessPlans.status, "active"),
+            eq(advisorBusinessPlanTargets.metricType, "production"),
+          )
+        )
+        .limit(1),
+  );
+  const value = rows[0]?.targetValue == null ? null : Number(rows[0].targetValue);
+  return value != null && Number.isFinite(value) && value > 0 ? value : null;
 }
 
 export async function getProductionSummary(
@@ -142,26 +205,44 @@ export async function getProductionSummary(
   if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
   await assertCapabilityForAction(auth, "team_production");
 
-  const { start, end, label } = getPeriodRange(period, refDate);
+  const { start, end, label, year, periodNumber } = getPeriodRange(period, refDate);
 
   let rows: Array<{
+    id: string;
+    contactId: string;
     segment: string;
     partnerName: string | null;
-    totalPremium: number | string;
-    totalAnnual: number | string;
-    totalBjUnits: number | string | null;
-    count: number;
+    productName: string | null;
+    contractNumber: string | null;
+    startDate: string | null;
+    productionDate: string | null;
+    premiumAmount: string | null;
+    premiumAnnual: string | null;
+    portfolioAttributes: PortfolioAttributes | null;
+    bjUnits: string | null;
+    bjCalculation: ContractBjCalculation | null;
   }>;
   try {
     rows = await withTenantContextFromAuth(auth, async (tx) =>
       tx
         .select({
+          id: contracts.id,
+          contactId: contracts.contactId,
           segment: contracts.segment,
           partnerName: contracts.partnerName,
-          totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`,
-          totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
-          totalBjUnits: sql<number>`coalesce(sum(${contracts.bjUnits}::numeric), 0)`,
-          count: sql<number>`count(*)::int`,
+          productName: contracts.productName,
+          contractNumber: contracts.contractNumber,
+          startDate: contracts.startDate,
+          productionDate: sql<string>`CASE
+            WHEN ${contracts.sourceKind} = 'ai_review'
+              THEN COALESCE(${contracts.advisorConfirmedAt}::date::text, ${contracts.startDate})
+            ELSE ${contracts.startDate}
+          END`,
+          premiumAmount: contracts.premiumAmount,
+          premiumAnnual: contracts.premiumAnnual,
+          portfolioAttributes: contracts.portfolioAttributes,
+          bjUnits: contracts.bjUnits,
+          bjCalculation: contracts.bjCalculation,
         })
         .from(contracts)
         .where(
@@ -172,29 +253,48 @@ export async function getProductionSummary(
             contractProductionDateLt(end.toISOString().slice(0, 10))
           )
         )
-        .groupBy(contracts.segment, contracts.partnerName)
-        .orderBy(contracts.segment, contracts.partnerName),
+        .orderBy(sql`CASE
+          WHEN ${contracts.sourceKind} = 'ai_review'
+            THEN COALESCE(${contracts.advisorConfirmedAt}::date, ${contracts.startDate}::date)
+          ELSE ${contracts.startDate}::date
+        END`, contracts.segment, contracts.partnerName),
     );
   } catch (err) {
     if (isMissingSchemaError(err)) throw new Error(MISSING_SCHEMA_HINT);
     throw err;
   }
 
-  const mapped: ProductionRow[] = rows.map((r) => ({
-    segment: r.segment,
-    segmentLabel: SEGMENT_LABELS[r.segment] ?? r.segment,
-    group: getSegmentUiGroup(r.segment),
-    partnerName: r.partnerName,
-    totalPremium: Number(r.totalPremium),
-    totalAnnual: Number(r.totalAnnual),
-    bjUnits: Number(r.totalBjUnits ?? 0),
-    count: Number(r.count),
+  const contractModels = rows.map((r) =>
+    mapProductionContract({
+      id: r.id,
+      contactId: r.contactId,
+      segment: r.segment,
+      segmentLabel: SEGMENT_LABELS[r.segment] ?? r.segment,
+      group: getSegmentUiGroup(r.segment),
+      partnerName: r.partnerName,
+      productName: r.productName,
+      contractNumber: r.contractNumber,
+      startDate: r.startDate,
+      productionDate: r.productionDate,
+      premiumAmount: r.premiumAmount,
+      premiumAnnual: r.premiumAnnual,
+      portfolioAttributes: r.portfolioAttributes,
+      bjUnits: r.bjUnits,
+      bjCalculation: r.bjCalculation,
+    })
+  );
+  const aggregation = aggregateProductionContracts(contractModels);
+  const mapped: ProductionRow[] = aggregation.rows.map((r) => ({
+    ...r,
+    totalPremium: r.clientAmountTotal,
+    totalAnnual: r.clientAnnualEquivalentTotal,
+    bjUnits: r.productionBj,
   }));
 
   const insurance = mapped.filter((r) => r.group === "insurance");
   const investment = mapped.filter((r) => r.group === "investment");
   const lending = mapped.filter((r) => r.group === "lending");
-  const totalBjUnits = mapped.reduce((s, r) => s + r.bjUnits, 0);
+  const totalBjUnits = aggregation.totalProductionBj;
 
   // Přepočet BJ → Kč podle kariérní pozice. Pokud poradce pozici nemá nastavenou,
   // necháme `totalBjCzk = null`, aby UI ukázalo „nezadána pozice" místo nesmyslné nuly.
@@ -228,12 +328,36 @@ export async function getProductionSummary(
       }
     : null;
   const totalBjCzk = careerRow ? roundCzk(totalBjUnits * (careerRow.bjValueCzk + bjBonusCzk)) : null;
+  let targetBj: number | null = null;
+  try {
+    targetBj = await getProductionTargetBj({
+      auth,
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      period,
+      year,
+      periodNumber,
+    });
+  } catch (err) {
+    if (isMissingSchemaError(err)) throw new Error(MISSING_SCHEMA_HINT);
+    throw err;
+  }
+  const targetProgressPct = targetBj && targetBj > 0 ? Math.round((totalBjUnits / targetBj) * 100) : null;
 
   return {
     rows: mapped,
-    totalPremium: mapped.reduce((s, r) => s + r.totalPremium, 0),
-    totalAnnual: mapped.reduce((s, r) => s + r.totalAnnual, 0),
-    totalCount: mapped.reduce((s, r) => s + r.count, 0),
+    contracts: aggregation.contracts,
+    totalClientAmount: aggregation.totalClientAmount,
+    totalClientAnnualEquivalent: aggregation.totalClientAnnualEquivalent,
+    totalProductionBj: totalBjUnits,
+    targetBj,
+    targetProgressPct,
+    calculatedCount: aggregation.calculatedCount,
+    missingRuleCount: aggregation.missingRuleCount,
+    manualReviewCount: aggregation.manualReviewCount,
+    totalPremium: aggregation.totalClientAmount,
+    totalAnnual: aggregation.totalClientAnnualEquivalent,
+    totalCount: aggregation.totalCount,
     totalInsurancePremium: insurance.reduce((s, r) => s + r.totalPremium, 0),
     totalInsuranceAnnual: insurance.reduce((s, r) => s + r.totalAnnual, 0),
     totalInsuranceCount: insurance.reduce((s, r) => s + r.count, 0),
@@ -259,10 +383,24 @@ export type ContractInPeriodRow = {
   contactId: string;
   segment: string;
   segmentLabel: string;
+  group: ContractSegmentUiGroup;
   partnerName: string | null;
+  productName: string | null;
   contractNumber: string | null;
   startDate: string | null;
   productionDate: string | null;
+  clientAmount: number | null;
+  clientAmountType: ClientAmountType;
+  clientAmountLabel: string;
+  productionBj: number | null;
+  productionRuleId: string | null;
+  productionRuleName: string | null;
+  productionBasis: ProductionBasis;
+  productionBasisLabel: string;
+  productionCalculationTrace: ProductionCalculationTrace;
+  isProductionCalculated: boolean;
+  productionWarnings: string[];
+  calculationStatus: ProductionCalculationStatus;
   premiumAmount: number;
   premiumAnnual: number;
 };
@@ -283,11 +421,15 @@ export async function getContractsForPeriod(
     contactId: string;
     segment: string;
     partnerName: string | null;
+    productName: string | null;
     contractNumber: string | null;
     startDate: string | null;
     productionDate: string | null;
     premiumAmount: string | null;
     premiumAnnual: string | null;
+    portfolioAttributes: PortfolioAttributes | null;
+    bjUnits: string | null;
+    bjCalculation: ContractBjCalculation | null;
   }>;
   try {
     rows = await withTenantContextFromAuth(auth, async (tx) =>
@@ -297,6 +439,7 @@ export async function getContractsForPeriod(
           contactId: contracts.contactId,
           segment: contracts.segment,
           partnerName: contracts.partnerName,
+          productName: contracts.productName,
           contractNumber: contracts.contractNumber,
           startDate: contracts.startDate,
           productionDate: sql<string>`CASE
@@ -306,6 +449,9 @@ export async function getContractsForPeriod(
       END`,
           premiumAmount: contracts.premiumAmount,
           premiumAnnual: contracts.premiumAnnual,
+          portfolioAttributes: contracts.portfolioAttributes,
+          bjUnits: contracts.bjUnits,
+          bjCalculation: contracts.bjCalculation,
         })
         .from(contracts)
         .where(
@@ -342,18 +488,29 @@ export async function getContractsForPeriod(
     throw err;
   }
 
-  const mapped: ContractInPeriodRow[] = rows.map((r) => ({
-    id: r.id,
-    contactId: r.contactId,
-    segment: r.segment,
-    segmentLabel: SEGMENT_LABELS[r.segment] ?? r.segment,
-    partnerName: r.partnerName,
-    contractNumber: r.contractNumber,
-    startDate: r.startDate,
-    productionDate: r.productionDate,
-    premiumAmount: Number(r.premiumAmount ?? 0),
-    premiumAnnual: Number(r.premiumAnnual ?? 0),
-  }));
+  const mapped: ContractInPeriodRow[] = rows.map((r) => {
+    const model = mapProductionContract({
+      id: r.id,
+      contactId: r.contactId,
+      segment: r.segment,
+      segmentLabel: SEGMENT_LABELS[r.segment] ?? r.segment,
+      group: getSegmentUiGroup(r.segment),
+      partnerName: r.partnerName,
+      productName: r.productName,
+      contractNumber: r.contractNumber,
+      startDate: r.startDate,
+      productionDate: r.productionDate,
+      premiumAmount: r.premiumAmount,
+      premiumAnnual: r.premiumAnnual,
+      portfolioAttributes: r.portfolioAttributes,
+      bjUnits: r.bjUnits,
+      bjCalculation: r.bjCalculation,
+    });
+    return {
+      ...model,
+      productionBasisLabel: getProductionBasisLabel(model.productionBasis),
+    };
+  });
 
   return { rows: mapped, periodLabel: label };
 }

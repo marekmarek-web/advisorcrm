@@ -12,7 +12,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.2.0"),
-        .package(name: "CapacitorApp", path: "../../../../../node_modules/@capacitor/app"),
+        .package(name: "CapacitorApp", path: "./spm-path-aliases/capacitor-core-app"),
         .package(name: "CapacitorAppLauncher", path: "../../../../../node_modules/@capacitor/app-launcher"),
         .package(name: "CapacitorBrowser", path: "../../../../../node_modules/@capacitor/browser"),
         .package(name: "CapacitorCamera", path: "../../../../../node_modules/@capacitor/camera"),
@@ -22,7 +22,7 @@ let package = Package(
         .package(name: "CapacitorNetwork", path: "../../../../../node_modules/@capacitor/network"),
         .package(name: "CapacitorPreferences", path: "../../../../../node_modules/@capacitor/preferences"),
         .package(name: "CapacitorShare", path: "../../../../../node_modules/@capacitor/share"),
-        .package(name: "CapacitorFirebaseApp", path: "../../../../../node_modules/@capacitor-firebase/app"),
+        .package(name: "CapacitorFirebaseApp", path: "./spm-path-aliases/capacitor-firebase-app-plugin"),
         .package(name: "CapacitorFirebaseMessaging", path: "../../../../../node_modules/@capacitor-firebase/messaging"),
         .package(name: "CapacitorSplashScreen", path: "../../../../../node_modules/@capacitor/splash-screen"),
         .package(name: "CapacitorStatusBar", path: "../../../../../node_modules/@capacitor/status-bar"),

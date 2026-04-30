@@ -229,7 +229,7 @@ function ManualPeriodModal({ teamMemberId, onClose }: { teamMemberId: string; on
             />
           </label>
           <label className="text-xs">
-            Produkce (Kč)
+            Produkce (BJ)
             <input
               type="number"
               step="0.01"

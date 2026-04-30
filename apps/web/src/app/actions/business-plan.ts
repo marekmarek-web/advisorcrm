@@ -108,7 +108,7 @@ export async function getBusinessPlanWidgetData(): Promise<{
     volume_hypo: "Objem hypoték",
     volume_investments: "Objem investic",
     service_activities: "Servis",
-    production: "Produkce",
+    production: "Produkce BJ",
   };
   const top = progress.metrics.slice(0, 3).map((m) => ({
     metricType: m.metricType,

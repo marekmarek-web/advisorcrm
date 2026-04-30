@@ -1,11 +1,52 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { X, Loader2, Send, RefreshCw } from "lucide-react";
 import { getBirthdayGreetingPreview, sendBirthdayGreeting } from "@/app/actions/birthday-greetings";
 import type { BirthdayGreetingPreviewOk } from "@/app/actions/birthday-greetings";
 import { useToast } from "@/app/components/Toast";
+
+/** Náhled e-mailu: výška podle scrollHeight dokumentu ve vrstvě iframe (sandbox allow-same-origin). */
+function EmailHtmlPreviewIframe({ html }: { html: string }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [pixelHeight, setPixelHeight] = useState(0);
+
+  const fitHeight = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    try {
+      const doc = iframe.contentDocument;
+      const h =
+        doc?.documentElement?.scrollHeight ?? doc?.documentElement?.offsetHeight ?? doc?.body?.scrollHeight ?? 0;
+      if (h > 0) setPixelHeight(Math.ceil(h + 24));
+    } catch {
+      setPixelHeight(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    setPixelHeight(0);
+  }, [html]);
+
+  const fallbackPx =
+    typeof window !== "undefined" ? Math.min(Math.round(window.innerHeight * 0.65), 900) : 560;
+
+  return (
+    <iframe
+      ref={iframeRef}
+      title="Náhled e-mailu"
+      sandbox="allow-same-origin"
+      srcDoc={html}
+      className="w-full rounded-xl border border-[color:var(--wp-border)] bg-white shadow-inner"
+      style={{
+        height: pixelHeight > 0 ? `${pixelHeight}px` : `${fallbackPx}px`,
+        minHeight: 360,
+      }}
+      onLoad={fitHeight}
+    />
+  );
+}
 
 export function BirthdayGreetingPreviewModal({
   contactId,
@@ -92,7 +133,7 @@ export function BirthdayGreetingPreviewModal({
         aria-label="Zavřít"
         onClick={onClose}
       />
-      <div className="relative z-10 flex max-h-[min(92vh,720px)] w-full max-w-lg flex-col rounded-t-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-2xl sm:max-h-[85vh] sm:rounded-2xl">
+      <div className="relative z-10 flex max-h-[92vh] w-full max-w-2xl flex-col rounded-t-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-2xl sm:max-h-[90vh] sm:rounded-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-[color:var(--wp-border)] px-5 py-4">
           <div>
             <h2 id="birthday-modal-title" className="text-lg font-black text-[color:var(--wp-text)]">
@@ -183,12 +224,7 @@ export function BirthdayGreetingPreviewModal({
                 <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">
                   HTML náhled
                 </p>
-                <iframe
-                  title="Náhled e-mailu"
-                  sandbox="allow-same-origin"
-                  srcDoc={preview.html}
-                  className="h-[220px] w-full rounded-xl border border-[color:var(--wp-border)] bg-white"
-                />
+                <EmailHtmlPreviewIframe html={preview.html} />
               </div>
             </div>
           ) : null}

@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import {
   ArrowRight,
   ArrowRightLeft,
   Banknote,
-  Ban,
   Briefcase,
   Calendar,
   ChevronRight,
@@ -15,7 +14,6 @@ import {
   Target,
   Trash2,
   TrendingUp,
-  Trophy,
   Users,
 } from "lucide-react";
 import type { StageWithOpportunities, OpportunityCard } from "@/app/actions/pipeline";
@@ -30,6 +28,7 @@ import {
 } from "@/app/shared/mobile-ui/primitives";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import { useConfirm } from "@/app/components/ConfirmDialog";
+import { triggerConfettiBurstFromRect } from "@/app/lib/confetti-burst";
 
 type OppSelected = OpportunityCard & { stageName: string; stageId: string; stageSortOrder: number };
 type EnrichedStage = StageWithOpportunities & {
@@ -225,7 +224,7 @@ function DealsSummaryCard({
         </div>
         <div className="relative">
           <TrendingUp size={30} strokeWidth={2.5} className="mb-8 text-white drop-shadow-sm" aria-hidden />
-          <p className="text-[15px] font-black text-white/85">Potenciál pipeline</p>
+          <p className="text-[15px] font-black text-white/85">Potenciál obchodů</p>
           <div className="mt-2 flex items-end gap-3">
             <span className="text-[58px] font-black leading-none tracking-tight">{totalCount}</span>
             <span className="pb-2 text-[18px] font-bold text-white/72">{formatCaseNoun(totalCount)}</span>
@@ -616,6 +615,7 @@ function OpportunityDetailSheet({
   const { toast, showToast, dismissToast } = useToast();
   const confirm = useConfirm();
   const [pending, startTransition] = useTransition();
+  const soldButtonRef = useRef<HTMLButtonElement | null>(null);
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(opp.title);
   const [caseType, setCaseType] = useState(opp.caseType || "");
@@ -623,11 +623,14 @@ function OpportunityDetailSheet({
   const [expectedCloseDate, setExpectedCloseDate] = useState(opp.expectedCloseDate ? opp.expectedCloseDate.slice(0, 10) : "");
   const [contactId, setContactId] = useState(opp.contactId || "");
 
-  function runMutation(fn: () => Promise<void>, okMsg: string) {
+  function runMutation(fn: () => Promise<void>, okMsg: string, celebrate?: boolean) {
     startTransition(async () => {
       try {
         await fn();
         showToast(okMsg, "success");
+        if (celebrate) {
+          triggerConfettiBurstFromRect(soldButtonRef.current?.getBoundingClientRect() ?? null);
+        }
         onAfterMutation();
         onClose();
       } catch (e) {
@@ -797,6 +800,7 @@ function OpportunityDetailSheet({
             <p className="mb-2 text-xs font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)]">Uzavřít případ</p>
             <div className="grid grid-cols-2 gap-2">
               <button
+                ref={soldButtonRef}
                 type="button"
                 disabled={pending}
                 onClick={() => {
@@ -804,18 +808,18 @@ function OpportunityDetailSheet({
                     if (
                       !(await confirm({
                         title: "Uzavřít případ",
-                        message: "Označit tento případ jako vyhraný?",
-                        confirmLabel: "Vyhraný",
+                        message: "Označit tento případ jako prodaný?",
+                        confirmLabel: "Prodáno",
                       }))
                     ) {
                       return;
                     }
-                    runMutation(() => closeOpportunity(opp.id, true), "Případ uzavřen jako vyhraný.");
+                    runMutation(() => closeOpportunity(opp.id, true), "Případ uzavřen jako prodaný.", true);
                   })();
                 }}
-                className="flex min-h-[44px] items-center justify-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 text-xs font-black text-emerald-800 active:scale-[0.98] disabled:opacity-50"
+                className="flex min-h-[44px] items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-xs font-black text-emerald-800 active:scale-[0.98] disabled:opacity-50"
               >
-                <Trophy size={14} /> Vyhraný
+                Prodáno
               </button>
               <button
                 type="button"
@@ -825,19 +829,19 @@ function OpportunityDetailSheet({
                     if (
                       !(await confirm({
                         title: "Uzavřít případ",
-                        message: "Označit tento případ jako prohraný?",
-                        confirmLabel: "Prohraný",
+                        message: "Označit tento případ jako neprodaný?",
+                        confirmLabel: "Neprodáno",
                         variant: "destructive",
                       }))
                     ) {
                       return;
                     }
-                    runMutation(() => closeOpportunity(opp.id, false), "Případ uzavřen jako prohraný.");
+                    runMutation(() => closeOpportunity(opp.id, false), "Případ uzavřen jako neprodaný.");
                   })();
                 }}
-                className="flex min-h-[44px] items-center justify-center gap-1 rounded-xl border border-rose-200 bg-rose-50 text-xs font-black text-rose-700 active:scale-[0.98] disabled:opacity-50"
+                className="flex min-h-[44px] items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-xs font-black text-rose-700 active:scale-[0.98] disabled:opacity-50"
               >
-                <Ban size={14} /> Prohraný
+                Neprodáno
               </button>
             </div>
           </div>
@@ -929,8 +933,9 @@ export function PipelineScreen({
     return (
       <div className="space-y-5">
         <section className="pt-2">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-[color:var(--wp-text-secondary)]">Pipeline poradce</p>
-          <h1 className="mt-1 text-[32px] font-black leading-tight tracking-tight text-[color:var(--wp-text)]">Obchody</h1>
+          <h1 className="mt-1 text-[32px] font-black leading-tight tracking-tight text-[color:var(--wp-text)]">
+            Obchodní nástěnka
+          </h1>
         </section>
         <EmptyState title="Žádné obchody ve fázích" description="Začněte přidáním prvního případu přes centrální +." />
       </div>
@@ -940,8 +945,9 @@ export function PipelineScreen({
   return (
     <div className="space-y-7 pb-6">
       <section className="pt-2">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-[color:var(--wp-text-secondary)]">Pipeline poradce</p>
-        <h1 className="mt-1 text-[32px] font-black leading-tight tracking-tight text-[color:var(--wp-text)]">Obchody</h1>
+        <h1 className="mt-1 text-[32px] font-black leading-tight tracking-tight text-[color:var(--wp-text)]">
+          Obchodní nástěnka
+        </h1>
       </section>
 
       <DealsSummaryCard
@@ -955,7 +961,7 @@ export function PipelineScreen({
 
       <section className="space-y-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-[color:var(--wp-text-secondary)]">Fáze pipeline</p>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[color:var(--wp-text-secondary)]">Fáze obchodů</p>
           <p className="mt-1 text-[13px] font-semibold text-[color:var(--wp-text-secondary)]">Tapnutím zúžíte seznam obchodů.</p>
         </div>
         <div className={cx("grid grid-cols-2 gap-4", wideLayout && "mx-auto max-w-3xl")}>
@@ -976,7 +982,7 @@ export function PipelineScreen({
             <p className="text-xs font-black uppercase tracking-[0.16em] text-[color:var(--wp-text-secondary)]">Seznam obchodů</p>
             <p className="mt-1 text-[13px] font-semibold text-[color:var(--wp-text-secondary)]">
               {activeStageId === "all"
-                ? "Všechny fáze pipeline"
+                ? "Všechny fáze obchodů"
                 : stages.find((stage) => stage.id === activeStageId)?.displayName ?? "Vybraná fáze"}
             </p>
           </div>

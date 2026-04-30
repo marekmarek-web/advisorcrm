@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useId, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
 import { getStatusLabels, getStatusById as getLabelById, STATUS_LABELS_UPDATED_EVENT } from "@/app/lib/status-labels";
@@ -29,20 +29,37 @@ interface CellStatusProps {
   note?: string;
   /** Called when user saves the note */
   onNoteChange?: (note: string) => void;
+  /** Po výběru z dropdownu (vč. vymazání); pro oslavu z pozice status tlačítka. */
+  onStatusPickCommitted?: (nextId: string, getAnchorRect: () => DOMRect | undefined) => void;
 }
 
 /** Respects board.css light/dark (--board-empty-status-bg). */
 const EMPTY_BG = "var(--board-empty-status-bg, #e5e5e5)";
 
-export function CellStatus({ value, onChange, className = "", fullCell = false, note, onNoteChange }: CellStatusProps) {
+export function CellStatus({
+  value,
+  onChange,
+  className = "",
+  fullCell = false,
+  note,
+  onNoteChange,
+  onStatusPickCommitted,
+}: CellStatusProps) {
+  const instanceId = useId().replace(/:/g, "");
+  const dropdownPortalId = `cell-status-dropdown-${instanceId}`;
+  const notePortalId = `cell-status-note-${instanceId}`;
+
   const [open, setOpen] = useState(false);
   const [showEditLabels, setShowEditLabels] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [options, setOptions] = useState(() => getStatusLabels());
   const [dropdownRect, setDropdownRect] = useState({ top: 0, left: 0, openUp: false });
+  const [notePopoverPos, setNotePopoverPos] = useState({ top: 0, left: 0 });
   const ref = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownPortalRef = useRef<HTMLDivElement | null>(null);
+  const notePopoverRef = useRef<HTMLDivElement | null>(null);
   const dropdownHeightRef = useRef(280);
   const hasNote = Boolean(note && note.trim());
   const openNoteEditor = () => {
@@ -69,14 +86,53 @@ export function CellStatus({ value, onChange, className = "", fullCell = false, 
     }
   }, []);
 
-  useEffect(() => {
-    if ((open || noteOpen) && buttonRef.current && typeof document !== "undefined") {
-      updateDropdownPosition();
+  /** Poznámka: kotva ke status buňce, ne k pozici dropdownu; ořez na viewport. */
+  const updateNotePopoverPosition = useCallback(() => {
+    if (!buttonRef.current || typeof window === "undefined") return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const pad = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const popEl = notePopoverRef.current;
+    const popW = Math.min(320, vw - pad * 2);
+    const popH = popEl?.getBoundingClientRect().height ?? 200;
+
+    let left = rect.left;
+    let top = rect.bottom + 6;
+
+    if (top + popH > vh - pad) {
+      top = Math.max(pad, rect.top - popH - 6);
     }
-  }, [open, noteOpen, updateDropdownPosition]);
+    if (top + popH > vh - pad) {
+      top = Math.max(pad, vh - pad - popH);
+    }
+
+    if (left + popW > vw - pad) {
+      left = vw - pad - popW;
+    }
+    if (left < pad) left = pad;
+
+    setNotePopoverPos({ top, left });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open || !buttonRef.current) return;
+    updateDropdownPosition();
+  }, [open, updateDropdownPosition]);
+
+  useLayoutEffect(() => {
+    if (!noteOpen || !buttonRef.current) return;
+    const run = () => updateNotePopoverPosition();
+    run();
+    const id = window.requestAnimationFrame(() => {
+      run();
+      window.requestAnimationFrame(run);
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [noteOpen, updateNotePopoverPosition]);
 
   useEffect(() => {
-    if (!open && !noteOpen) return;
+    if (!open) return;
     const scrollContainer = ref.current?.closest(".b-scroller") ?? null;
     const onScroll = () => updateDropdownPosition();
     scrollContainer?.addEventListener("scroll", onScroll, { passive: true });
@@ -85,16 +141,28 @@ export function CellStatus({ value, onChange, className = "", fullCell = false, 
       scrollContainer?.removeEventListener("scroll", onScroll);
       window.removeEventListener("scroll", onScroll, { capture: true });
     };
-  }, [open, noteOpen, updateDropdownPosition]);
+  }, [open, updateDropdownPosition]);
+
+  useEffect(() => {
+    if (!noteOpen) return;
+    const scrollContainer = ref.current?.closest(".b-scroller") ?? null;
+    const onScroll = () => updateNotePopoverPosition();
+    scrollContainer?.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      scrollContainer?.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll, { capture: true });
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [noteOpen, updateNotePopoverPosition]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       const target = e.target as Node;
-      const portal = document.getElementById("cell-status-dropdown-portal");
-      const notePortal = document.getElementById("cell-status-note-portal");
-      if (notePortal && notePortal.contains(target)) return;
+      if (notePopoverRef.current?.contains(target)) return;
+      if (dropdownPortalRef.current?.contains(target)) return;
       if (ref.current && !ref.current.contains(target)) {
-        if (portal && portal.contains(target)) return;
         setOpen(false);
         setNoteOpen(false);
       }
@@ -123,12 +191,13 @@ export function CellStatus({ value, onChange, className = "", fullCell = false, 
 
   const dropdownContent = open && typeof document !== "undefined" && (
     <div
-      id="cell-status-dropdown-portal"
-      role="listbox"
-      className="board-context-menu fixed z-[400]"
+      id={dropdownPortalId}
       ref={(el) => {
+        dropdownPortalRef.current = el;
         if (el) dropdownHeightRef.current = el.getBoundingClientRect().height;
       }}
+      role="listbox"
+      className="board-context-menu fixed z-[400]"
       style={{
         top: dropdownRect.top,
         left: dropdownRect.left,
@@ -151,6 +220,7 @@ export function CellStatus({ value, onChange, className = "", fullCell = false, 
             role="option"
             onClick={() => {
               onChange(opt.id);
+              onStatusPickCommitted?.(opt.id, () => buttonRef.current?.getBoundingClientRect());
               setOpen(false);
             }}
             className="board-context-item flex items-center gap-3"
@@ -194,12 +264,14 @@ export function CellStatus({ value, onChange, className = "", fullCell = false, 
 
   const notePopover = noteOpen && onNoteChange && typeof document !== "undefined" && (
     <div
-      id="cell-status-note-portal"
-      className="board-context-menu fixed z-[401] p-3 min-w-[240px] max-w-[320px]"
+      id={notePortalId}
+      ref={(el) => {
+        notePopoverRef.current = el;
+      }}
+      className="board-context-menu fixed z-[401] p-3 min-w-[240px] max-w-[min(320px,calc(100vw-16px))]"
       style={{
-        top: dropdownRect.top,
-        left: dropdownRect.left,
-        transform: "translateX(-50%)",
+        top: notePopoverPos.top,
+        left: notePopoverPos.left,
       }}
     >
       <label className="block text-[11px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)] mb-1">Poznámka ke stavu</label>

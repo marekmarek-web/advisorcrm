@@ -99,12 +99,13 @@ function DonutChart({ slices }: { slices: { label: string; value: number; color:
 }
 
 function downloadProductionCsv(data: ProductionSummary, periodLabel: string) {
-  const headers = ["Segment", "Partner", "Pojistné (období)", "Roční ekvivalent", "Počet"];
+  const headers = ["Segment", "Partner", "Vstup klienta", "Produkce BJ", "Stav", "Počet"];
   const rows = data.rows.map((r) => [
     r.segmentLabel,
     r.partnerName ?? "",
-    r.totalPremium.toLocaleString("cs-CZ"),
-    r.totalAnnual.toLocaleString("cs-CZ"),
+    r.clientAmountTotal.toLocaleString("cs-CZ"),
+    r.productionBj.toLocaleString("cs-CZ", { maximumFractionDigits: 4 }),
+    r.missingRuleCount > 0 ? "Chybí pravidlo" : r.manualReviewCount > 0 ? "Ruční kontrola" : "Spočteno",
     String(r.count),
   ]);
   const csvContent = [
@@ -157,14 +158,14 @@ export function PortalProductionView() {
 
   const bySegment = useMemo(() => {
     if (!data) return [];
-    const map = new Map<string, { label: string; premium: number; count: number }>();
+    const map = new Map<string, { label: string; productionBj: number; count: number }>();
     for (const r of data.rows) {
       const existing = map.get(r.segment);
       if (existing) {
-        existing.premium += r.totalPremium;
+        existing.productionBj += r.productionBj;
         existing.count += r.count;
       } else {
-        map.set(r.segment, { label: r.segmentLabel, premium: r.totalPremium, count: r.count });
+        map.set(r.segment, { label: r.segmentLabel, productionBj: r.productionBj, count: r.count });
       }
     }
     return Array.from(map.entries()).map(([code, v]) => ({ code, ...v }));
@@ -172,14 +173,14 @@ export function PortalProductionView() {
 
   const pieSlices = bySegment.map((s, i) => ({
     label: s.label,
-    value: s.premium,
+    value: s.productionBj,
     color: PIE_COLORS[i % PIE_COLORS.length],
   }));
 
-  const totalPremium = data?.totalPremium ?? 0;
+  const totalProductionBj = data?.totalProductionBj ?? 0;
   const segmentWithShare = pieSlices.map((s) => ({
     ...s,
-    share: totalPremium > 0 ? Math.round((s.value / totalPremium) * 100) : 0,
+    share: totalProductionBj > 0 ? Math.round((s.value / totalProductionBj) * 100) : 0,
   }));
 
   const handleExport = useCallback(() => {
@@ -302,7 +303,7 @@ export function PortalProductionView() {
                 </div>
               </div>
 
-              {/* Card 3: Pojistné (insurance only) */}
+              {/* Card 3: Produkce BJ */}
               <div
                 className="p-4 md:p-6 rounded-[var(--wp-radius-sm)] border flex flex-col justify-between transition-shadow hover:shadow-md min-h-[120px] md:min-h-0"
                 style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
@@ -316,17 +317,19 @@ export function PortalProductionView() {
                   </div>
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: "var(--wp-text-muted)" }}>
-                  Pojistné ({data.totalInsuranceCount})
+                  Produkce BJ celkem
                 </span>
                 <div className="text-xl md:text-2xl font-bold leading-none tracking-tight" style={{ color: "var(--wp-text)" }}>
-                  {data.totalInsurancePremium.toLocaleString("cs-CZ")} Kč
+                  {data.totalProductionBj.toLocaleString("cs-CZ", { maximumFractionDigits: 2 })} BJ
                 </div>
                 <div className="text-[11px] font-medium mt-1" style={{ color: "var(--wp-text-muted)" }}>
-                  Roční ekv.: {data.totalInsuranceAnnual.toLocaleString("cs-CZ")} Kč
+                  {data.targetBj
+                    ? `Cíl: ${data.targetBj.toLocaleString("cs-CZ", { maximumFractionDigits: 0 })} BJ`
+                    : "Cíl BJ není nastaven"}
                 </div>
               </div>
 
-              {/* Card 4: Investice */}
+              {/* Card 4: Splnění cíle */}
               <div
                 className="p-4 md:p-6 rounded-[var(--wp-radius-sm)] border flex flex-col justify-between transition-shadow hover:shadow-md min-h-[120px] md:min-h-0"
                 style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
@@ -340,15 +343,15 @@ export function PortalProductionView() {
                   </div>
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: "var(--wp-text-muted)" }}>
-                  Investice ({data.totalInvestmentCount})
+                  Splnění cíle
                 </span>
                 <div className="text-xl md:text-2xl font-bold leading-none tracking-tight" style={{ color: "var(--wp-text)" }}>
-                  {data.totalInvestment.toLocaleString("cs-CZ")} Kč
+                  {data.targetProgressPct == null ? "—" : `${data.targetProgressPct.toLocaleString("cs-CZ")} %`}
                 </div>
                 <div className="text-[11px] font-medium mt-1" style={{ color: "var(--wp-text-muted)" }}>
-                  {data.totalLendingCount > 0
-                    ? `Úvěry: ${data.totalLending.toLocaleString("cs-CZ")} Kč (${data.totalLendingCount})`
-                    : `Roční ekv.: ${data.totalInvestmentAnnual.toLocaleString("cs-CZ")} Kč`}
+                  {data.missingRuleCount > 0
+                    ? `${data.missingRuleCount} smluv bez pravidla`
+                    : `${data.calculatedCount} smluv spočteno`}
                 </div>
               </div>
 
@@ -430,12 +433,12 @@ export function PortalProductionView() {
                             {seg.label}
                           </div>
                           <div className="text-[11px] font-medium" style={{ color: "var(--wp-text-muted)" }}>
-                            {seg.share} % portfolia
+                            {seg.share} % produkce BJ
                           </div>
                         </div>
                       </div>
                       <div className="text-sm font-bold" style={{ color: "var(--wp-text)" }}>
-                        {seg.value.toLocaleString("cs-CZ")} Kč
+                        {seg.value.toLocaleString("cs-CZ", { maximumFractionDigits: 2 })} BJ
                       </div>
                     </div>
                   ))}
@@ -465,12 +468,12 @@ export function PortalProductionView() {
                 </div>
                 {/* Mobile: card list */}
                 <div className="md:hidden p-4 space-y-3 overflow-y-auto">
-                  {data.rows.length === 0 ? (
+                  {data.contracts.length === 0 ? (
                     <p className="text-sm py-4 text-center" style={{ color: "var(--wp-text-muted)" }}>
                       Žádné smlouvy v tomto období.
                     </p>
                   ) : (
-                    data.rows.map((r, idx) => (
+                    data.contracts.map((r, idx) => (
                       <div
                         key={`${r.segment}-${r.partnerName ?? ""}-${idx}`}
                         className="p-4 rounded-[var(--wp-radius-sm)] border"
@@ -480,41 +483,42 @@ export function PortalProductionView() {
                           <span className="text-sm font-semibold" style={{ color: "var(--wp-text)" }}>
                             {r.segmentLabel}
                           </span>
-                          <span
-                            className="inline-flex items-center justify-center min-w-8 h-8 rounded-full text-sm font-bold px-2 shrink-0"
-                            style={{ background: "var(--wp-bg-card)", color: "var(--wp-text)" }}
-                          >
-                            {r.count}
+                          <span className="text-[11px] font-semibold" style={{ color: r.calculationStatus === "missing_rule" ? "#b45309" : "var(--wp-text-muted)" }}>
+                            {r.calculationStatus === "missing_rule" ? "Chybí pravidlo" : r.calculationStatus === "manual_review" ? "Ruční kontrola" : "Spočteno"}
                           </span>
                         </div>
                         <p className="text-xs font-medium mb-2" style={{ color: "var(--wp-text-muted)" }}>
-                          {r.partnerName ?? "—"}
+                          {[r.partnerName, r.productName].filter(Boolean).join(" · ") || "—"}
                         </p>
                         <div className="flex justify-between text-sm">
-                          <span style={{ color: "var(--wp-text-muted)" }}>Pojistné:</span>
+                          <span style={{ color: "var(--wp-text-muted)" }}>BJ / produkce:</span>
                           <span className="font-bold" style={{ color: "var(--wp-text)" }}>
-                            {r.totalPremium.toLocaleString("cs-CZ")} Kč
+                            {r.productionBj == null ? "—" : `${r.productionBj.toLocaleString("cs-CZ", { maximumFractionDigits: 2 })} BJ`}
                           </span>
                         </div>
                         <div className="flex justify-between text-xs mt-1" style={{ color: "var(--wp-text-muted)" }}>
-                          <span>Roční ekv.:</span>
-                          <span>{r.totalAnnual.toLocaleString("cs-CZ")} Kč</span>
+                          <span>{r.clientAmountLabel}:</span>
+                          <span>{r.clientAmount == null ? "—" : `${r.clientAmount.toLocaleString("cs-CZ")} Kč`}</span>
+                        </div>
+                        <div className="flex justify-between text-xs mt-1" style={{ color: "var(--wp-text-muted)" }}>
+                          <span>Pravidlo:</span>
+                          <span>{r.productionRuleName ?? "—"}</span>
                         </div>
                       </div>
                     ))
                   )}
-                  {data.rows.length > 0 && (
+                  {data.contracts.length > 0 && (
                     <div className="pt-2 border-t" style={{ borderColor: "var(--wp-border)" }}>
                       <div className="flex justify-between text-sm font-semibold" style={{ color: "var(--wp-text)" }}>
                         <span>Celkem</span>
-                        <span>{data.totalPremium.toLocaleString("cs-CZ")} Kč</span>
+                        <span>{data.totalProductionBj.toLocaleString("cs-CZ", { maximumFractionDigits: 2 })} BJ</span>
                       </div>
                     </div>
                   )}
                 </div>
                 {/* Desktop: table */}
                 <div className="hidden md:block flex-1 min-w-0 overflow-x-auto overflow-y-auto">
-                  <table className="w-full min-w-[640px] text-left border-collapse">
+                  <table className="w-full min-w-[760px] text-left border-collapse">
                     <thead>
                       <tr className="border-b" style={{ borderColor: "var(--wp-border)" }}>
                         <th className="px-4 md:px-8 py-3 md:py-4 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--wp-text-muted)" }}>
@@ -524,25 +528,28 @@ export function PortalProductionView() {
                           Partner
                         </th>
                         <th className="px-4 md:px-6 py-3 md:py-4 text-[10px] font-bold uppercase tracking-wider text-right" style={{ color: "var(--wp-text-muted)" }}>
-                          Pojistné (období)
+                          Vstup pro výpočet
                         </th>
                         <th className="px-4 md:px-6 py-3 md:py-4 text-[10px] font-bold uppercase tracking-wider text-right" style={{ color: "var(--wp-text-muted)" }}>
-                          Roční ekvivalent
+                          BJ / produkce
+                        </th>
+                        <th className="px-4 md:px-6 py-3 md:py-4 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--wp-text-muted)" }}>
+                          Produkční pravidlo
                         </th>
                         <th className="px-4 md:px-8 py-3 md:py-4 text-[10px] font-bold uppercase tracking-wider text-center" style={{ color: "var(--wp-text-muted)" }}>
-                          Počet
+                          Stav výpočtu
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {data.rows.length === 0 ? (
+                      {data.contracts.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-4 md:px-8 py-6 md:py-8 text-center text-sm" style={{ color: "var(--wp-text-muted)" }}>
+                          <td colSpan={6} className="px-4 md:px-8 py-6 md:py-8 text-center text-sm" style={{ color: "var(--wp-text-muted)" }}>
                             Žádné smlouvy v tomto období.
                           </td>
                         </tr>
                       ) : (
-                        data.rows.map((r, idx) => (
+                        data.contracts.map((r, idx) => (
                           <tr
                             key={`${r.segment}-${r.partnerName ?? ""}-${idx}`}
                             className="border-b last:border-0 transition-colors hover:bg-black/5"
@@ -557,29 +564,37 @@ export function PortalProductionView() {
                               </div>
                             </td>
                             <td className="px-4 md:px-6 py-3 md:py-4">
-                              <span
-                                className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border"
-                                style={{ background: "var(--wp-bg)", color: "var(--wp-text)", borderColor: "var(--wp-border)" }}
-                              >
+                              <div className="text-xs font-medium" style={{ color: "var(--wp-text)" }}>
                                 {r.partnerName ?? "—"}
-                              </span>
+                              </div>
+                              {r.productName ? (
+                                <div className="text-[11px]" style={{ color: "var(--wp-text-muted)" }}>{r.productName}</div>
+                              ) : null}
                             </td>
                             <td className="px-4 md:px-6 py-3 md:py-4 text-right">
                               <div className="text-sm font-bold" style={{ color: "var(--wp-text)" }}>
-                                {r.totalPremium.toLocaleString("cs-CZ")} Kč
+                                {r.clientAmount == null ? "—" : `${r.clientAmountLabel}: ${r.clientAmount.toLocaleString("cs-CZ")} Kč`}
                               </div>
                             </td>
                             <td className="px-4 md:px-6 py-3 md:py-4 text-right">
-                              <div className="text-sm font-medium" style={{ color: "var(--wp-text-muted)" }}>
-                                {r.totalAnnual.toLocaleString("cs-CZ")} Kč
+                              <div className="text-sm font-bold" style={{ color: "var(--wp-text)" }}>
+                                {r.productionBj == null ? "—" : `${r.productionBj.toLocaleString("cs-CZ", { maximumFractionDigits: 2 })} BJ`}
                               </div>
                             </td>
+                            <td className="px-4 md:px-6 py-3 md:py-4">
+                              <span className="text-xs font-semibold" style={{ color: "var(--wp-text-muted)" }}>
+                                {r.productionRuleName ?? "—"}
+                              </span>
+                            </td>
                             <td className="px-4 md:px-8 py-3 md:py-4 text-center">
-                              <span
-                                className="inline-flex items-center justify-center min-w-8 h-8 rounded-full text-sm font-bold px-2"
-                                style={{ background: "var(--wp-bg)", color: "var(--wp-text)" }}
-                              >
-                                {r.count}
+                              <span className="text-xs font-semibold" style={{ color: r.calculationStatus === "missing_rule" ? "#b45309" : "var(--wp-text-muted)" }}>
+                                {r.calculationStatus === "missing_rule"
+                                  ? "Chybí pravidlo"
+                                  : r.calculationStatus === "manual_review"
+                                    ? "Ruční kontrola"
+                                    : r.calculationStatus === "manual_override"
+                                      ? "Ručně upraveno"
+                                      : "Spočteno"}
                               </span>
                             </td>
                           </tr>
@@ -591,13 +606,16 @@ export function PortalProductionView() {
                             Celkem
                           </td>
                           <td className="px-4 md:px-6 py-3 md:py-4 text-right" style={{ color: "var(--wp-text)" }}>
-                            {data.totalPremium.toLocaleString("cs-CZ")} Kč
+                            {data.totalClientAmount.toLocaleString("cs-CZ")} Kč
                           </td>
                           <td className="px-4 md:px-6 py-3 md:py-4 text-right" style={{ color: "var(--wp-text)" }}>
-                            {data.totalAnnual.toLocaleString("cs-CZ")} Kč
+                            {data.totalProductionBj.toLocaleString("cs-CZ", { maximumFractionDigits: 2 })} BJ
                           </td>
-                          <td className="px-4 md:px-8 py-3 md:py-4 text-center" style={{ color: "var(--wp-text)" }}>
-                            {data.totalCount}
+                          <td className="px-4 md:px-6 py-3 md:py-4" style={{ color: "var(--wp-text-muted)" }}>
+                            —
+                          </td>
+                          <td className="px-4 md:px-6 py-3 md:py-4" style={{ color: "var(--wp-text-muted)" }}>
+                            {data.missingRuleCount > 0 ? `${data.missingRuleCount}× chybí pravidlo` : "Spočteno"}
                           </td>
                         </tr>
                       )}

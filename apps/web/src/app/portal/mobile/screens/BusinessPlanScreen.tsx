@@ -60,7 +60,7 @@ function pickMetric(
   return {
     actual: metric?.actual ?? 0,
     target: metric?.target ?? 0,
-    unit: metric?.unit === "czk" ? "Kč" : "",
+    unit: metric?.unit === "bj" ? "BJ" : metric?.unit === "czk" ? "Kč" : "",
     health: metric?.health ?? "ok",
   };
 }
@@ -127,7 +127,7 @@ export function BusinessPlanScreen({ deviceClass = "phone" }: { deviceClass?: De
 
   const [targetsOpen, setTargetsOpen] = useState(false);
   const [visionOpen, setVisionOpen] = useState(false);
-  const [targetProduction, setTargetProduction] = useState(300000);
+  const [targetProduction, setTargetProduction] = useState(100000);
   const [targetMeetings, setTargetMeetings] = useState(25);
   const [targetNewClients, setTargetNewClients] = useState(6);
   const [visionDraft, setVisionDraft] = useState<VisionDraft[]>([]);
@@ -172,7 +172,7 @@ export function BusinessPlanScreen({ deviceClass = "phone" }: { deviceClass?: De
   }, [periodType]);
 
   function openTargets() {
-    setTargetProduction(production.target || 300000);
+    setTargetProduction(production.target || 100000);
     setTargetMeetings(meetings.target || 25);
     setTargetNewClients(newClients.target || 6);
     setTargetsOpen(true);
@@ -200,7 +200,7 @@ export function BusinessPlanScreen({ deviceClass = "phone" }: { deviceClass?: De
           (await createBusinessPlan({ periodType, year, periodNumber, title: label }));
 
         await setPlanTargets(planId, [
-          { metricType: "production", targetValue: Number(targetProduction), unit: "czk" },
+          { metricType: "production", targetValue: Number(targetProduction), unit: "bj" },
           { metricType: "meetings", targetValue: Number(targetMeetings), unit: "count" },
           { metricType: "new_clients", targetValue: Number(targetNewClients), unit: "count" },
         ]);
@@ -303,7 +303,7 @@ export function BusinessPlanScreen({ deviceClass = "phone" }: { deviceClass?: De
         subtitle={
           plan
             ? production.target > 0
-              ? `${productionPct} % produkce (${production.actual.toLocaleString("cs-CZ")} / ${production.target.toLocaleString("cs-CZ")} Kč)`
+              ? `${productionPct} % produkce (${production.actual.toLocaleString("cs-CZ")} / ${production.target.toLocaleString("cs-CZ")} BJ)`
               : "Nastav cíle produkce, schůzek a nových klientů."
             : "Plán pro tohle období zatím neexistuje."
         }
@@ -395,9 +395,9 @@ export function BusinessPlanScreen({ deviceClass = "phone" }: { deviceClass?: De
       {plan ? (
         <MetricGrid cols={isTablet ? 3 : 2}>
           <KpiCard
-            label="Produkce"
-            value={formatKpiValue(production.actual, "Kč")}
-            unit="Kč"
+            label="Produkce BJ"
+            value={formatKpiValue(production.actual, "BJ")}
+            unit="BJ"
             target={production.target || undefined}
             health={mapHealth(production.health)}
             icon={<TrendingUp size={14} />}
@@ -487,7 +487,7 @@ export function BusinessPlanScreen({ deviceClass = "phone" }: { deviceClass?: De
         <div className="space-y-3">
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
-              Produkce (Kč)
+              Produkce (BJ)
             </label>
             <input
               type="number"

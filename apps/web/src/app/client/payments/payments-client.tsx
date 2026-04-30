@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { CreditCard, Home, PiggyBank, QrCode, Shield, TrendingUp, Car } from "lucide-react";
 import type { PaymentInstruction } from "@/app/actions/payment-pdf";
@@ -31,6 +31,8 @@ type ClientPaymentsViewProps = {
   paymentsLoadFailed?: boolean;
   /** Skryje titulek/úvod (mobilní shell už má vlastní hlavičku). */
   embeddedInMobileShell?: boolean;
+  /** Mobilní shell potřebuje při QR sheetu schovat bottom nav. */
+  onModalOpenChange?: (open: boolean) => void;
 };
 
 function categoryIcon(cat: PaymentSegmentCategory) {
@@ -139,9 +141,18 @@ export function ClientPaymentsView({
   paymentInstructions,
   paymentsLoadFailed = false,
   embeddedInMobileShell = false,
+  onModalOpenChange,
 }: ClientPaymentsViewProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const viewKind = portalPaymentsViewKind(paymentsLoadFailed, paymentInstructions.length);
+
+  useEffect(() => {
+    onModalOpenChange?.(selectedIndex != null);
+  }, [onModalOpenChange, selectedIndex]);
+
+  useEffect(() => {
+    return () => onModalOpenChange?.(false);
+  }, [onModalOpenChange]);
 
   const selectedPayment = useMemo(() => {
     if (selectedIndex == null) return null;
@@ -225,11 +236,11 @@ export function ClientPaymentsView({
                         alt={logoOrIcon.alt}
                         width={96}
                         height={96}
-                        className="h-24 w-24 shrink-0 object-contain"
+                        className="h-16 w-16 shrink-0 rounded-2xl bg-white object-contain p-1.5 ring-1 ring-slate-100"
                         unoptimized
                       />
                     ) : (
-                      <div className={`h-24 w-24 rounded-2xl flex items-center justify-center shrink-0 ${colors.icon}`}>
+                      <div className={`h-16 w-16 rounded-2xl flex items-center justify-center shrink-0 ${colors.icon}`}>
                         <CatIcon size={28} strokeWidth={2} />
                       </div>
                     )}
@@ -316,6 +327,33 @@ export function ClientPaymentsView({
                             <span className="font-bold text-[color:var(--wp-text)] text-sm font-mono">{instruction.constantSymbol}</span>
                           </div>
                           <CopyMiniButton text={instruction.constantSymbol} label="Kopírovat" />
+                        </div>
+                      ) : null}
+                      {instruction.contractNumber ? (
+                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-[color:var(--wp-surface-card-border)]">
+                          <div className="min-w-0 flex-1">
+                            <span className="block text-[9px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-0.5">
+                              Číslo smlouvy
+                            </span>
+                            <span className="font-bold text-[color:var(--wp-text)] text-sm font-mono break-all">{instruction.contractNumber}</span>
+                          </div>
+                          <CopyMiniButton text={instruction.contractNumber} label="Kopírovat" />
+                        </div>
+                      ) : null}
+                      {instruction.bank ? (
+                        <div className="p-3 bg-white rounded-xl border border-[color:var(--wp-surface-card-border)]">
+                          <span className="block text-[9px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-0.5">
+                            Banka
+                          </span>
+                          <span className="font-bold text-[color:var(--wp-text)] text-sm">{instruction.bank}</span>
+                        </div>
+                      ) : null}
+                      {instruction.currency ? (
+                        <div className="p-3 bg-white rounded-xl border border-[color:var(--wp-surface-card-border)]">
+                          <span className="block text-[9px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-0.5">
+                            Měna
+                          </span>
+                          <span className="font-bold text-[color:var(--wp-text)] text-sm">{instruction.currency}</span>
                         </div>
                       ) : null}
                     </div>

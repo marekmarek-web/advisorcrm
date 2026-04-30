@@ -65,8 +65,9 @@ pnpm vitest run \
 say "Step 4/7 — Next.js build"
 pnpm build || die "pnpm build failed."
 
-say "Step 5/7 — cap sync"
+say "Step 5/7 — cap sync (+ SwiftPM app/app alias fix)"
 npx cap sync || die "cap sync failed."
+node scripts/fix-cap-spm-app-identity-alias.mjs || die "SPM path-alias fix failed."
 
 say "Step 6/7 — Push backend env sanity (warn-only)"
 if [ -n "${FCM_SERVICE_ACCOUNT_JSON:-}" ]; then

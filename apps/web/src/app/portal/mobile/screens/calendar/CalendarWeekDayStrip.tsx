@@ -22,7 +22,7 @@ export function CalendarWeekDayStrip({
 
   return (
     <div
-      className="flex gap-2 overflow-x-auto no-scrollbar scroll-px-1 pb-1 -mx-1 px-1 snap-x snap-mandatory"
+      className="-mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 no-scrollbar snap-x snap-mandatory sm:-mx-6 sm:px-6"
       role="tablist"
       aria-label="Dny v týdnu"
     >
@@ -30,31 +30,26 @@ export function CalendarWeekDayStrip({
         const key = formatDateLocal(d);
         const active = key === anchorKey;
         const isToday = key === todayStr;
-        const wn = d.toLocaleDateString("cs-CZ", { month: "short" });
+        const dayLabel = d.toLocaleDateString("cs-CZ", { weekday: "short" }).replace(".", "");
         return (
           <button
             key={key}
             type="button"
             role="tab"
             aria-selected={active}
+            aria-label={`${dayLabel} ${d.getDate()}${isToday ? ", dnes" : ""}`}
             onClick={() => onPickDay(d)}
             className={cx(
-              "min-h-[52px] min-w-[64px] shrink-0 snap-center rounded-2xl border px-2 py-2 text-center transition-all active:scale-[0.98]",
+              "grid h-[72px] w-[58px] shrink-0 snap-center place-items-center rounded-[24px] border text-center shadow-[0_14px_26px_-24px_rgba(15,23,42,.35)] transition-all active:scale-95",
               active
-                ? "border-indigo-300 bg-gradient-to-b from-indigo-50 to-violet-50 shadow-[var(--aidv-mobile-shadow-card-sm)]"
-                : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]",
+                ? "border-indigo-500 bg-indigo-600 text-white"
+                : "border-slate-200/70 bg-white/80 text-slate-600 backdrop-blur-xl",
             )}
           >
-            <span
-              className={cx(
-                "block text-[9px] font-black uppercase tracking-wide",
-                isToday ? "text-indigo-600" : "text-[color:var(--wp-text-tertiary)]",
-              )}
-            >
-              {d.toLocaleDateString("cs-CZ", { weekday: "short" })}
+            <span className="text-[10px] font-black uppercase tracking-[0.14em]">
+              {dayLabel}
             </span>
-            <span className="mt-0.5 block text-base font-black tabular-nums text-[#0a0f29]">{d.getDate()}</span>
-            <span className="text-[10px] font-semibold text-[color:var(--wp-text-secondary)]">{wn}</span>
+            <span className="-mt-1 text-[20px] font-black tabular-nums">{d.getDate()}</span>
           </button>
         );
       })}

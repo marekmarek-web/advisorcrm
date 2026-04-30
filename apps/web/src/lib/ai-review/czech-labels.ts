@@ -139,7 +139,7 @@ const EXTRA_REASON_CS: Record<string, string> = {
   combined_single_call: "Dokument zpracován v jednom kroku.",
   pipeline_defensive_legacy_extract: "Byla použita záložní metoda zpracování — zkontrolujte výsledek.",
   ai_review_router_manual: "Tento typ dokumentu vyžaduje vaše rozhodnutí.",
-  router_review_required_defensive: "Doporučujeme zkontrolovat výsledek zpracování.",
+  router_review_required_defensive: "Zkontrolujte výsledek zpracování.",
   product_family_text_override: "Rodina produktu byla upřesněna podle obsahu dokumentu.",
   router_input_text_override: "Zpracování bylo upraveno podle textu dokumentu.",
   combined_dip_dps_type_override: "Typ DIP/DPS byl upřesněn podle obsahu dokumentu.",
@@ -236,7 +236,30 @@ export function sanitizeAdvisorVisibleText(raw: string): string {
     "Kategorie produktu vyžaduje kontrolu.",
   );
 
+  t = t.replace(/\bInsured Count\b/gi, "Počet pojištěných");
+  t = t.replace(/\brecommendations\b/gi, "interní upozornění");
+  t = t.replace(/\bRecommendation\b/gi, "Interní upozornění");
+
   t = t.replace(/\s{2,}/g, " ").replace(/\s*·\s*·+/g, " · ").trim();
+
+  const sentences = t.match(/[^.!?]+[.!?]?/g);
+  if (sentences && sentences.length > 1) {
+    const seen = new Set<string>();
+    t = sentences
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .filter((sentence) => {
+        const key = sentence
+          .toLowerCase()
+          .replace(/[.!?]+$/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .join(" ");
+  }
   return t;
 }
 

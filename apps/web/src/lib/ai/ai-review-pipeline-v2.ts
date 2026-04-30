@@ -2056,10 +2056,26 @@ export async function runAiReviewV2Pipeline(
   // page and merge the rescued value back in with confidence capped at 0.7.
   // As of 2026-04, default ON (AI_REVIEW_PAGE_IMAGE_FALLBACK=false disables it).
   const pageImageFallbackEnabled = process.env.AI_REVIEW_PAGE_IMAGE_FALLBACK !== "false";
-  if (pageImageFallbackEnabled) {
+  const scanVisionWasActive =
+    (trace as unknown as Record<string, unknown>).scanVisionFallbackActivated === true;
+  const stillZeroRequiredFields = hasZeroRequiredFieldValues(
+    validated.data.extractedFields ?? {},
+    resolvedDocumentType
+  );
+  const aiReviewFastPathEnabled = process.env.AI_REVIEW_FAST_PATH !== "false";
+  const skipPageFallbackForFastPath =
+    aiReviewFastPathEnabled &&
+    allowCombinedSingleCall &&
+    !scanVisionWasActive &&
+    !stillZeroRequiredFields &&
+    typeof trace.extractionDurationMs === "number" &&
+    (validated.data.documentClassification?.confidence ?? 0) >= 0.7;
+  if (skipPageFallbackForFastPath) {
+    trace.warnings = [...(trace.warnings ?? []), "fast_path_skipped_page_image_fallback"];
+    (trace as Record<string, unknown>).aiReviewFastPath = "combined_text_no_page_image_fallback";
+  }
+  if (pageImageFallbackEnabled && !skipPageFallbackForFastPath) {
     try {
-      const scanVisionWasActive =
-        (trace as unknown as Record<string, unknown>).scanVisionFallbackActivated === true;
       const fallbackResult = await runPageImageFallbackForMissingRequired({
         envelope: validated.data,
         documentType: resolvedDocumentType,
@@ -2101,10 +2117,6 @@ export async function runAiReviewV2Pipeline(
   // (scanned/garbled PDF) but the extraction still has zero required-field values,
   // rasterize the first N pages and send them as a single multimodal batch. This
   // is the last-resort path before we give up on the document.
-  const stillZeroRequiredFields = hasZeroRequiredFieldValues(
-    validated.data.extractedFields ?? {},
-    resolvedDocumentType
-  );
   const scanVisionFallbackWasActive =
     (trace as unknown as Record<string, unknown>).scanVisionFallbackActivated === true;
   if (

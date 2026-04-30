@@ -17,23 +17,59 @@ import type {
   DashboardSummary,
   ContractWaitingForReview,
   MissingDataWarning,
+  DashboardPrioritySummary,
 } from "@/lib/ai/dashboard-types";
 
 export const dynamic = "force-dynamic";
 
-function buildFallbackSummary(
-  urgentCount: number,
-  reviewCount: number,
-  overdueCount: number,
-  dueTodayCount: number
-): string {
-  const parts: string[] = [];
-  if (overdueCount > 0) parts.push(`${overdueCount} úkolů po termínu`);
-  if (dueTodayCount > 0) parts.push(`${dueTodayCount} úkolů na dnes`);
-  if (reviewCount > 0) parts.push(`${reviewCount} smluv ke kontrole`);
-  if (urgentCount > 0 && parts.length === 0) parts.push(`${urgentCount} prioritních položek`);
-  if (parts.length === 0) return "Dnes nemáte urgentní položky. Prohlédněte si kalendář nebo úkoly.";
-  return `Máte ${parts.join(", ")}. Interní návrh priority: nejdříve vyřešit ${overdueCount > 0 ? "zpožděné úkoly" : reviewCount > 0 ? "review smluv" : "dnešní agendu"}.`;
+function buildPrioritySummary(params: {
+  urgentCount: number;
+  reviewCount: number;
+  overdueCount: number;
+  dueTodayCount: number;
+  blockedCount: number;
+  firstActionLabel?: string;
+}): DashboardPrioritySummary {
+  const { urgentCount, reviewCount, overdueCount, dueTodayCount, blockedCount, firstActionLabel } = params;
+  const primaryFocus =
+    overdueCount > 0
+      ? "Úkoly po termínu"
+      : blockedCount > 0
+        ? "Blokující položky"
+        : reviewCount > 0
+          ? "Review smluv"
+          : dueTodayCount > 0
+            ? "Dnešní úkoly"
+            : "Průběžná kontrola CRM";
+  const headline =
+    urgentCount === 0
+      ? "Dnes nevidím urgentní interní blokery."
+      : `Dnes řešte nejdřív ${primaryFocus.toLowerCase()} (${urgentCount} priorit).`;
+  return {
+    headline,
+    primaryFocus,
+    primaryActionLabel: firstActionLabel ?? (overdueCount > 0 ? "Otevřít úkoly" : reviewCount > 0 ? "Otevřít review" : "Otevřít asistenta"),
+    metrics: [
+      { key: "overdue", label: "Po termínu", value: overdueCount, tone: overdueCount > 0 ? "danger" : "neutral" },
+      { key: "today", label: "Dnes", value: dueTodayCount, tone: dueTodayCount > 0 ? "warning" : "neutral" },
+      { key: "review", label: "Review", value: reviewCount, tone: reviewCount > 0 ? "info" : "neutral" },
+      { key: "blocked", label: "Blokuje", value: blockedCount, tone: blockedCount > 0 ? "danger" : "neutral" },
+    ],
+  };
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 /** Fallback pro „Připomeň mi“ — nedodělky a věci neodeslané / neuzavřené klientovi. */
@@ -181,8 +217,28 @@ export async function GET(request: Request) {
 
     const blockedReviewCount = blockedReviews.length;
     const blockedPaymentCount = blockedPayments.length;
+    const blockedCount = blockedReviewCount + blockedPaymentCount;
+    const prioritySummary = buildPrioritySummary({
+      urgentCount: urgentItems.length,
+      reviewCount: pendingReviews.length,
+      overdueCount: tasksData.overdueTasks.length,
+      dueTodayCount: tasksData.tasksDueToday.length,
+      blockedCount,
+      firstActionLabel: suggestedActions[0]?.label,
+    });
 
-    let assistantSummaryText: string;
+    let assistantSummaryText: string = remindersMode
+      ? buildRemindersFallbackSummary({
+          overdueCount: tasksData.overdueTasks.length,
+          dueTodayCount: tasksData.tasksDueToday.length,
+          pendingReviewCount: pendingReviews.length,
+          blockedReviewCount,
+          blockedPaymentCount,
+          clientsAttentionCount: clientsNeedingAttention.length,
+          overdueSamples: tasksData.overdueTasks,
+          pendingSamples: pendingReviews.map((r) => ({ fileName: r.fileName })),
+        })
+      : prioritySummary.headline;
     const hasKey = Boolean(process.env.OPENAI_API_KEY?.trim());
 
     const remindersContext = [
@@ -216,10 +272,16 @@ Kontext: ${remindersContext}
 Buď konkrétní, bez úvodních frází typu „jistě“.`
         : `Jsi asistent poradce v CRM. Stručně (1-2 věty) shrň prioritní práci na dnešek. Kontext: ${urgentContext}. Odpověz pouze textem, bez odrážek.`;
 
-      const result = await createResponseSafe(prompt);
-      if (result.ok) {
+      const result = await withTimeout(
+        createResponseSafe(prompt, {
+          store: false,
+          routing: { category: "advisor_chat_fast", maxOutputTokens: remindersMode ? 360 : 180 },
+        }),
+        remindersMode ? 2500 : 1800,
+      );
+      if (result?.ok) {
         assistantSummaryText = result.text.slice(0, remindersMode ? 1200 : 500).trim();
-      } else {
+      } else if (result) {
         logOpenAICall({
           endpoint: remindersMode ? "dashboard-summary-reminders" : "dashboard-summary",
           model: "—",
@@ -227,42 +289,15 @@ Buď konkrétní, bez úvodních frází typu „jistě“.`
           success: false,
           error: (result as { error?: string }).error?.slice(0, 80),
         });
-        assistantSummaryText = remindersMode
-          ? buildRemindersFallbackSummary({
-              overdueCount: tasksData.overdueTasks.length,
-              dueTodayCount: tasksData.tasksDueToday.length,
-              pendingReviewCount: pendingReviews.length,
-              blockedReviewCount,
-              blockedPaymentCount,
-              clientsAttentionCount: clientsNeedingAttention.length,
-              overdueSamples: tasksData.overdueTasks,
-              pendingSamples: pendingReviews.map((r) => ({ fileName: r.fileName })),
-            })
-          : buildFallbackSummary(
-              urgentItems.length,
-              pendingReviews.length,
-              tasksData.overdueTasks.length,
-              tasksData.tasksDueToday.length
-            );
+      } else {
+        logOpenAICall({
+          endpoint: remindersMode ? "dashboard-summary-reminders-timeout" : "dashboard-summary-timeout",
+          model: "—",
+          latencyMs: Date.now() - start,
+          success: false,
+          error: "timeout",
+        });
       }
-    } else {
-      assistantSummaryText = remindersMode
-        ? buildRemindersFallbackSummary({
-            overdueCount: tasksData.overdueTasks.length,
-            dueTodayCount: tasksData.tasksDueToday.length,
-            pendingReviewCount: pendingReviews.length,
-            blockedReviewCount,
-            blockedPaymentCount,
-            clientsAttentionCount: clientsNeedingAttention.length,
-            overdueSamples: tasksData.overdueTasks,
-            pendingSamples: pendingReviews.map((r) => ({ fileName: r.fileName })),
-          })
-        : buildFallbackSummary(
-            urgentItems.length,
-            pendingReviews.length,
-            tasksData.overdueTasks.length,
-            tasksData.tasksDueToday.length
-          );
     }
 
     const blockedItems = [...blockedReviews, ...blockedPayments];
@@ -284,6 +319,10 @@ Buď konkrétní, bez úvodních frází typu „jistě“.`
       blockedItems,
       paymentsBlockedForPortal: blockedPayments,
       communicationSuggestions,
+      prioritySummary: {
+        ...prioritySummary,
+        headline: assistantSummaryText || prioritySummary.headline,
+      },
     };
 
     return NextResponse.json(summary);

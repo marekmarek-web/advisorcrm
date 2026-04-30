@@ -228,16 +228,14 @@ async function collectUserStats(
     tx
       .select({
         count: sql<number>`count(*)::int`,
-        totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
-        totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`,
+        totalBj: sql<number>`coalesce(sum(${contracts.bjUnits}::numeric), 0)`,
       })
       .from(contracts)
       .where(and(eq(contracts.tenantId, tenantId), eq(contracts.advisorId, userId), contractProdDateGte(startStr), contractProdDateLt(endStr))),
     tx
       .select({
         count: sql<number>`count(*)::int`,
-        totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
-        totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`,
+        totalBj: sql<number>`coalesce(sum(${contracts.bjUnits}::numeric), 0)`,
       })
       .from(contracts)
       .where(and(eq(contracts.tenantId, tenantId), eq(contracts.advisorId, userId), contractProdDateGte(prevStartStr), contractProdDateLt(prevEndStr))),
@@ -300,9 +298,9 @@ async function collectUserStats(
   ]);
 
   const unitsThisPeriod = Number(contractsCur[0]?.count ?? 0);
-  const productionThisPeriod = Number(contractsCur[0]?.totalAnnual ?? contractsCur[0]?.totalPremium ?? 0) || Number(contractsCur[0]?.totalPremium ?? 0);
+  const productionThisPeriod = Number(contractsCur[0]?.totalBj ?? 0);
   const prevUnits = Number(contractsPrev[0]?.count ?? 0);
-  const prevProduction = Number(contractsPrev[0]?.totalAnnual ?? contractsPrev[0]?.totalPremium ?? 0) || Number(contractsPrev[0]?.totalPremium ?? 0);
+  const prevProduction = Number(contractsPrev[0]?.totalBj ?? 0);
 
   const meetingsThisPeriod = eventCurRows.filter((r) => r.eventType === "schuzka").length;
   const meetingsPrev = eventPrevRows.filter((r) => r.eventType === "schuzka").length;
@@ -727,7 +725,7 @@ export async function getAdvisorProductionMix(
     const rows = await tx
       .select({
         segment: contracts.segment,
-        amount: sql<number>`coalesce(sum(coalesce(${contracts.premiumAnnual}::numeric, ${contracts.premiumAmount}::numeric, 0)), 0)`,
+        amount: sql<number>`coalesce(sum(${contracts.bjUnits}::numeric), 0)`,
       })
       .from(contracts)
       .where(
@@ -949,8 +947,7 @@ export async function getTeamPerformanceOverTime(
       const rows = await tx
         .select({
           count: sql<number>`count(*)::int`,
-          totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
-          totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`,
+          totalBj: sql<number>`coalesce(sum(${contracts.bjUnits}::numeric), 0)`,
         })
         .from(contracts)
         .where(
@@ -962,7 +959,7 @@ export async function getTeamPerformanceOverTime(
           )
         );
       const units = Number(rows[0]?.count ?? 0);
-      const production = Number(rows[0]?.totalAnnual ?? rows[0]?.totalPremium ?? 0) || Number(rows[0]?.totalPremium ?? 0);
+      const production = Number(rows[0]?.totalBj ?? 0);
       points.push({ label, units, production });
     }
 
@@ -1097,8 +1094,7 @@ export async function getTeamMemberDetail(
       const rows = await tx
         .select({
           count: sql<number>`count(*)::int`,
-          totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
-          totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`,
+          totalBj: sql<number>`coalesce(sum(${contracts.bjUnits}::numeric), 0)`,
         })
         .from(contracts)
         .where(
@@ -1110,7 +1106,7 @@ export async function getTeamMemberDetail(
           )
         );
       const units = Number(rows[0]?.count ?? 0);
-      const production = Number(rows[0]?.totalAnnual ?? rows[0]?.totalPremium ?? 0) || Number(rows[0]?.totalPremium ?? 0);
+      const production = Number(rows[0]?.totalBj ?? 0);
       points.push({ label, units, production });
     }
     return points;

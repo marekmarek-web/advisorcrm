@@ -15,7 +15,6 @@ import {
 } from "@/lib/contracts/contract-segment-wizard-config";
 import {
   annualPremiumFromMonthlyInput,
-  monthlyPremiumFromAnnualInput,
 } from "@/lib/contracts/annual-premium-from-monthly";
 import {
   PRODUCT_CATEGORIES,
@@ -69,7 +68,7 @@ function computeFieldsForFrequency(
   if (frequency === "annual") {
     return {
       premiumAnnual: v,
-      premiumAmount: monthlyPremiumFromAnnualInput(v),
+      premiumAmount: "",
     };
   }
   if (frequency === "quarterly") {
@@ -77,7 +76,7 @@ function computeFieldsForFrequency(
     if (!Number.isFinite(annual)) return { premiumAmount: v, premiumAnnual: "" };
     const annualStr = annual.toFixed(2);
     return {
-      premiumAmount: monthlyPremiumFromAnnualInput(annualStr),
+      premiumAmount: "",
       premiumAnnual: annualStr,
     };
   }
@@ -86,7 +85,7 @@ function computeFieldsForFrequency(
     if (!Number.isFinite(annual)) return { premiumAmount: v, premiumAnnual: "" };
     const annualStr = annual.toFixed(2);
     return {
-      premiumAmount: monthlyPremiumFromAnnualInput(annualStr),
+      premiumAmount: "",
       premiumAnnual: annualStr,
     };
   }
@@ -142,11 +141,11 @@ function amountHelperText(frequency: ContractPaymentFrequency): string {
     case "monthly":
       return "Roční pojistné se dopočítá automaticky (× 12).";
     case "annual":
-      return "Měsíční pojistné se dopočítá automaticky (÷ 12).";
+      return "Roční platba — měsíční pojistné se nepočítá.";
     case "quarterly":
-      return "Roční = zadaná částka × 4. Měsíční se dopočítá automaticky.";
+      return "Roční = zadaná částka × 4. Měsíční pojistné se nepočítá.";
     case "semiannual":
-      return "Roční = zadaná částka × 2. Měsíční se dopočítá automaticky.";
+      return "Roční = zadaná částka × 2. Měsíční pojistné se nepočítá.";
     case "one_time":
       return "Jednorázová platba — roční ekvivalent se nepočítá.";
   }
@@ -254,7 +253,7 @@ export function ContractParametersFields({ form, setForm, classes }: Props) {
                   setForm((f) => ({
                     ...f,
                     premiumAnnual: v,
-                    premiumAmount: monthlyPremiumFromAnnualInput(v),
+                    premiumAmount: "",
                   }));
                   return;
                 }

@@ -74,6 +74,7 @@ function maskForLog(value: unknown): string {
 export async function runContractReviewProcessing(params: RunContractReviewProcessingParams): Promise<void> {
   const { id, userId, tenantId, fileUrl, mimeType, storagePath, requestContext, processingStartedAtMs } =
     params;
+  const phaseTimings: Record<string, number> = {};
 
   let preprocessedUrl = fileUrl;
   let adobePreprocessResult: Awaited<ReturnType<typeof preprocessForAiExtraction>> | null = null;
@@ -170,6 +171,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
   }).catch(() => {});
 
   if (adobePreprocessResult) {
+    const scanGateStartedAt = Date.now();
     const gate = await evaluateContractReviewScanGate(preprocessedUrl, mimeType, {
       markdownContent: adobePreprocessResult.markdownContent,
       readabilityScore: adobePreprocessResult.readabilityScore,
@@ -177,6 +179,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
       preprocessMode: adobePreprocessResult.preprocessMode,
       textQualityIsGarbage: adobePreprocessResult.textQualityIsGarbage,
     });
+    phaseTimings.scanGateDurationMs = Date.now() - scanGateStartedAt;
     if (gate.defer) {
       await updateContractReview(id, tenantId, {
         processingStatus: "scan_pending_ocr",
@@ -192,6 +195,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
           readabilityScore: adobePreprocessResult.readabilityScore,
           ocrConfidenceEstimate: adobePreprocessResult.ocrConfidenceEstimate,
           ocrScanPendingSinceMs: Date.now(),
+          phaseTimings,
         },
       });
       await logAudit({
@@ -221,16 +225,20 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
   // Both run BEFORE the main pipeline so that:
   // 1. Bundle hints improve extraction-time routing.
   // 2. Adobe structured data can replace markdown as core documentText source.
+  const segmentationStartedAt = Date.now();
   const earlyPacketSegmentation = segmentDocumentPacket(
     adobePreprocessResult?.markdownContent ?? "",
     adobePreprocessResult?.pageCountEstimate ?? null,
     path.basename(storagePath),
   );
+  phaseTimings.packetSegmentationDurationMs = Date.now() - segmentationStartedAt;
   const earlyPacketMeta = earlyPacketSegmentation.packetMeta;
 
   // Fetch Adobe structured data early so it can power core extraction.
   // Also used later in subdocument orchestration (reused, not re-fetched).
+  const structuredFetchStartedAt = Date.now();
   const earlyAdobeStructured = await fetchAdobeStructuredDataByStoragePath(storagePath, tenantId).catch(() => null);
+  phaseTimings.adobeStructuredFetchDurationMs = Date.now() - structuredFetchStartedAt;
   const earlyStructuredResult = earlyAdobeStructured?.structured ?? null;
 
   // Enrich markdown-derived candidates with precise page numbers from structured headings.
@@ -282,6 +290,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
   // contamination at the LLM reasoning level.
   let bundleSectionTexts: BundleSectionTexts | null = null;
   if (earlyPacketMeta.isBundle && enrichedCandidates.length > 0) {
+    const sectionSliceStartedAt = Date.now();
     const sliceText = structuredSource?.fullText ?? adobePreprocessResult?.markdownContent ?? "";
     const sliceTotalPages =
       earlyStructuredResult?.totalPages ?? adobePreprocessResult?.pageCountEstimate ?? null;
@@ -320,6 +329,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     if (hasAnySectionText) {
       bundleSectionTexts = { contractualText, healthText, investmentText, paymentText, attachmentText };
     }
+    phaseTimings.bundleSectionSlicingDurationMs = Date.now() - sectionSliceStartedAt;
   }
 
   // Prompt Builder templates may declare section variables even for non-bundle docs.
@@ -330,11 +340,14 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
 
   let pdfAcroFormFieldRows: PdfFormFieldRow[] | null = null;
   if (mimeType === "application/pdf" && preprocessedUrl) {
+    const acroFormStartedAt = Date.now();
     try {
       const rows = await extractPdfAcroFormFieldsFromUrl(preprocessedUrl);
       pdfAcroFormFieldRows = rows.length > 0 ? rows : null;
     } catch {
       pdfAcroFormFieldRows = null;
+    } finally {
+      phaseTimings.pdfAcroFormDurationMs = Date.now() - acroFormStartedAt;
     }
   }
 
@@ -432,6 +445,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
   // Best-effort: errors are captured as warnings, never thrown.
   let subdocOrchestrationRoute = describeSubdocumentExtractionRoute(packetMeta);
   if (packetMeta.isBundle && markdownAvailable) {
+    const subdocStartedAt = Date.now();
     try {
       // Resolve physical page-level text map for exact_pages / adobe_structured isolation.
       // Priority: Adobe structured > DB-stored > markdown rebuild.
@@ -486,6 +500,8 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
         reviewId: id,
         error: orchMsg.slice(0, 200),
       });
+    } finally {
+      phaseTimings.subdocumentOrchestrationDurationMs = Date.now() - subdocStartedAt;
     }
   }
 
@@ -563,11 +579,13 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     { blockPortalPayment: pipelineResult.processingStatus === "blocked" }
   );
 
+  const relatedMatchStartedAt = Date.now();
   const [matchedHouseholds, matchedDeals, matchedContracts] = await Promise.all([
     findMatchedHouseholds(tenantId, clientMatchCandidates),
     findMatchedDeals(tenantId, clientMatchCandidates, contractNumber),
     findMatchedExistingContracts(tenantId, data, clientMatchCandidates),
   ]);
+  phaseTimings.relatedEntityMatchDurationMs = Date.now() - relatedMatchStartedAt;
 
   data.candidateMatches = {
     matchedClients: clientMatchCandidates.map((c) => ({
@@ -677,6 +695,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     ...pipelineResult.extractionTrace,
     ...advisorSummaryTrace,
     ...providerMeta,
+    phaseTimings,
     preprocessDurationMs,
     pipelineDurationMs,
     clientMatchDurationMs,

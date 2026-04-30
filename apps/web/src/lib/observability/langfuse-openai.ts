@@ -69,7 +69,13 @@ export function usageFromOpenAiResponsesPayload(response: unknown):
   };
 }
 
-type RoutingCategory = "default" | "copilot" | "ai_review" | "advisor_chat";
+type RoutingCategory =
+  | "default"
+  | "copilot"
+  | "ai_review"
+  | "advisor_chat"
+  | "advisor_chat_fast"
+  | "advisor_intent";
 
 /**
  * One observation per OpenAI Responses API invocation (trace + generation).

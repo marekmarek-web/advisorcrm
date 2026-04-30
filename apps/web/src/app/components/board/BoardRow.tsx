@@ -32,13 +32,7 @@ function BoardRowComponent({
 }: BoardRowProps) {
   return (
     <div
-      role="button"
-      tabIndex={0}
-      className={`b-row b-data-row${selected ? " is-selected" : ""}${draggable ? " cursor-grab active:cursor-grabbing" : onOpenItem ? " cursor-pointer" : ""}`}
-      onClick={() => onOpenItem?.(item.id)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && onOpenItem) onOpenItem(item.id);
-      }}
+      className={`b-row b-data-row${selected ? " is-selected" : ""}${draggable ? " cursor-grab active:cursor-grabbing" : ""}`}
       draggable={draggable}
       onDragStart={onDragStart}
       onDragOver={
@@ -80,7 +74,8 @@ function BoardRowComponent({
             onOpenItem?.(item.id);
           }}
           className="b-action-btn"
-          title="Otevřít detail"
+          aria-label="Otevřít detail položky"
+          title="Otevřít detail položky"
         >
           <MessageSquare size={15} />
         </button>

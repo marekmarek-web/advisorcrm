@@ -7,6 +7,7 @@ import { BIRTHDAY_DECOR_IMAGE_FILENAMES } from "./types";
 import { absoluteUrlFromPublicPath } from "./public-urls";
 
 const EMAIL_LOGO_CANDIDATES = [
+  "logos/Aidvisora logo new svg.svg",
   "email/aidvisory-mark.png",
   "email/aidvisory-mark.svg",
   "aidvisora-logo-a.png",

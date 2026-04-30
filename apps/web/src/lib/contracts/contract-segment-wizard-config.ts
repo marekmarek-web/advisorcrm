@@ -42,7 +42,7 @@ export function segmentShowsPremiumOrContributionFields(segment: string): boolea
   return getSegmentUiGroup(segment) !== "lending";
 }
 
-/** Majetek (MAJ): v kroku Parametry je primární vstup roční pojistné, měsíční se dopočítá. */
+/** Majetek (MAJ): v kroku Parametry je primární vstup roční pojistné, bez dopočtu měsíční platby. */
 export function segmentUsesAnnualPremiumPrimaryInput(segment: string): boolean {
   return isContractSegmentCode(segment) && segment === "MAJ";
 }
@@ -64,7 +64,7 @@ export function getMonthlyAmountHelperText(segment: string, paymentType?: "one_t
     return "Roční příspěvek se dopočítá automaticky (× 12).";
   }
   if (segmentUsesAnnualPremiumPrimaryInput(segment)) {
-    return "Měsíční pojistné se dopočítá automaticky (÷ 12).";
+    return "Roční platba — měsíční pojistné se nepočítá.";
   }
   return "Roční pojistné se dopočítá automaticky (× 12).";
 }

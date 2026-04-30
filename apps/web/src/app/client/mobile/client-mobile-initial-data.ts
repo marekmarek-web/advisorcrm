@@ -15,6 +15,7 @@ export type ClientMobileInitialData = {
   contactId: string;
   fullName: string;
   advisor: ClientAdvisorInfo | null;
+  advisorBookingPath: string | null;
   profile: {
     firstName: string;
     lastName: string;
@@ -65,6 +66,7 @@ export function toClientMobileInitialData(bundle: ClientPortalSessionBundle): Cl
     contactId: bundle.contactId,
     fullName: bundle.fullName,
     advisor: bundle.advisor,
+    advisorBookingPath: bundle.advisorBookingPath,
     profile: c
       ? {
           firstName: c.firstName ?? "",

@@ -52,6 +52,7 @@ getNgrokUrl()
       stdio: "inherit",
       env: { ...process.env, CAPACITOR_SERVER_URL: serverUrl },
     });
+    execSync("node scripts/fix-cap-spm-app-identity-alias.mjs", { stdio: "inherit" });
   })
   .catch((err) => {
     console.error(err.message);

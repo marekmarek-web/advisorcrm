@@ -1,3 +1,4 @@
+import type { InsuredRiskRecord } from "./document-packet-types";
 import type { DocumentReviewEnvelope } from "./document-review-types";
 import { parseMoneyInput } from "./contract-draft-premiums";
 import {
@@ -13,6 +14,7 @@ export type UserDeclaredDocumentIntent = {
 };
 
 type FieldCell = { value?: unknown; status?: string; confidence?: number; evidenceSnippet?: string; sourcePage?: number };
+type PersonPremiumRow = { label: string; amount: number; frequency: "monthly" };
 
 export function normalizeUserDeclaredDocumentIntent(raw: unknown): UserDeclaredDocumentIntent {
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
@@ -149,6 +151,10 @@ function normalizeCzechDate(raw: string | null): string | undefined {
   return `${m[1].padStart(2, "0")}.${m[2].padStart(2, "0")}.${m[3]}`;
 }
 
+function roughlyEqual(a: number, b: number): boolean {
+  return Math.abs(a - b) < 1;
+}
+
 function extractInsuredPersonsFromDocumentText(documentText: string): Array<Record<string, unknown>> {
   const text = normalizeDocumentText(documentText);
   if (!text.trim()) return [];
@@ -217,6 +223,185 @@ function normalizePerson(raw: Record<string, unknown>, index: number): Record<st
   };
 }
 
+function premiumValueFromEnvelope(env: DocumentReviewEnvelope, key: "totalMonthlyPremium" | "totalAnnualPremium"): number | null {
+  const rawPremium = (env as unknown as { premium?: Record<string, unknown> | null }).premium;
+  return parseMoneyInput(rawPremium?.[key]);
+}
+
+function resolvePremiumAggregation(params: {
+  explicitMonthly: number | null;
+  currentMonthly: number | null;
+  currentPremiumAmount: number | null;
+  explicitAnnual: number | null;
+  personPremiums: PersonPremiumRow[];
+}): {
+  totalMonthly: number | null;
+  totalAnnual: number | null;
+  source: string;
+  warnings: string[];
+} {
+  const { explicitMonthly, currentMonthly, currentPremiumAmount, explicitAnnual, personPremiums } = params;
+  const sum = personPremiums.reduce((acc, p) => acc + p.amount, 0);
+  const hasMultiPersonPremiums = personPremiums.length >= 2 && sum > 0;
+  const warnings: string[] = [];
+
+  if (hasMultiPersonPremiums) {
+    const conflictingMonthly = [explicitMonthly, currentMonthly, currentPremiumAmount]
+      .filter((n): n is number => n != null && !roughlyEqual(n, sum));
+    for (const monthly of conflictingMonthly) {
+      const looksLikeSingleInsured = personPremiums.some((p) => roughlyEqual(p.amount, monthly));
+      warnings.push(
+        looksLikeSingleInsured
+          ? `Celkové pojistné bylo v extrakci shodné s pojistným jedné pojištěné osoby (${monthly}); použil se součet všech pojištěných (${sum}).`
+          : `Celkové pojistné v extrakci (${monthly}) se liší od součtu pojištěných (${sum}).`,
+      );
+    }
+    const annualFromSum = Math.round(sum * 12 * 100) / 100;
+    if (explicitAnnual != null && !roughlyEqual(explicitAnnual, annualFromSum)) {
+      warnings.push(`Roční pojistné v extrakci (${explicitAnnual}) neodpovídá součtu pojištěných za rok (${annualFromSum}).`);
+    }
+    return {
+      totalMonthly: sum,
+      totalAnnual: annualFromSum,
+      source: "sum_of_insured_persons",
+      warnings,
+    };
+  }
+
+  const totalMonthly = explicitMonthly ?? (sum > 0 ? sum : currentMonthly ?? currentPremiumAmount);
+  const totalAnnual = explicitAnnual ?? (totalMonthly != null ? Math.round(totalMonthly * 12 * 100) / 100 : null);
+  return {
+    totalMonthly,
+    totalAnnual,
+    source: explicitMonthly != null ? "explicit_total" : sum > 0 ? "sum_of_insured_persons" : "manual_override",
+    warnings,
+  };
+}
+
+function riskTypeFromLabel(label: string): string {
+  const l = label.toLowerCase();
+  if (l.includes("smrt")) return "death";
+  if (l.includes("invalid")) return "disability";
+  if (l.includes("trvalé následky") || l.includes("trvale nasledky")) return "accident_permanent_consequences";
+  if (l.includes("pracovní neschopnost") || l.includes("pracovni neschopnost")) return "incapacity";
+  if (l.includes("soběstačnost") || l.includes("sobestacnost")) return "dependency";
+  if (l.includes("úraz") || l.includes("uraz")) return "accident";
+  return "other";
+}
+
+function extractLifeRiskRowsFromPersonWindow(
+  window: string,
+  person: Record<string, unknown>,
+): InsuredRiskRecord[] {
+  const lines = window
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const out: InsuredRiskRecord[] = [];
+  let buffer = "";
+  const rowPattern = /^(.+?)\s+([A-Z0-9]{3,})\s+(\d{1,2}\.\s*\d{1,2}\.\s*\d{4})\s+(.+?)\s+((?:[\d\s.,]+)\s*Kč|V ceně pojištění)$/i;
+  const skipPattern =
+    /^(Přehled|Kód\s+tarifu|Konec\s+pojištění|Pojistná\s+částka|Měsíční\s+pojistné|Celkové\s+běžné|Strana|Osobní\s+dotazník|Zdravotní\s+dotazník)/i;
+
+  const flush = () => {
+    const candidate = buffer.replace(/\s+/g, " ").trim();
+    buffer = "";
+    if (!candidate || skipPattern.test(candidate)) return;
+    const match = rowPattern.exec(candidate);
+    if (!match) return;
+    const label = match[1].trim();
+    if (!label || /^Virtuální klinika/i.test(label)) return;
+    out.push({
+      linkedParticipantName: typeof person.fullName === "string" ? person.fullName : null,
+      linkedParticipantRole: typeof person.role === "string" ? person.role as InsuredRiskRecord["linkedParticipantRole"] : null,
+      riskType: riskTypeFromLabel(label),
+      riskLabel: label,
+      termEnd: normalizeCzechDate(match[3]) ?? match[3].trim(),
+      insuredAmount: match[4].trim(),
+      premium: match[5].trim(),
+    });
+  };
+
+  for (const line of lines) {
+    if (skipPattern.test(line)) {
+      flush();
+      continue;
+    }
+    buffer = buffer ? `${buffer} ${line}` : line;
+    if (rowPattern.test(buffer.replace(/\s+/g, " ").trim())) flush();
+  }
+  flush();
+  return out;
+}
+
+function extractInsuredRisksFromDocumentText(
+  documentText: string,
+  insuredPersons: Array<Record<string, unknown>>,
+): InsuredRiskRecord[] {
+  const text = normalizeDocumentText(documentText);
+  if (!text.trim() || insuredPersons.length === 0) return [];
+  const out: InsuredRiskRecord[] = [];
+  const sortedPersons = [...insuredPersons].sort((a, b) => Number(a.order ?? 0) - Number(b.order ?? 0));
+
+  for (const person of sortedPersons) {
+    const order = Number(person.order);
+    if (!Number.isFinite(order) || order <= 0) continue;
+    const headingIndex = text.indexOf(`${order}. pojištěný`);
+    if (headingIndex < 0) continue;
+    const nextHeading = text.indexOf(`${order + 1}. pojištěný`, headingIndex + 1);
+    const premiumNeedle = `Celkové běžné měsíční pojistné pro ${order}. pojištěného`;
+    const premiumIndex = text.indexOf(premiumNeedle, headingIndex);
+    const hardEndCandidates = [
+      nextHeading,
+      premiumIndex >= 0 ? premiumIndex + 220 : -1,
+      text.indexOf("Osobní dotazník", headingIndex + 1),
+      text.indexOf("Zdravotní dotazník", headingIndex + 1),
+    ].filter((i) => i > headingIndex);
+    const end = hardEndCandidates.length > 0 ? Math.min(...hardEndCandidates) : headingIndex + 5000;
+    out.push(...extractLifeRiskRowsFromPersonWindow(text.slice(headingIndex, end), person));
+  }
+
+  return out;
+}
+
+function existingInsuredRisks(env: DocumentReviewEnvelope): InsuredRiskRecord[] {
+  const root = (env as unknown as { insuredRisks?: unknown }).insuredRisks;
+  if (Array.isArray(root)) return root.filter((r): r is InsuredRiskRecord => !!r && typeof r === "object" && !Array.isArray(r));
+  const rawField = fieldValue(env, "insuredRisks");
+  if (Array.isArray(rawField)) return rawField.filter((r): r is InsuredRiskRecord => !!r && typeof r === "object" && !Array.isArray(r));
+  if (typeof rawField === "string" && rawField.trim()) {
+    try {
+      const parsed = JSON.parse(rawField) as unknown;
+      if (Array.isArray(parsed)) return parsed.filter((r): r is InsuredRiskRecord => !!r && typeof r === "object" && !Array.isArray(r));
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function riskKey(r: InsuredRiskRecord): string {
+  return [
+    String(r.linkedParticipantName ?? "").toLowerCase(),
+    String(r.riskLabel ?? "").toLowerCase(),
+    String(r.insuredAmount ?? "").toLowerCase(),
+    String(r.termEnd ?? "").toLowerCase(),
+  ].join("|").replace(/\s+/g, " ");
+}
+
+function mergeInsuredRisks(existing: InsuredRiskRecord[], fallback: InsuredRiskRecord[]): InsuredRiskRecord[] {
+  const out: InsuredRiskRecord[] = [];
+  const seen = new Set<string>();
+  for (const risk of [...existing, ...fallback]) {
+    if (!risk?.riskLabel) continue;
+    const key = riskKey(risk);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(risk);
+  }
+  return out;
+}
+
 export function validatePremiumAggregation(env: DocumentReviewEnvelope, documentText = ""): void {
   env.extractedFields = env.extractedFields ?? {};
   const textCount = /Počet\s+pojištěných:\s*([^\n]+)/i.exec(normalizeDocumentText(documentText))?.[1];
@@ -244,35 +429,49 @@ export function validatePremiumAggregation(env: DocumentReviewEnvelope, document
       amount: parseMoneyInput(p.monthlyPremium),
       frequency: "monthly",
     }))
-    .filter((p): p is { label: string; amount: number; frequency: "monthly" } => p.amount != null);
+    .filter((p): p is PersonPremiumRow => p.amount != null);
 
   const explicitTotal = parseMoneyInput(fieldValue(env, "totalContractMonthlyPremium"));
   const currentTotal = parseMoneyInput(fieldValue(env, "totalMonthlyPremium"));
-  const sum = personPremiums.reduce((acc, p) => acc + p.amount, 0);
-  const total = explicitTotal ?? (sum > 0 ? sum : currentTotal);
-  const source = explicitTotal != null ? "explicit_total" : sum > 0 ? "sum_of_insured_persons" : "manual_override";
-  const validationWarnings: string[] = [];
+  const currentPremiumAmount = parseMoneyInput(fieldValue(env, "premiumAmount"));
+  const explicitAnnual =
+    parseMoneyInput(fieldValue(env, "totalContractAnnualPremium")) ??
+    premiumValueFromEnvelope(env, "totalAnnualPremium") ??
+    parseMoneyInput(fieldValue(env, "totalAnnualPremium")) ??
+    parseMoneyInput(fieldValue(env, "annualPremium"));
+  const aggregation = resolvePremiumAggregation({
+    explicitMonthly: explicitTotal,
+    currentMonthly: currentTotal,
+    currentPremiumAmount,
+    explicitAnnual,
+    personPremiums,
+  });
+  const validationWarnings: string[] = [...aggregation.warnings];
 
   if (declaredInsuredCount != null && insuredPersons.length > 0 && declaredInsuredCount !== insuredPersons.length) {
     validationWarnings.push(`Dokument deklaruje ${declaredInsuredCount} pojištěných, extrakce vrátila ${insuredPersons.length}.`);
   }
-  if (explicitTotal != null && sum > 0 && Math.abs(explicitTotal - sum) >= 1) {
-    validationWarnings.push(`Celkové pojistné v dokumentu (${explicitTotal}) se liší od součtu pojištěných (${sum}).`);
-  }
 
-  if (total != null && total > 0) {
+  if (aggregation.totalMonthly != null && aggregation.totalMonthly > 0) {
     const premium = {
       frequency: "monthly",
-      totalMonthlyPremium: total,
-      totalAnnualPremium: Math.round(total * 12 * 100) / 100,
-      source,
+      totalMonthlyPremium: aggregation.totalMonthly,
+      totalAnnualPremium: aggregation.totalAnnual,
+      source: aggregation.source,
       calculationBreakdown: personPremiums,
       validationWarnings,
     };
     (env as unknown as { premium: unknown }).premium = premium;
-    setField(env, "totalMonthlyPremium", String(total));
-    setField(env, "premiumAmount", String(total));
+    setField(env, "totalMonthlyPremium", String(aggregation.totalMonthly));
+    setField(env, "premiumAmount", String(aggregation.totalMonthly));
     setField(env, "annualPremium", String(premium.totalAnnualPremium));
+  }
+
+  const risksFromText = extractInsuredRisksFromDocumentText(documentText, insuredPersons);
+  if (risksFromText.length > 0) {
+    const mergedRisks = mergeInsuredRisks(existingInsuredRisks(env), risksFromText);
+    (env as unknown as { insuredRisks: InsuredRiskRecord[] }).insuredRisks = mergedRisks;
+    setField(env, "insuredRisks", mergedRisks, 0.95);
   }
 
   if (validationWarnings.length > 0) {

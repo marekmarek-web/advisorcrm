@@ -15,6 +15,7 @@ import {
   contractUploadReviews,
   tenants,
   clientPaymentSetups,
+  auditLog,
 } from "db";
 import { eq, and, asc, or, isNull, inArray, desc, sql } from "db";
 import { contractSegments } from "db";
@@ -911,6 +912,87 @@ export async function updateContract(
     console.error("[updateContract]", { ...pgErrorMeta(e), message: msg, err: e });
     throw new Error(e instanceof Error ? e.message : "Smlouvu se nepodařilo upravit.");
   }
+}
+
+export type ManualProductionBjOverrideResult =
+  | { ok: true; id: string; productionBj: number }
+  | { ok: false; message: string };
+
+/**
+ * Ruční override produkce v BJ. Nemění žádné klientské částky (`premium_*`
+ * ani `portfolio_attributes`); zapisuje pouze derived BJ + auditní snapshot.
+ */
+export async function setManualProductionBjOverride(
+  contractId: string,
+  productionBj: number,
+  reason: string,
+): Promise<ManualProductionBjOverrideResult> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "contacts:write")) {
+    return { ok: false, message: "Nemáte oprávnění upravovat produkci." };
+  }
+  const normalizedReason = reason.trim();
+  if (!contractId.trim()) return { ok: false, message: "Chybí identifikátor smlouvy." };
+  if (!Number.isFinite(productionBj) || productionBj < 0) {
+    return { ok: false, message: "Produkce BJ musí být nezáporné číslo." };
+  }
+  if (normalizedReason.length < 5) {
+    return { ok: false, message: "U ruční úpravy produkce je potřeba uvést důvod." };
+  }
+
+  const roundedBj = Math.round(productionBj * 10000) / 10000;
+  const snapshot = {
+    formula: "manual_override" as const,
+    amountCzk: 0,
+    coefficient: null,
+    divisor: null,
+    matchedRule: {
+      productCategory: "MANUAL_OVERRIDE",
+      partnerPattern: null,
+      subtype: null,
+      tenantScope: "tenant" as const,
+    },
+    notes: ["Produkce BJ byla ručně upravena oprávněným uživatelem."],
+    manualOverrideReason: normalizedReason,
+    manualOverrideByUserId: auth.userId,
+    computedAt: new Date().toISOString(),
+  };
+
+  const updated = await withTenantContextFromAuth(auth, async (tx) => {
+    const [row] = await tx
+      .update(contracts)
+      .set({
+        bjUnits: String(roundedBj),
+        bjCalculation: snapshot,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.id, contractId)))
+      .returning({ id: contracts.id });
+
+    if (row?.id) {
+      await tx.insert(auditLog).values({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        action: "manual_production_bj_override",
+        entityType: "contract",
+        entityId: contractId,
+        meta: {
+          productionBj: roundedBj,
+          reason: normalizedReason,
+        },
+      });
+    }
+    return row;
+  });
+
+  if (!updated?.id) return { ok: false, message: "Smlouva nebyla nalezena." };
+  try {
+    await logActivity("contract", contractId, "manual_production_bj_override", {
+      productionBj: roundedBj,
+      reason: normalizedReason,
+    });
+  } catch {}
+  return { ok: true, id: updated.id, productionBj: roundedBj };
 }
 
 export async function deleteContract(id: string) {

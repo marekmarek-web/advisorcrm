@@ -36,6 +36,8 @@ export type ClientPortalSessionBundle = {
   fullName: string;
   contact: ClientPortalContactRow | null;
   advisor: ClientAdvisorInfo | null;
+  /** Interní cesta na veřejnou rezervaci poradce, jen pokud má poradce booking aktivní. */
+  advisorBookingPath: string | null;
   quickStats: {
     assetsUnderManagement: number;
     monthlyInvestments: number;

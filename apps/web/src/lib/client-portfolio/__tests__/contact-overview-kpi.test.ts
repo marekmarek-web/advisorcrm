@@ -105,6 +105,21 @@ describe("ContactOverviewKpi — jednorázová investice se nezobrazuje jako mě
     expect(k.annualInsurance).toBe(29_304);
   });
 
+  it("roční pojištění se nepočítá do měsíčního pojistného", () => {
+    const rows: ContractRow[] = [
+      row({
+        segment: "ODP_ZAM",
+        type: "ODP_ZAM",
+        premiumAmount: "413",
+        premiumAnnual: "4956",
+        portfolioAttributes: { paymentFrequencyLabel: "ročně" },
+      }),
+    ];
+    const k = computeContactOverviewKpiFromContracts(rows);
+    expect(k.monthlyInsurance).toBe(0);
+    expect(k.annualInsurance).toBe(4_956);
+  });
+
   it("mix: 1M one_time INV + 3 000 regular INV + 2 442 ŽP → AUM=1M+36k proxy, měs. invest=3 000", () => {
     const rows: ContractRow[] = [
       row({

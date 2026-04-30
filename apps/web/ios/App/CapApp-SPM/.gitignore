@@ -1,9 +1,5 @@
-.DS_Store
-/.build
-/Packages
-/*.xcodeproj
-xcuserdata/
-DerivedData/
-.swiftpm/config/registries.json
-.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
-.netrc
+# SwiftPM local path aliases (unique directory names; see fix-cap-spm-app-identity-alias.mjs)
+spm-path-aliases/
+
+# SwiftPM build output (local; do not commit)
+.build/

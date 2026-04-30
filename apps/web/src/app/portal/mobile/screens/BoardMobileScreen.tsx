@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronDown,
@@ -28,8 +28,10 @@ import {
   getStatusById,
   hydrateBoardLabelsFromServer,
   STATUS_LABELS_UPDATED_EVENT,
+  shouldCelebrateBoardStatus,
   type StatusLabel,
 } from "@/app/lib/status-labels";
+import { triggerConfettiBurstFromRect } from "@/app/lib/confetti-burst";
 import {
   EmptyState,
   ErrorState,
@@ -206,6 +208,7 @@ export function BoardMobileScreen() {
   const [newItemName, setNewItemName] = useState("");
   const [newItemGroup, setNewItemGroup] = useState("");
   const [savePending, startSaveTransition] = useTransition();
+  const statusSelectRefs = useRef<Record<string, HTMLSelectElement | null>>({});
 
   useEffect(() => {
     setStatusLabels(getStatusLabels());
@@ -356,12 +359,17 @@ export function BoardMobileScreen() {
 
   function handleStatusChange(columnId: string, newValue: string) {
     if (!selectedItem) return;
+    const prev = String(selectedItem.cells[columnId] ?? "");
     startSaveTransition(async () => {
       try {
         const updatedCells = { ...selectedItem.cells, [columnId]: newValue };
         await updateBoardItem(selectedItem.id, { cells: updatedCells });
         setSelectedItem({ ...selectedItem, cells: updatedCells });
         loadBoard();
+        if (shouldCelebrateBoardStatus(newValue, prev, statusLabels)) {
+          const el = statusSelectRefs.current[columnId];
+          triggerConfettiBurstFromRect(el?.getBoundingClientRect() ?? null);
+        }
       } catch {
         /* retry from UI */
       }
@@ -517,6 +525,9 @@ export function BoardMobileScreen() {
                   <div key={col.id} className="flex items-center justify-between min-h-[44px]">
                     <span className="text-sm text-[color:var(--wp-text-secondary)] font-medium">{col.title}</span>
                     <select
+                      ref={(el) => {
+                        statusSelectRefs.current[col.id] = el;
+                      }}
                       value={val}
                       onChange={(e) => handleStatusChange(col.id, e.target.value)}
                       className="rounded-lg border border-[color:var(--wp-surface-card-border)] px-2 py-1.5 text-sm text-[color:var(--wp-text)] bg-[color:var(--wp-surface-card)] min-h-[36px] min-w-[110px]"

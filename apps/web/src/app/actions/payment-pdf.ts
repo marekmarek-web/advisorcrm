@@ -10,6 +10,10 @@ import { loadAdvisorMailHeadersForCurrentUser } from "@/lib/email/advisor-mail-h
 import { paymentPdfAttachmentClientTemplate } from "@/lib/email/templates";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { formatDomesticAccountDisplayLine } from "@/lib/ai/payment-field-contract";
+import {
+  dedupePortalPaymentInstructions,
+  portalPaymentInstructionDedupKey,
+} from "@/lib/client-portal/portal-payment-instruction-dedup";
 
 export type PaymentInstruction = {
   segment: string;
@@ -55,23 +59,10 @@ type AiPaymentSetupInstructionRow = {
   /** Canonical segment stored on the payment setup row (manual entry / AI). */
   rowSegment?: string | null;
   /** Canonical segment z navázané smlouvy (preferováno před paymentType mapováním). */
+  contractId?: string | null;
   contractSegment?: string | null;
   contractPortfolioStatus?: string | null;
 };
-
-function normalizeInstructionKeyPart(value: string | null | undefined): string {
-  return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function paymentInstructionDedupKey(instruction: PaymentInstruction): string {
-  return [
-    normalizeInstructionKeyPart(instruction.partnerName),
-    normalizeInstructionKeyPart(instruction.productName),
-    normalizeInstructionKeyPart(instruction.contractNumber),
-    normalizeInstructionKeyPart(instruction.accountNumber),
-    normalizeInstructionKeyPart(instruction.variableSymbol),
-  ].join("|");
-}
 
 /**
  * Resolve canonical segment for portal display.
@@ -135,6 +126,7 @@ function mapAiPaymentSetupToInstruction(
     constantSymbol: row.constantSymbol?.trim() || null,
     currency: row.currency?.trim() || null,
     paymentSetupId: row.id,
+    contractId: row.contractId?.trim() || null,
     linkedContractPortfolioStatus: row.contractPortfolioStatus?.trim() || null,
   };
 }
@@ -196,6 +188,14 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
         firstPaymentDate: clientPaymentSetups.firstPaymentDate,
         paymentInstructionsText: clientPaymentSetups.paymentInstructionsText,
         rowSegment: clientPaymentSetups.segment,
+        contractId: sql<string | null>`(
+          SELECT c.id FROM contracts c
+          WHERE c.tenant_id = ${clientPaymentSetups.tenantId}
+            AND c.client_id = ${clientPaymentSetups.contactId}
+            AND c.contract_number = ${clientPaymentSetups.contractNumber}
+            AND c.archived_at IS NULL
+          LIMIT 1
+        )`,
         contractSegment: sql<string | null>`(
           SELECT c.segment FROM contracts c
           WHERE c.tenant_id = ${clientPaymentSetups.tenantId}
@@ -272,7 +272,7 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
 
   // For client view: visible_to_client flag already filters in SQL; include all fromAi results.
   // Legacy contract-number check only applies when no paymentSetupId is present.
-  const out = isClient
+  let out = isClient
     ? fromAi.filter((instr) => {
         // Rows with a paymentSetupId already passed the visible_to_client=true filter in SQL
         if (instr.paymentSetupId) return true;
@@ -281,8 +281,9 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
         return publishedContractNumberKeys.has(cn);
       })
     : fromAi;
+  out = dedupePortalPaymentInstructions(out);
 
-  const seen = new Set(out.map(paymentInstructionDedupKey));
+  const seen = new Set(out.map(portalPaymentInstructionDedupKey));
 
   for (const c of visibleContractRows) {
     try {
@@ -311,7 +312,7 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
           contractId: c.id,
           linkedContractPortfolioStatus: c.portfolioStatus ?? null,
         };
-        const dedupKey = paymentInstructionDedupKey(legacyInstruction);
+        const dedupKey = portalPaymentInstructionDedupKey(legacyInstruction);
         if (seen.has(dedupKey)) continue;
         seen.add(dedupKey);
         out.push(legacyInstruction);
@@ -321,7 +322,7 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
       continue;
     }
   }
-  return out;
+  return dedupePortalPaymentInstructions(out);
 }
 
 export async function generatePaymentPdfBuffer(contactId: string): Promise<Buffer> {

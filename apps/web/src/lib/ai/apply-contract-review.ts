@@ -154,6 +154,10 @@ export function resolveSegmentForContractApply(
   actionPayload: Record<string, unknown>,
   extractedPayload: Record<string, unknown>,
 ): string {
+  const dc = extractedPayload.documentClassification as Record<string, unknown> | null | undefined;
+  const primaryType = typeof dc?.primaryType === "string" ? dc.primaryType.toLowerCase() : "";
+  const productFamily = typeof dc?.productFamily === "string" ? dc.productFamily.toLowerCase() : "";
+  if (primaryType.includes("life_insurance") || productFamily === "life_insurance") return "ZP";
   const raw = (actionPayload.segment as string)?.trim();
   if (raw && VALID_SEGMENTS.has(raw)) return raw;
   const inferred = inferInvestmentSegmentFromEnvelope(extractedPayload);
@@ -971,7 +975,7 @@ export async function applyContractReview(
     runAiReviewDeterministicValidators(extractedEnvelope, row.userDeclaredDocumentIntent, "");
   }
   const segmentForValidation = validateSegment(
-    (row.extractedPayload as Record<string, unknown> | null)?.segment as string | undefined
+    (extractedEnvelope as unknown as Record<string, unknown> | null)?.segment as string | undefined
   );
   const validationResult = validateBeforeApply(extractedEnvelope, segmentForValidation);
   if (!validationResult.valid) {
@@ -983,8 +987,8 @@ export async function applyContractReview(
   }
   // Warnings are non-blocking — they are logged to resultPayload below
 
-  const attrsFromReview = buildPortfolioAttributesFromExtracted(row.extractedPayload);
-  Object.assign(attrsFromReview, mergeIdentityPortfolioFieldsFromExtracted(row.extractedPayload));
+  const attrsFromReview = buildPortfolioAttributesFromExtracted(extractedEnvelope);
+  Object.assign(attrsFromReview, mergeIdentityPortfolioFieldsFromExtracted(extractedEnvelope));
 
   // F1-4 (BONUS-2): Fund-library resolution — multi-fund aware.
   // Aggregate vybírá první fund-library hit napříč všemi fondy (původní kód
@@ -1009,7 +1013,7 @@ export async function applyContractReview(
 
   // Sensitivity / publishability signals are logged for audit but NEVER block apply.
   // The advisor has already reviewed and approved — these are section-level warnings.
-  const extractedPayloadForGate = row.extractedPayload as Record<string, unknown> | null | undefined;
+  const extractedPayloadForGate = extractedEnvelope as unknown as Record<string, unknown> | null | undefined;
   const publishHintsForGate = extractedPayloadForGate?.publishHints as Record<string, unknown> | null | undefined;
   if (publishHintsForGate?.sensitiveAttachmentOnly === true || publishHintsForGate?.contractPublishable === false) {
     capturePublishGuardFailure({
@@ -1063,7 +1067,7 @@ export async function applyContractReview(
     .map((i) => i.message);
 
   // Fáze 9: Resolve extractedPayload pro enforcement engine
-  const extractedPayloadForEnforcement = (row.extractedPayload as Record<string, unknown>) ?? {};
+  const extractedPayloadForEnforcement = (extractedEnvelope as unknown as Record<string, unknown>) ?? {};
 
   // Supporting document guard — advisor-confirmed reviews bypass this guard.
   // When advisor has explicitly approved and is applying, they take responsibility
@@ -1540,7 +1544,7 @@ export async function applyContractReview(
                   data: { reviewId, tenantId, contractNumber: contractNumberResolved.slice(0, 50) },
                 });
                 const [conflicted] = await tx
-                  .select({ id: contracts.id })
+                  .select({ id: contracts.id, portfolioAttributes: contracts.portfolioAttributes })
                   .from(contracts)
                   .where(
                     and(
@@ -1550,11 +1554,21 @@ export async function applyContractReview(
                   )
                   .limit(1);
                 insertedContractId = conflicted?.id ?? null;
-                // Pokud jsme našli existující, updatujeme sourceContractReviewId pro idempotency
+                // Pokud jsme našli existující, ulož i portfolio atributy z normalizovaného review.
+                // Jinak unique fallback uměl připojit review id, ale ztratil rizika / osoby pro klientský portál.
                 if (insertedContractId) {
+                  const prevAttrs =
+                    (conflicted?.portfolioAttributes as Record<string, unknown> | undefined) ?? {};
+                  const mergedAttrsForConflict = mergePortfolioAttributesWithPhase1Scalars(prevAttrs, attrsFromReview);
                   await tx
                     .update(contracts)
-                    .set({ sourceContractReviewId: reviewId, updatedAt: new Date() })
+                    .set({
+                      sourceContractReviewId: reviewId,
+                      portfolioAttributes: mergedAttrsForConflict,
+                      visibleToClient: clientPortalActiveForApply,
+                      portfolioStatus: "active",
+                      updatedAt: new Date(),
+                    })
                     .where(eq(contracts.id, insertedContractId));
                 }
               } catch {
@@ -1905,14 +1919,16 @@ export async function applyContractReview(
   // BJ recompute — jakmile je smlouva insertnutá/updatenutá, musíme dopočítat
   // bankovní jednotky a zapsat je do contracts.bj_units. Běží mimo hlavní
   // transakci (je to derived field) a nesmí rozbít apply, i kdyby spadl sazebník.
-  if (resultPayload.createdContractId) {
+  const contractIdsForBj = Array.isArray(resultPayload.createdContractIds) && resultPayload.createdContractIds.length > 0
+    ? resultPayload.createdContractIds
+    : resultPayload.createdContractId
+      ? [resultPayload.createdContractId]
+      : [];
+  for (const contractId of contractIdsForBj) {
     try {
-      await recomputeBjForContract({
-        tenantId,
-        contractId: resultPayload.createdContractId,
-      });
+      await recomputeBjForContract({ tenantId, contractId });
     } catch (bjErr) {
-      console.error("[apply-contract-review] BJ recompute failed:", bjErr);
+      console.error("[apply-contract-review] BJ recompute failed:", { contractId, bjErr });
       Sentry.captureException(bjErr);
     }
   }

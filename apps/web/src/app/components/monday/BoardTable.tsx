@@ -310,6 +310,7 @@ export function BoardTable({
                             mondayStyle
                             actionColumnWidth={ACTION_COLUMN_WIDTH}
                             potentialDealStatusIds={potentialDealStatusIds}
+                            statusLabels={statusLabels}
                           />
                         ))}
                         <tr>

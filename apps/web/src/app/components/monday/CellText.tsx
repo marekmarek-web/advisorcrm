@@ -7,12 +7,21 @@ interface CellTextProps {
   onChange?: (value: string) => void;
   editable?: boolean;
   className?: string;
+  /** Dvojklik otevře detail (např. položku nástěnky); jednoduchý klik zůstane na úpravu textu. */
+  onDetailDoubleClick?: () => void;
 }
 
-export function CellText({ value, onChange, editable = false, className = "" }: CellTextProps) {
+export function CellText({
+  value,
+  onChange,
+  editable = false,
+  className = "",
+  onDetailDoubleClick,
+}: CellTextProps) {
   const [editing, setEditing] = useState(false);
   const [inputVal, setInputVal] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
+  const clickToEditTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => setInputVal(value), [value]);
   useEffect(() => {
@@ -21,6 +30,12 @@ export function CellText({ value, onChange, editable = false, className = "" }: 
       inputRef.current.select();
     }
   }, [editing]);
+
+  useEffect(() => {
+    return () => {
+      if (clickToEditTimerRef.current) clearTimeout(clickToEditTimerRef.current);
+    };
+  }, []);
 
   function commit() {
     setEditing(false);
@@ -47,12 +62,35 @@ export function CellText({ value, onChange, editable = false, className = "" }: 
   }
 
   if (editable && onChange) {
+    const delayedEditMs = onDetailDoubleClick ? 280 : 0;
     return (
       <div
         className={`min-h-[28px] flex items-center px-2 py-1 text-[13px] text-monday-text cursor-text ${className}`}
-        onClick={(e) => { e.stopPropagation(); setEditing(true); }}
-        onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }}
-        title="Klikněte pro úpravu"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (clickToEditTimerRef.current) clearTimeout(clickToEditTimerRef.current);
+          if (delayedEditMs <= 0) {
+            setEditing(true);
+            return;
+          }
+          clickToEditTimerRef.current = setTimeout(() => {
+            clickToEditTimerRef.current = null;
+            setEditing(true);
+          }, delayedEditMs);
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          if (clickToEditTimerRef.current) {
+            clearTimeout(clickToEditTimerRef.current);
+            clickToEditTimerRef.current = null;
+          }
+          if (onDetailDoubleClick) {
+            onDetailDoubleClick();
+            return;
+          }
+          setEditing(true);
+        }}
+        title={onDetailDoubleClick ? "Kliknutí pro úpravu · dvojklik otevře detail položky" : "Klikněte pro úpravu"}
       >
         {value || "—"}
       </div>

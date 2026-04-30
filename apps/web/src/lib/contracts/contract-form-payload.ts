@@ -16,8 +16,6 @@ import {
 import {
   annualPremiumFromMonthlyInput,
   annualPremiumPillLabel,
-  monthlyPremiumFromAnnualInput,
-  monthlyPremiumPillLabel,
 } from "@/lib/contracts/annual-premium-from-monthly";
 
 const segmentSchema = z.enum(
@@ -27,9 +25,9 @@ const segmentSchema = z.enum(
 /**
  * Frekvence platby — zdroj pravdy pro derivaci `paymentType`, `premiumAmount` a `premiumAnnual`.
  * - `monthly`     → advisor zadává měsíční částku; roční = x × 12.
- * - `annual`      → advisor zadává roční částku; měsíční = x ÷ 12.
- * - `quarterly`   → advisor zadává čtvrtletní částku; roční = x × 4, měsíční = x ÷ 3.
- * - `semiannual`  → advisor zadává pololetní částku; roční = x × 2, měsíční = x ÷ 6.
+ * - `annual`      → advisor zadává roční částku; měsíční se neodvozuje.
+ * - `quarterly`   → advisor zadává čtvrtletní částku; roční = x × 4, měsíční se neodvozuje.
+ * - `semiannual`  → advisor zadává pololetní částku; roční = x × 2, měsíční se neodvozuje.
  * - `one_time`    → advisor zadává jednorázovou částku; `premiumAnnual` = null, `paymentType` = "one_time".
  */
 export type ContractPaymentFrequency =
@@ -157,37 +155,30 @@ export function normalizeContractFormForSave(form: ContractFormState): ContractP
       // Dříve portál ukazoval „12 000 000 Kč / rok“ místo „1 000 000 Kč jednorázově“.
       premiumAnnual = undefined;
     } else if (frequency === "annual") {
-      // Advisor zadal roční částku — dopočítáme měsíční.
-      if (premiumAnnual) {
-        premiumAmount = monthlyPremiumFromAnnualInput(premiumAnnual) || premiumAmount;
-      } else if (premiumAmount) {
-        premiumAnnual = annualPremiumFromMonthlyInput(premiumAmount) || premiumAnnual;
-      }
+      // Advisor zadal roční platbu. Nejde o měsíční cashflow, proto premiumAmount nevyplňujeme.
+      premiumAnnual = premiumAnnual || premiumAmount;
+      premiumAmount = undefined;
     } else if (frequency === "quarterly") {
-      // Čtvrtletní částka × 4 = roční, měsíční = roční / 12.
+      // Čtvrtletní částka × 4 = roční. Nejde o měsíční cashflow.
       if (premiumAmount) {
         const annualNumber = Number(premiumAmount) * 4;
         if (Number.isFinite(annualNumber) && annualNumber > 0) {
           premiumAnnual = annualNumber.toFixed(2);
-          premiumAmount = monthlyPremiumFromAnnualInput(premiumAnnual) || premiumAmount;
         }
       }
+      premiumAmount = undefined;
     } else if (frequency === "semiannual") {
       if (premiumAmount) {
         const annualNumber = Number(premiumAmount) * 2;
         if (Number.isFinite(annualNumber) && annualNumber > 0) {
           premiumAnnual = annualNumber.toFixed(2);
-          premiumAmount = monthlyPremiumFromAnnualInput(premiumAnnual) || premiumAmount;
         }
       }
+      premiumAmount = undefined;
     } else if (segmentUsesAnnualPremiumPrimaryInput(segment)) {
-      // MAJ: historicky primární vstup je roční → měsíční dopočítáme.
-      if (premiumAnnual) {
-        const m = monthlyPremiumFromAnnualInput(premiumAnnual);
-        if (m) premiumAmount = m;
-      } else if (premiumAmount) {
-        premiumAnnual = annualPremiumFromMonthlyInput(premiumAmount) || premiumAnnual;
-      }
+      // Roční primární vstup: zachovat jen roční platbu, ne dopočet měsíčního pojistného.
+      premiumAnnual = premiumAnnual || premiumAmount;
+      premiumAmount = undefined;
     } else if (premiumAmount) {
       // monthly (default): měsíční × 12 = roční.
       premiumAnnual = annualPremiumFromMonthlyInput(premiumAmount) || premiumAnnual;
@@ -374,12 +365,11 @@ export function buildContractReviewRows(
   return rows;
 }
 
-/** Pill vedle vstupu pojistného — u MAJ odhad měsíční z ročního, jinde roční z měsíčního. */
+/** Pill vedle měsíčního vstupu pojistného — ukazuje pouze roční ekvivalent měsíční platby. */
 export function contractFormAnnualPillLabel(form: ContractFormState): string | null {
   if (!segmentShowsPremiumOrContributionFields(form.segment)) return null;
-  if (segmentUsesAnnualPremiumPrimaryInput(form.segment)) {
-    return monthlyPremiumPillLabel(form.premiumAnnual);
-  }
+  if (segmentUsesAnnualPremiumPrimaryInput(form.segment)) return null;
+  if (form.paymentFrequency !== "monthly") return null;
   return annualPremiumPillLabel(form.premiumAmount);
 }
 

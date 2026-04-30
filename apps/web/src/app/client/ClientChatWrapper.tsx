@@ -10,6 +10,7 @@ import {
   type MessageRow,
   type MessageAttachmentRow,
 } from "@/app/actions/messages";
+import { ChatTypingIndicator } from "@/app/components/chat/ChatTypingIndicator";
 
 const POLL_INTERVAL = 10_000;
 
@@ -61,7 +62,7 @@ export function ClientChatWrapper({ contactId }: ClientChatWrapperProps) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+  }, [messages.length, isPending]);
 
   function handleSubmit() {
     const trimmed = body.trim();
@@ -184,9 +185,9 @@ export function ClientChatWrapper({ contactId }: ClientChatWrapperProps) {
             </div>
           );
         })}
+        {isPending ? <ChatTypingIndicator role="user" label="Odesílám…" /> : null}
+        <div ref={bottomRef} />
       </div>
-
-      <div ref={bottomRef} />
 
       {sendError ? (
         <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">{sendError}</p>

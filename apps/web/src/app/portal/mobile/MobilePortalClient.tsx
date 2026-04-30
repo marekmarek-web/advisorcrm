@@ -235,6 +235,11 @@ const ROUTE_META: Array<{
   { test: (p) => p.startsWith("/portal/scan"), title: "Skenovat dokument", subtitle: "Vícestránkový sken" },
   { test: (p) => p.startsWith("/portal/documents"), title: "Dokumenty", subtitle: "Nahrané dokumenty a skeny" },
   { test: (p) => p.startsWith("/portal/tools"), title: "Nástroje Google", subtitle: "Gmail a Google Drive" },
+  {
+    test: (p) => p === "/portal/pipeline" || p.startsWith("/portal/pipeline/"),
+    title: "Obchodní nástěnka",
+    subtitle: "Obchodní případy ve fázích",
+  },
 ];
 
 /** First-match lookup through ROUTE_META, then tab-based fallback. */
@@ -254,7 +259,7 @@ function resolveHeaderMeta(
   if (tab === "home") return { title: "Přehled", subtitle };
   if (tab === "tasks") return { title: "Úkoly", subtitle };
   if (tab === "clients") return { title: "Klienti", subtitle };
-  if (tab === "pipeline") return { title: "Obchody", subtitle };
+  if (tab === "pipeline") return { title: "Obchodní nástěnka", subtitle };
   return { title: "Aidvisora", subtitle };
 }
 

@@ -8,6 +8,7 @@ import {
   lockAssistantClient,
   clearAssistantClientLock,
   appendToConversationDigest,
+  incrementMessageCount,
 } from "@/lib/ai/assistant-session";
 import {
   runWithAssistantRunStore,
@@ -51,6 +52,7 @@ import type { ResolvedAssistantContext } from "@/lib/ai/image-intake/types";
 import { assertCapability, getSessionEmailForUserId } from "@/lib/billing/plan-access-guards";
 import { assertQuotaAvailable } from "@/lib/billing/subscription-usage";
 import { nextResponseFromPlanOrQuotaError } from "@/lib/billing/plan-access-http";
+import { createResponseStreaming } from "@/lib/openai";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +103,56 @@ function assistantResponseToSseStream(response: AssistantResponse): ReadableStre
       }
     },
   });
+}
+
+function encodeAssistantSseEvent(payload: Record<string, unknown>): Uint8Array {
+  return new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+const LIVE_GENERAL_CHAT_BLOCKLIST =
+  /\b(vytvoř|vytvor|zapiš|zapis|ulož|uloz|najdi|vyhledej|hledej|klient|kontakt|email|e-mail|úkol|ukol|smlouv|review|platb|hypot|obchod|přepni|prepni|schval|zamít|zamit|nahraj|upload)\b/i;
+
+function shouldUseLiveGeneralChatStream(params: {
+  useStream: boolean;
+  message: string;
+  hasActiveContext: boolean;
+  hasImages: boolean;
+  hasPendingImageIntake: boolean;
+  confirmExecution: boolean;
+  cancelExecution: boolean;
+  bootstrapPostUpload: boolean;
+}): boolean {
+  const text = params.message.trim();
+  return (
+    params.useStream &&
+    text.length > 0 &&
+    text.length <= 700 &&
+    !params.hasActiveContext &&
+    !params.hasImages &&
+    !params.hasPendingImageIntake &&
+    !params.confirmExecution &&
+    !params.cancelExecution &&
+    !params.bootstrapPostUpload &&
+    !LIVE_GENERAL_CHAT_BLOCKLIST.test(text)
+  );
+}
+
+function buildLiveGeneralChatPrompt(params: {
+  message: string;
+  recentMessages: Array<{ role: string; content: string }>;
+}): string {
+  const history = params.recentMessages
+    .slice(-4)
+    .map((row) => `${row.role === "assistant" ? "Asistent" : "Uživatel"}: ${row.content.slice(0, 800)}`)
+    .join("\n");
+  return [
+    "Jsi interní AI asistent v CRM Aidvisora pro finanční poradce.",
+    "Odpovídej česky, stručně a prakticky. Výstup je pouze informativní interní podklad pro poradce; nejde o doporučení klientovi.",
+    "Nepředstírej zápis do CRM, vyhledání klienta ani práci s dokumenty. Když je potřeba CRM akce nebo konkrétní data, řekni krátce, že má poradce upřesnit kontext nebo použít konkrétní akci v Aidvisoře.",
+    history ? `Nedávný kontext konverzace:\n${history}` : "",
+    `Uživatel: ${params.message}`,
+    "Asistent:",
+  ].filter(Boolean).join("\n\n");
 }
 
 function correlationHeaders(traceId: string, assistantRunId: string): Record<string, string> {
@@ -311,13 +363,16 @@ export async function POST(request: Request) {
             runStore.channel = channel;
           }
 
-          const hydrated = await loadConversationHydration(session.sessionId, tenantId, userId);
-          const recentMessages = await loadRecentConversationMessagesForUser(
-            session.sessionId,
-            tenantId,
-            userId,
-            8,
-          );
+          const [hydrated, recentMessages, resumablePlan] = await Promise.all([
+            loadConversationHydration(session.sessionId, tenantId, userId),
+            loadRecentConversationMessagesForUser(
+              session.sessionId,
+              tenantId,
+              userId,
+              8,
+            ),
+            loadResumableExecutionPlanSnapshot(session.sessionId),
+          ]);
           const incomingClientId = typeof activeContext?.clientId === "string" ? activeContext.clientId : undefined;
           if (hydrated) {
             const hydratedClientMismatch =
@@ -343,7 +398,6 @@ export async function POST(request: Request) {
             applyPendingImageIntakeFromConversationMetadata(session, hydrated.metadata);
           }
 
-          const resumablePlan = await loadResumableExecutionPlanSnapshot(session.sessionId);
           if (resumablePlan && !session.lastExecutionPlan) {
             session.lastExecutionPlan = resumablePlan;
           }
@@ -419,6 +473,155 @@ export async function POST(request: Request) {
           const debugImageIntakeResume = process.env.DEBUG_IMAGE_INTAKE_RESUME === "true";
           const pendingAfterHydrate = Boolean(session.pendingImageIntakeResolution);
           const pendingEffective = hasPendingImageIntakeResolution(session);
+
+          if (shouldUseLiveGeneralChatStream({
+            useStream,
+            message,
+            hasActiveContext: Boolean(activeContext?.clientId || activeContext?.reviewId || activeContext?.paymentContactId),
+            hasImages: rawImageAssets.length > 0,
+            hasPendingImageIntake: pendingEffective,
+            confirmExecution,
+            cancelExecution,
+            bootstrapPostUpload,
+          })) {
+            incrementMessageCount(session);
+            const corr = correlationHeaders(traceId, assistantRunId);
+            const recentForPrompt = recentMessages.map((row) => ({
+              role: row.role,
+              content: row.content,
+            }));
+
+            return new Response(
+              new ReadableStream<Uint8Array>({
+                async start(controller) {
+                  try {
+                    const fullPrompt = buildLiveGeneralChatPrompt({
+                      message,
+                      recentMessages: recentForPrompt,
+                    });
+                    const streamedText = await createResponseStreaming(fullPrompt, {
+                      routing: { category: "advisor_chat_fast", maxOutputTokens: 450 },
+                      onTextDelta: (delta) => {
+                        controller.enqueue(encodeAssistantSseEvent({ type: "text", text: delta }));
+                      },
+                    });
+                    const persistedResponse: AssistantResponse = {
+                      message: sanitizeAssistantMessageForAdvisor(streamedText),
+                      referencedEntities: [],
+                      suggestedActions: [],
+                      warnings: [],
+                      confidence: 0.75,
+                      sourcesSummary: [],
+                      sessionId: session.sessionId,
+                      contextState: {
+                        channel: session.activeChannel ?? null,
+                        lockedClientId: session.lockedClientId ?? null,
+                        lockedClientLabel: null,
+                      },
+                    };
+
+                    after(async () => {
+                      try {
+                        await upsertConversationFromSession(session, {
+                          channel,
+                          metadata: {
+                            orchestration,
+                            messageCount: session.messageCount,
+                            liveGeneralChatStream: true,
+                            [PENDING_IMAGE_INTAKE_METADATA_KEY]: session.pendingImageIntakeResolution ?? null,
+                          },
+                        });
+                        await appendConversationMessage({
+                          conversationId: session.sessionId,
+                          role: "user",
+                          content: message,
+                          meta: {
+                            channel,
+                            activeContext,
+                            traceId,
+                            assistantRunId,
+                          },
+                        });
+                        await appendConversationMessage({
+                          conversationId: session.sessionId,
+                          role: "assistant",
+                          content: persistedResponse.message ?? "",
+                          executionPlanSnapshot: null,
+                          referencedEntities: [],
+                          meta: {
+                            warnings: [],
+                            confidence: persistedResponse.confidence,
+                            traceId,
+                            assistantRunId,
+                            liveGeneralChatStream: true,
+                          },
+                        });
+                        if (orchestration === "canonical") {
+                          appendToConversationDigest(session, message);
+                        }
+                        await logAudit({
+                          tenantId,
+                          userId,
+                          action: "assistant.conversation_message",
+                          entityType: "assistant_conversation",
+                          entityId: session.sessionId,
+                          request,
+                          meta: {
+                            channel,
+                            orchestration,
+                            messageCount: session.messageCount,
+                            traceId,
+                            assistantRunId,
+                            liveGeneralChatStream: true,
+                          },
+                        });
+                      } catch (persistErr) {
+                        console.error(
+                          "[assistant-chat] live stream persistence failed",
+                          { traceId, assistantRunId, tenantId, userId, sessionId: session.sessionId },
+                          persistErr,
+                        );
+                        captureAssistantApiError(persistErr, {
+                          traceId,
+                          assistantRunId,
+                          tenantId,
+                          channel,
+                          orchestration,
+                        });
+                      }
+                    });
+
+                    controller.enqueue(encodeAssistantSseEvent({
+                      type: "complete",
+                      ...persistedResponse,
+                    }));
+                    controller.close();
+                  } catch (streamErr) {
+                    logAssistantTelemetry(AssistantTelemetryAction.RUN_ERROR, {
+                      code: "assistant_live_stream",
+                      message: streamErr instanceof Error ? streamErr.message : "unknown",
+                    });
+                    controller.enqueue(encodeAssistantSseEvent({
+                      type: "error",
+                      error: "Odpověď asistenta se nepodařilo dokončit.",
+                    }));
+                    controller.close();
+                  } finally {
+                    logAssistantTelemetry(AssistantTelemetryAction.RUN_COMPLETE);
+                  }
+                },
+              }),
+              {
+                status: 200,
+                headers: {
+                  "Content-Type": "text/event-stream; charset=utf-8",
+                  "Cache-Control": "no-cache, no-transform",
+                  Connection: "keep-alive",
+                  ...corr,
+                },
+              },
+            );
+          }
 
           if (process.env.DEBUG_ASSISTANT_IMAGE_PASTE === "true") {
             console.info("[assistant-image-pipeline][api:lane]", {

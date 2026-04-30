@@ -103,7 +103,10 @@ export async function POST(
       );
     }
 
-    await updateContractReview(id, tenantId, { processingStatus: "processing" });
+    await updateContractReview(id, tenantId, {
+      processingStatus: "processing",
+      processingStage: "preprocessing",
+    });
     await logAudit({
       tenantId,
       userId,

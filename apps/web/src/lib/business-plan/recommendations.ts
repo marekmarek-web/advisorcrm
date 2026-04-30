@@ -57,6 +57,7 @@ const CTA_MAP: Record<
 };
 
 function formatGap(unit: string, gap: number): string {
+  if (unit === "bj") return `${Math.round(gap).toLocaleString("cs-CZ")} BJ`;
   if (unit === "czk") return `${Math.round(gap).toLocaleString("cs-CZ")} Kč`;
   return String(Math.round(gap));
 }
@@ -69,7 +70,13 @@ function buildDescription(
 ): string {
   const label = METRIC_TYPE_LABELS[metricType as keyof typeof METRIC_TYPE_LABELS] ?? metricType;
   const gapStr = formatGap(unit, gap);
-  return `Chybí ${gapStr} do cíle ${unit === "czk" ? target.toLocaleString("cs-CZ") + " Kč" : target}.`;
+  const targetStr =
+    unit === "bj"
+      ? `${target.toLocaleString("cs-CZ")} BJ`
+      : unit === "czk"
+        ? `${target.toLocaleString("cs-CZ")} Kč`
+        : target.toLocaleString("cs-CZ");
+  return `Chybí ${gapStr} do cíle ${targetStr}.`;
 }
 
 /**

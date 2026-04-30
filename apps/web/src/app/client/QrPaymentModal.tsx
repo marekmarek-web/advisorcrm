@@ -151,7 +151,7 @@ export function QrPaymentModal({ open, onClose, payment }: QrPaymentModalProps) 
 
   return (
     <div
-      className="fixed inset-0 z-[70] bg-slate-900/55 backdrop-blur-sm p-0 sm:p-4 flex items-end sm:items-center justify-center client-fade-in"
+      className="fixed inset-0 z-[120] bg-slate-900/55 backdrop-blur-sm p-0 sm:p-4 flex items-end sm:items-center justify-center client-fade-in"
       onClick={onClose}
     >
       <div

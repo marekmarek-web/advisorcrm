@@ -227,3 +227,31 @@ export function getStatusById(labels: StatusLabel[], id: string): StatusLabel {
   // Fallback: už žádné raw id v UI – derivujeme čitelný label + deterministickou barvu z palette.
   return { id, label: humanizeLabelId(id), color: autoPaletteColor(id) };
 }
+
+/** Stejná zelená jako výchozí „Hotovo“ (Monday); tmavě zelené „domluvit“ záměrně ne. */
+const HOTOVO_SUCCESS_HEX_NORM = "00c875";
+
+function normalizeLabelHex(color: string): string {
+  const c = color.trim().toLowerCase().replace(/^#/, "");
+  if (c.length === 3) {
+    return c
+      .split("")
+      .map((ch) => ch + ch)
+      .join("");
+  }
+  return c.slice(0, 6);
+}
+
+/** Spustit konfeti jen při přechodu na úspěšný status (ne při stejném id). */
+export function shouldCelebrateBoardStatus(
+  newId: string,
+  prevId: string,
+  labels: StatusLabel[],
+): boolean {
+  const next = String(newId ?? "").trim();
+  const prev = String(prevId ?? "").trim();
+  if (!next || prev === next) return false;
+  if (next === "hotovo" || next === "done") return true;
+  const meta = getStatusById(labels, next);
+  return normalizeLabelHex(meta.color) === HOTOVO_SUCCESS_HEX_NORM;
+}

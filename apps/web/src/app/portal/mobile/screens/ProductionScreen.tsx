@@ -53,6 +53,11 @@ function fmtCzk(amount: number): string {
   return `${fmt(amount)} Kč`;
 }
 
+function fmtBj(amount: number | null | undefined): string {
+  if (amount == null) return "—";
+  return `${amount.toLocaleString("cs-CZ", { maximumFractionDigits: 2 })} BJ`;
+}
+
 const SEGMENT_COLORS: Record<string, string> = {
   life: "bg-indigo-500",
   property: "bg-emerald-500",
@@ -109,23 +114,23 @@ function SummaryHero({
           <>
             <span>{summary.totalCount} smluv</span>
             <HeroMetaDot />
-            <span>{fmtCzk(summary.totalPremium)} / měs.</span>
+            <span>{fmtBj(summary.totalProductionBj)}</span>
             <HeroMetaDot />
-            <span>{fmtCzk(summary.totalAnnual)} / rok</span>
+            <span>{summary.missingRuleCount} bez pravidla</span>
           </>
         }
       />
 
       <MetricGrid cols={2}>
         <KpiCard
-          label="Roční pojistné"
-          value={fmtCzk(summary.totalAnnual)}
+          label="Produkce BJ"
+          value={fmtBj(summary.totalProductionBj)}
           icon={<Coins size={14} />}
           variant="compact"
         />
         <KpiCard
-          label="Měsíční pojistné"
-          value={fmtCzk(summary.totalPremium)}
+          label="Splnění cíle"
+          value={summary.targetProgressPct == null ? "—" : `${summary.targetProgressPct} %`}
           icon={<Receipt size={14} />}
           variant="compact"
         />
@@ -166,13 +171,13 @@ function SegmentBreakdown({
     );
   }
 
-  const maxAnnual = Math.max(...summary.rows.map((r) => r.totalAnnual), 1);
+  const maxProduction = Math.max(...summary.rows.map((r) => r.productionBj), 1);
 
   return (
     <MobileSection title="Breakdown po segmentech">
       <div className={cx("grid gap-2", isTablet ? "grid-cols-2" : "grid-cols-1")}>
         {summary.rows.map((row) => {
-          const pct = Math.round((row.totalAnnual / maxAnnual) * 100);
+          const pct = Math.round((row.productionBj / maxProduction) * 100);
           const color = getSegmentColor(row.segment);
           return (
             <MobileCard key={`${row.segment}-${row.partnerName}`} className="p-3.5">
@@ -187,7 +192,7 @@ function SegmentBreakdown({
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-sm font-black text-[color:var(--wp-text)]">{fmtCzk(row.totalAnnual)}</p>
+                  <p className="text-sm font-black text-[color:var(--wp-text)]">{fmtBj(row.productionBj)}</p>
                   <p className="text-[11px] text-[color:var(--wp-text-secondary)]">{row.count} smluv</p>
                 </div>
               </div>
@@ -247,10 +252,12 @@ function ContractList({
               </div>
               <div className="text-right flex-shrink-0">
                 <p className="text-sm font-black text-[color:var(--wp-text)]">
-                  {fmtCzk(contract.premiumAnnual)}
+                  {fmtBj(contract.productionBj)}
                 </p>
                 <p className="text-[11px] text-[color:var(--wp-text-tertiary)]">
-                  {contract.productionDate
+                  {contract.calculationStatus === "missing_rule"
+                    ? "Chybí pravidlo"
+                    : contract.productionDate
                     ? new Date(contract.productionDate).toLocaleDateString("cs-CZ", {
                         day: "numeric",
                         month: "short",
@@ -332,17 +339,17 @@ export function ProductionScreen({ deviceClass = "phone" }: { deviceClass?: Devi
   // Group rows by segment for summary chart
   const segmentTotals = useMemo(() => {
     if (!summary) return [];
-    const map = new Map<string, { label: string; annual: number; count: number }>();
+    const map = new Map<string, { label: string; productionBj: number; count: number }>();
     for (const row of summary.rows) {
       const existing = map.get(row.segment);
       if (existing) {
-        existing.annual += row.totalAnnual;
+        existing.productionBj += row.productionBj;
         existing.count += row.count;
       } else {
-        map.set(row.segment, { label: row.segmentLabel, annual: row.totalAnnual, count: row.count });
+        map.set(row.segment, { label: row.segmentLabel, productionBj: row.productionBj, count: row.count });
       }
     }
-    return Array.from(map.values()).sort((a, b) => b.annual - a.annual);
+    return Array.from(map.values()).sort((a, b) => b.productionBj - a.productionBj);
   }, [summary]);
 
   return (
@@ -418,8 +425,8 @@ export function ProductionScreen({ deviceClass = "phone" }: { deviceClass?: Devi
               <MobileCard className="p-4">
                 <div className="space-y-2.5">
                   {segmentTotals.map((seg) => {
-                    const totalAnnual = summary.totalAnnual || 1;
-                    const pct = Math.round((seg.annual / totalAnnual) * 100);
+                    const totalProduction = summary.totalProductionBj || 1;
+                    const pct = Math.round((seg.productionBj / totalProduction) * 100);
                     const color = getSegmentColor(
                       Object.keys(SEGMENT_COLORS).find((k) =>
                         seg.label.toLowerCase().includes(k)
@@ -434,7 +441,7 @@ export function ProductionScreen({ deviceClass = "phone" }: { deviceClass?: Devi
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-bold text-[color:var(--wp-text-secondary)]">{seg.count}×</span>
-                            <span className="text-xs font-black text-[color:var(--wp-text)]">{fmtCzk(seg.annual)}</span>
+                            <span className="text-xs font-black text-[color:var(--wp-text)]">{fmtBj(seg.productionBj)}</span>
                             <span className="text-[11px] text-[color:var(--wp-text-tertiary)] w-8 text-right">{pct}%</span>
                           </div>
                         </div>

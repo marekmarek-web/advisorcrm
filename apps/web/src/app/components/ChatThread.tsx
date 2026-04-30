@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { getMessages, sendMessage, markMessagesRead } from "@/app/actions/messages";
 import type { MessageRow } from "@/app/actions/messages";
+import { ChatTypingIndicator } from "@/app/components/chat/ChatTypingIndicator";
 
 const POLL_INTERVAL = 10_000;
 
@@ -39,7 +40,7 @@ export function ChatThread({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [msgs.length]);
+  }, [msgs.length, isPending]);
 
   function handleSend() {
     const trimmed = body.trim();
@@ -90,6 +91,9 @@ export function ChatThread({
             </div>
           );
         })}
+        {isPending ? (
+          <ChatTypingIndicator role="user" label="Odesílám…" className="px-0" />
+        ) : null}
         <div ref={bottomRef} />
       </div>
 

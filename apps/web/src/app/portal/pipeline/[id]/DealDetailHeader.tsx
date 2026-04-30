@@ -12,6 +12,7 @@ import {
   updateOpportunityStage,
 } from "@/app/actions/pipeline";
 import type { OpportunityDetail } from "@/app/actions/pipeline";
+import { triggerConfettiBurstFromRect } from "@/app/lib/confetti-burst";
 
 function parseExpectedValue(s: string | null): number {
   if (s == null || s === "") return 0;
@@ -23,6 +24,7 @@ export function DealDetailHeader({ opportunity }: { opportunity: OpportunityDeta
   const router = useRouter();
   const queryClient = useQueryClient();
   const [pending, startTransition] = useTransition();
+  const wonButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const refreshOpportunityAndCaches = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.pipeline.all });
@@ -116,8 +118,15 @@ export function DealDetailHeader({ opportunity }: { opportunity: OpportunityDeta
 
   function handleClose(won: boolean) {
     startTransition(async () => {
-      await closeOpportunity(opportunity.id, won);
-      refreshOpportunityAndCaches();
+      try {
+        await closeOpportunity(opportunity.id, won);
+        if (won) {
+          triggerConfettiBurstFromRect(wonButtonRef.current?.getBoundingClientRect() ?? null);
+        }
+        refreshOpportunityAndCaches();
+      } catch {
+        /* ignore */
+      }
     });
   }
 
@@ -265,6 +274,7 @@ export function DealDetailHeader({ opportunity }: { opportunity: OpportunityDeta
 
         <div className="flex items-center gap-2 mt-2 xl:mt-0 flex-wrap">
           <button
+            ref={wonButtonRef}
             type="button"
             onClick={() => handleClose(true)}
             disabled={pending}

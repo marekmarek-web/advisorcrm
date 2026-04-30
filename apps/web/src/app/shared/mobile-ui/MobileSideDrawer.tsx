@@ -28,7 +28,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import { hasPermission, type RoleName } from "@/shared/rolePermissions";
-import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
+import { AiAssistantBrandIcon, AI_ASSISTANT_BRAND_LOGO_SRC } from "@/app/components/AiAssistantBrandIcon";
 import { isPortalMultiPageScanEnabled } from "@/lib/portal/portal-scan-enabled";
 import { isColdContactsEnabled } from "@/lib/portal/cold-contacts-enabled";
 import { signOutAndRedirectClient } from "@/lib/auth/sign-out-client";
@@ -314,11 +314,19 @@ export function MobileSideDrawer({
                               : "hover:bg-[color:var(--wp-surface-muted)]"
                           )}
                         >
-                          <span className={cx(
-                            "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                            active ? "bg-white/15" : "bg-gradient-to-br from-fuchsia-100 to-indigo-100"
-                          )}>
-                            <Icon size={20} className="max-w-full max-h-full" />
+                          <span
+                            className={cx(
+                              "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-black",
+                              active && "ring-2 ring-white/35",
+                            )}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element -- static brand asset */}
+                            <img
+                              src={AI_ASSISTANT_BRAND_LOGO_SRC}
+                              alt=""
+                              className="h-full w-full object-contain"
+                              aria-hidden
+                            />
                           </span>
                           <span className={cx(
                             "flex-1 truncate tracking-wide",

@@ -65,7 +65,7 @@ export async function POST(request: Request) {
         .map((r: { title?: string; description?: string }) => `${r.title ?? ""}: ${r.description ?? ""}`)
         .filter(Boolean)
         .join(". ");
-      const context = `Období: ${periodLabel}. Cíle: produkce ${productionTarget} Kč, schůzky ${meetingsTarget}. Skutečnost: produkce ${productionActual} Kč, schůzky ${meetingsActual}. ${recText ? `Poznámky z plánu: ${recText}` : ""}`;
+      const context = `Období: ${periodLabel}. Cíle: produkce ${productionTarget} BJ, schůzky ${meetingsTarget}. Skutečnost: produkce ${productionActual} BJ, schůzky ${meetingsActual}. ${recText ? `Poznámky z plánu: ${recText}` : ""}`;
       const prompt = `Jsi interní analytický nástroj pro poradce (ne rada klientovi). Stručně (1–2 věty, max 200 znaků) shrň oblasti k prověření v práci poradce v tomto období. Kontext: ${context}. Odpověz pouze textem, bez odrážek, v češtině.\n\n${ADVISOR_AI_INTERNAL_SCOPE_CS}`;
       const result = await createResponseSafe(prompt);
       if (result.ok) {

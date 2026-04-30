@@ -28,7 +28,7 @@ export type PlanHealthStatus =
   | "no_data"
   | "not_applicable";
 
-export type MetricUnit = "count" | "czk" | "pct";
+export type MetricUnit = "count" | "czk" | "pct" | "bj";
 
 export interface PlanPeriod {
   start: Date;
@@ -82,7 +82,7 @@ export const METRIC_TYPE_LABELS: Record<BusinessPlanMetricType, string> = {
   volume_hypo: "Objem hypoték",
   volume_investments: "Objem investic",
   service_activities: "Servisní aktivity",
-  production: "Produkce",
+  production: "Produkce BJ",
   referrals: "Doporučení",
 };
 
@@ -144,19 +144,19 @@ export function getCurrentPeriodNumbers(): {
   };
 }
 
-/** Reverse math: from production/meetings targets compute suggested calls, meetings, contracts, production (k). */
+/** Reverse math: from production BJ / meetings targets compute suggested calls, meetings and contracts. */
 export function computeReverseMath(
-  productionTargetCzk: number,
+  productionTargetBj: number,
   meetingsTarget: number
 ): { calls: number; meetings: number; contracts: number; productionK: number } {
-  const avgPerContract = 37500; // Kč per contract (reference: 300k / 8)
-  const contracts = productionTargetCzk > 0 ? Math.round(productionTargetCzk / avgPerContract) : 0;
+  const avgBjPerContract = 40;
+  const contracts = productionTargetBj > 0 ? Math.round(productionTargetBj / avgBjPerContract) : 0;
   const callsPerMeeting = 5; // reference: 120/25
   const calls = Math.round(meetingsTarget * callsPerMeeting);
   return {
     calls,
     meetings: meetingsTarget,
     contracts,
-    productionK: Math.round(productionTargetCzk / 1000),
+    productionK: Math.round(productionTargetBj),
   };
 }
